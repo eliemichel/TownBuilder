@@ -1,9 +1,8 @@
-﻿using Packages.Rider.Editor.UnitTesting;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
-using System.Drawing;
-using TMPro;
 using UnityEngine;
+using UnityEngine.Assertions;
+
 
 [RequireComponent(typeof(MeshFilter))]
 public class WorldGenerator : MonoBehaviour
@@ -142,6 +141,34 @@ public class WorldGenerator : MonoBehaviour
         int tricount = 6 * n * n;
 
         Test();
+        TestBMesh.Run();
+
+        var bmesh = new BMesh();
+        for (int i = 0; i < pointcount; ++i)
+        {
+            var co = AxialCoordinate.FromIndex(i, n);
+            Vector2 c = co.Center(size);
+            bmesh.AddVertex(new Vector3(c.x, 0, c.y));
+        }
+        for (int i = 0; i < pointcount; ++i)
+        {
+            var co = AxialCoordinate.FromIndex(i, n);
+            var co2 = new AxialCoordinate(co.q + 1, co.r - 1); // right up of co
+            var co3 = new AxialCoordinate(co.q + 1, co.r); // beneath co2
+            var co4 = new AxialCoordinate(co.q, co.r + 1); // beneath co
+
+            if (co2.InRange(n) && co3.InRange(n))
+            {
+                bmesh.AddFace(i, co3.ToIndex(n), co2.ToIndex(n));
+            }
+
+            if (co3.InRange(n) && co4.InRange(n))
+            {
+                bmesh.AddFace(i, co4.ToIndex(n), co3.ToIndex(n));
+            }
+        }
+        bmesh.SetInMeshFilter(GetComponent<MeshFilter>());
+        return;
 
         Vector3[] vertices = new Vector3[pointcount];
         Vector2[] uvs = new Vector2[pointcount];
@@ -158,7 +185,6 @@ public class WorldGenerator : MonoBehaviour
             var co2 = new AxialCoordinate(co.q + 1, co.r - 1); // right up of co
             var co3 = new AxialCoordinate(co.q + 1, co.r); // beneath co2
             var co4 = new AxialCoordinate(co.q, co.r + 1); // beneath co
-            int j = co2.ToIndex(n);
 
             if (co2.InRange(n) && co3.InRange(n))
             {
