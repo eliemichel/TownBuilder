@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.ExceptionServices;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 public class TestBMesh
@@ -69,6 +70,12 @@ public class TestBMesh
 
         Debug.Assert(mesh.FindEdge(v0, v1) != null, "edge between v0 and v1");
 
+        mesh.RemoveEdge(mesh.edges[0]);
+        Debug.Assert(mesh.vertices.Count == 4, "vert count after removing edge");
+        Debug.Assert(mesh.loops.Count == 0, "loop count after removing edge");
+        Debug.Assert(mesh.edges.Count == 3, "edge count after removing edge");
+        Debug.Assert(mesh.faces.Count == 0, "face count after removing edge");
+
         Debug.Log("TestBMesh #2 passed.");
 
         return true;
@@ -83,12 +90,28 @@ public class TestBMesh
         BMesh.Vertex v2 = mesh.AddVertex(new Vector3(1, 0, 1));
         BMesh.Vertex v3 = mesh.AddVertex(new Vector3(1, 0, -1));
         BMesh.Face f0 = mesh.AddFace(v0, v1, v2);
-        BMesh.Face f1 = mesh.AddFace(v1, v2, v3);
+        BMesh.Face f1 = mesh.AddFace(v2, v1, v3);
 
         Debug.Assert(mesh.vertices.Count == 4, "vert count");
         Debug.Assert(mesh.loops.Count == 6, "loop count");
         Debug.Assert(mesh.edges.Count == 5, "edge count");
         Debug.Assert(mesh.faces.Count == 2, "face count");
+
+        BMesh.Edge e0 = null;
+        foreach (BMesh.Edge e in mesh.edges)
+        {
+            if ((e.vert1 == v1 && e.vert2 == v2) || (e.vert1 == v2 && e.vert2 == v1))
+            {
+                e0 = e;
+                break;
+            }
+        }
+        Debug.Assert(e0 != null, "found edge between v1 and v2");
+        mesh.RemoveEdge(e0);
+        Debug.Assert(mesh.vertices.Count == 4, "vert count after removing edge");
+        Debug.Assert(mesh.loops.Count == 0, "loop count after removing edge");
+        Debug.Assert(mesh.edges.Count == 4, "edge count after removing edge");
+        Debug.Assert(mesh.faces.Count == 0, "face count after removing edge");
 
         Debug.Log("TestBMesh #3 passed.");
 
