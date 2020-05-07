@@ -60,6 +60,21 @@ public class TestBMesh
         Debug.Assert(mesh.edges.Count == 4, "edge count");
         Debug.Assert(mesh.faces.Count == 1, "face count");
 
+        v0.id = 0;
+        v1.id = 1;
+        v2.id = 2;
+        v3.id = 3;
+        BMesh.Loop l = v0.edge.loop;
+        BMesh.Loop it = l;
+        int prevId = it.prev.vert.id;
+        int forward = (prevId + 1) % 4 == it.vert.id ? 1 : 0;
+        do
+        {
+            Debug.Assert((forward == 1 && (prevId + 1) % 4 == it.vert.id) || (it.vert.id + 1) % 4 == prevId, "valid quad loop order");
+            prevId = it.vert.id;
+            it = it.next;
+        } while (it != l);
+
         for (int i = 0; i < 4; ++i)
         {
             var v = mesh.vertices[i];

@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Net;
 using UnityEngine;
 using UnityEngine.Assertions;
 
@@ -50,6 +51,32 @@ public class WorldGenerator : MonoBehaviour
         TestAxialCoordinate.Run(divisions);
     }
 
+    public void GenerateQuad()
+    {
+        bmesh = new BMesh();
+
+        BMesh.Vertex v0 = bmesh.AddVertex(new Vector3(-1, 0, -1));
+        BMesh.Vertex v1 = bmesh.AddVertex(new Vector3(-1, 0, 1));
+        BMesh.Vertex v2 = bmesh.AddVertex(new Vector3(1, 0, 1));
+        BMesh.Vertex v3 = bmesh.AddVertex(new Vector3(1, 0, -1));
+        bmesh.AddFace(v0, v1, v2, v3);
+
+        v0.id = 0;
+        v1.id = 1;
+        v2.id = 2;
+        v3.id = 3;
+
+        Debug.Log("Following loop:");
+        BMesh.Loop l = v0.edge.loop;
+        BMesh.Loop it = l;
+        do {
+            Debug.Log(" - #" + it.vert.id);
+            it = it.next;
+        } while (it != l);
+
+        bmesh.SetInMeshFilter(GetComponent<MeshFilter>());
+    }
+
     public void GenerateSubdividedHex()
     {
         int n = divisions;
@@ -87,36 +114,61 @@ public class WorldGenerator : MonoBehaviour
         Debug.Assert(bmesh.faces.Count == 6 * n * n);
         Debug.Assert(bmesh.loops.Count == 3 * 6 * n * n);
         Debug.Assert(bmesh.vertices.Count == pointcount);
-        Debug.Log("Edge count: " + bmesh.edges.Count);
         bmesh.SetInMeshFilter(GetComponent<MeshFilter>());
         return;
     }
 
-    public void RemoveRandomEdge()
+    public bool FuseEdge(int i) // iff it joins two triangles
     {
-        if (bmesh == null) return;
-        if (bmesh.edges.Count == 0) return;
-        int i = Random.Range(0, bmesh.edges.Count);
-        Debug.Log("Before removing #" + i + ": " + bmesh.edges.Count + " edges");
         var e = bmesh.edges[i];
-        Debug.Log("Faces using edge " + e.vert1.id + "->" + e.vert2.id + ":");
+        var faces = e.NeighborFaces();
+        bool isValidEdge = faces.Count == 2 && faces[0].vertcount == 3 && faces[1].vertcount == 3;
+        if (!isValidEdge) return false;
 
-        if (e.loop != null)
+        var vertices = new BMesh.Vertex[4];
+        vertices[0] = e.vert1;
+        vertices[1] = null;
+        vertices[2] = e.vert2;
+        vertices[3] = null;
+        foreach (var face in faces)
         {
-            var it = e.loop;
-            do
+            foreach (var v in face.NeighborVertices())
             {
-                Debug.Log(" - Face with " + it.face.vertcount + " vertices");
-                it = it.radial_next;
-            } while (it != e.loop);
+                if (!e.ContainsVertex(v))
+                {
+                    if (vertices[1] == null) vertices[1] = v;
+                    else vertices[3] = v;
+                }
+            }
         }
-        else
-        {
-            Debug.Log("(none)");
-        }
+        Debug.Assert(vertices[0] != null && vertices[1] != null && vertices[2] != null && vertices[3] != null);
 
         bmesh.RemoveEdge(bmesh.edges[i]);
-        Debug.Log("After: " + bmesh.edges.Count + " edges");
+        bmesh.AddFace(vertices);
+        return true;
+    }
+
+    public bool RemoveRandomEdge()
+    {
+        if (bmesh == null) return false;
+        if (bmesh.edges.Count == 0) return false;
+        int i = Random.Range(0, bmesh.edges.Count);
+        var e = bmesh.edges[i];
+        int i0 = i;
+        while (!FuseEdge(i))
+        {
+            i = (i + 1) % bmesh.edges.Count;
+            if (i == i0)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public void RemoveEdges()
+    {
+        while (RemoveRandomEdge()) { }
         bmesh.SetInMeshFilter(GetComponent<MeshFilter>());
     }
 
@@ -147,11 +199,11 @@ public class WorldGenerator : MonoBehaviour
         foreach (var l in bmesh.loops)
         {
             BMesh.Vertex vert = l.vert;
-            BMesh.Vertex other = l.edge.vert2 == vert ? l.edge.vert1 : l.edge.vert2;
+            BMesh.Vertex other = l.edge.OtherVertex(vert);
             Gizmos.DrawRay(vert.point, (other.point - vert.point) * 0.1f);
 
             BMesh.Loop nl = l.next;
-            BMesh.Vertex nother = nl.edge.vert2 == vert || nl.edge.vert2 == other ? nl.edge.vert1 : nl.edge.vert2;
+            BMesh.Vertex nother = nl.edge.ContainsVertex(vert) ? nl.edge.OtherVertex(vert) : nl.edge.OtherVertex(other);
             Vector3 no = vert.point + (other.point - vert.point) * 0.1f;
             Gizmos.DrawRay(no, (nother.point - no) * 0.1f);
         }

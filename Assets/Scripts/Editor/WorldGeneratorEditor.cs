@@ -21,7 +21,8 @@ public class WorldGeneratorEditor : Editor
         DrawDefaultInspector();
         //EditorGUILayout.PropertyField(divisions);
         if (GUILayout.Button("Generate Hex Grid")) cont.GenerateSubdividedHex();
-        if (GUILayout.Button("Remove Edge")) cont.RemoveRandomEdge();
+        if (GUILayout.Button("Generate Quad")) cont.GenerateQuad();
+        if (GUILayout.Button("Remove Edges")) cont.RemoveEdges();
         if (GUILayout.Button("Run Tests")) cont.Test();
         serializedObject.ApplyModifiedProperties();
     }

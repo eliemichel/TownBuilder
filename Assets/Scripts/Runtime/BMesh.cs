@@ -21,7 +21,7 @@ public class BMesh
     {
         public Vertex vert1;
         public Vertex vert2;
-        public Edge next1; // next edge around vert1
+        public Edge next1; // next edge around vert1. If you don't know whether your vertex is vert1 or vert2, use Next(v)
         public Edge next2; // next edge around vert1
         public Edge prev1;
         public Edge prev2;
@@ -30,6 +30,11 @@ public class BMesh
         public bool ContainsVertex(Vertex v)
         {
             return v == vert1 || v == vert2;
+        }
+
+        public Vertex OtherVertex(Vertex v)
+        {
+            return v == vert1 ? vert2 : vert1;
         }
 
         public Edge Next(Vertex v)
@@ -56,6 +61,21 @@ public class BMesh
             Debug.Assert(ContainsVertex(v));
             if (v == vert1) prev1 = other;
             else prev2 = other;
+        }
+
+        public List<Face> NeighborFaces()
+        {
+            var faces = new List<Face>();
+            if (this.loop != null)
+            {
+                var it = this.loop;
+                do
+                {
+                    faces.Add(it.face);
+                    it = it.radial_next;
+                } while (it != this.loop);
+            }
+            return faces;
         }
     }
 
@@ -124,6 +144,21 @@ public class BMesh
     {
         public int vertcount;
         public Loop loop; // navigate list using next
+
+        public List<Vertex> NeighborVertices()
+        {
+            var verts = new List<Vertex>();
+            if (this.loop != null)
+            {
+                Loop it = this.loop;
+                do
+                {
+                    verts.Add(it.vert);
+                    it = it.next;
+                } while (it != this.loop);
+            }
+            return verts;
+        }
     }
 
     public List<Vertex> vertices;
@@ -282,6 +317,7 @@ public class BMesh
     public Face AddFace(Vertex[] fVerts)
     {
         if (fVerts.Length == 0) return null;
+        foreach (var v in fVerts) Debug.Assert(v != null);
 
         var fEdges = new Edge[fVerts.Length];
 
@@ -359,10 +395,10 @@ public class BMesh
             }
             if (f.vertcount == 4)
             {
-                var l = f.loop.next;
+                var l = f.loop.next.next;
                 triangles[3 * i + 0] = l.vert.id; l = l.next;
-                triangles[3 * i + 2] = l.vert.id; l = l.next;
                 triangles[3 * i + 1] = l.vert.id; l = l.next;
+                triangles[3 * i + 2] = l.vert.id; l = l.next;
                 ++i;
             }
         }
