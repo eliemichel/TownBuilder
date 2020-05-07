@@ -139,34 +139,9 @@ public class BMesh
         faces = new List<Face>();
     }
 
-    Edge FindOrientedEdge(Vertex vert1, Vertex vert2)
-    {
-        if (vert1.edge == null) return null;
-        Edge e = vert1.edge;
-        do
-        {
-            if ((e.vert1 == vert1 && e.vert2 == vert2) || (e.vert2 == vert1 && e.vert1 == vert2))
-            {
-                return e;
-            }
-            if (e.loop == null) break;
-            e = e.loop.radial_next.edge;
-        } while (e != vert1.edge);
-        return null;
-    }
-
     public Edge FindEdge(Vertex vert1, Vertex vert2)
     {
         Debug.Assert(vert1 != vert2);
-        Debug.Log("FindEdge from #" + vert1.id + " to #" + vert2.id);
-        if (vert1.id == 6 && vert2.id == 1)
-        {
-            Debug.Log("=======");
-            Debug.Log("vert#6.edge: " + vert1.edge.vert1.id + "->" + vert1.edge.vert2.id);
-            Debug.Log("vert#1.edge: " + vert2.edge.vert1.id + "->" + vert2.edge.vert2.id);
-            Debug.Log("/=======");
-        }
-
         if (vert1.edge == null || vert2.edge == null) return null;
 
         Edge e1 = vert1.edge;
@@ -184,7 +159,6 @@ public class BMesh
     // removing an edge also removes all associated loops
     public void RemoveEdge(Edge e)
     {
-        Debug.Log("RemoveEdge");
         while (e.loop != null)
         {
             RemoveLoop(e.loop);
@@ -209,13 +183,11 @@ public class BMesh
     {
         if (l.face != null) // null iff loop is called from RemoveFace
         {
-            Debug.Log("RemoveLoop preliminary");
             // Trigger removing other loops, and this one again with l.face == null
             RemoveFace(l.face);
             return;
         }
 
-        Debug.Log("RemoveLoop");
         // remove from radial linked list
         if (l.radial_next == l)
         {
@@ -240,7 +212,6 @@ public class BMesh
 
     public void RemoveFace(Face f)
     {
-        Debug.Log("RemoveFace");
         Loop l = f.loop;
         Loop nextL = null;
         while (nextL != f.loop)
@@ -268,12 +239,7 @@ public class BMesh
         Debug.Assert(vert1 != vert2);
         
         var edge = FindEdge(vert1, vert2);
-        if (edge != null)
-        {
-            Debug.Log("AddEdge from #" + vert1.id + " to #" + vert2.id + " (already exists, aborting)");
-            return edge;
-        }
-        Debug.Log("AddEdge from #" + vert1.id + " to #" + vert2.id);
+        if (edge != null) return edge;
 
         edge = new Edge
         {
@@ -296,7 +262,7 @@ public class BMesh
             edge.prev1.SetNext(vert1, edge);
         }
 
-        // Same for vert2 -- TODO avoid duplication
+        // Same for vert2 -- TODO avoid code duplication
         if (vert2.edge == null)
         {
             vert2.edge = edge;

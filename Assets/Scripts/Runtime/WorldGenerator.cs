@@ -11,7 +11,6 @@ public class WorldGenerator : MonoBehaviour
     public int divisions = 5;
     public bool generate = true;
     public int limitStep = 10;
-    public int targetEdge = 65;
 
     BMesh bmesh;
 
@@ -99,16 +98,25 @@ public class WorldGenerator : MonoBehaviour
         if (bmesh.edges.Count == 0) return;
         int i = Random.Range(0, bmesh.edges.Count);
         Debug.Log("Before removing #" + i + ": " + bmesh.edges.Count + " edges");
+        var e = bmesh.edges[i];
+        Debug.Log("Faces using edge " + e.vert1.id + "->" + e.vert2.id + ":");
+
+        if (e.loop != null)
+        {
+            var it = e.loop;
+            do
+            {
+                Debug.Log(" - Face with " + it.face.vertcount + " vertices");
+                it = it.radial_next;
+            } while (it != e.loop);
+        }
+        else
+        {
+            Debug.Log("(none)");
+        }
+
         bmesh.RemoveEdge(bmesh.edges[i]);
         Debug.Log("After: " + bmesh.edges.Count + " edges");
-        bmesh.SetInMeshFilter(GetComponent<MeshFilter>());
-    }
-
-    public void RemoveTargetEdge()
-    {
-        if (bmesh == null) return;
-        if (bmesh.edges.Count == 0) return;
-        bmesh.RemoveEdge(bmesh.edges[targetEdge]);
         bmesh.SetInMeshFilter(GetComponent<MeshFilter>());
     }
 
