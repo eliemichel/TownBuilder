@@ -1,11 +1,8 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System.Runtime.ExceptionServices;
-using UnityEditor.Experimental.GraphView;
-using UnityEngine;
+﻿using UnityEngine;
 
 public class TestBMesh
 {
+    static float epsilon = 1e-8f;
     static bool Test1()
     {
         var mesh = new BMesh();
@@ -60,10 +57,32 @@ public class TestBMesh
         Debug.Assert(mesh.edges.Count == 4, "edge count");
         Debug.Assert(mesh.faces.Count == 1, "face count");
 
-        v0.id = 0;
-        v1.id = 1;
-        v2.id = 2;
-        v3.id = 3;
+        // Edges
+        BMesh.Edge e0 = mesh.FindEdge(v0, v1);
+        BMesh.Edge e1 = mesh.FindEdge(v1, v2);
+        BMesh.Edge e2 = mesh.FindEdge(v2, v3);
+        BMesh.Edge e3 = mesh.FindEdge(v3, v0);
+        Debug.Assert(e0 != null, "found edge v0->v1");
+        Debug.Assert(e1 != null, "found edge v1->v2");
+        Debug.Assert(e2 != null, "found edge v2->v3");
+        Debug.Assert(e3 != null, "found edge v3->v0");
+
+        Vector3 expected;
+        expected = new Vector3(-1, 0, 0);
+        Debug.Assert(Vector3.Distance(expected, e0.Center()) < epsilon, "edge 0 center");
+        expected = new Vector3(0, 0, 1);
+        Debug.Assert(Vector3.Distance(expected, e1.Center()) < epsilon, "edge 1 center");
+        expected = new Vector3(1, 0, 0);
+        Debug.Assert(Vector3.Distance(expected, e2.Center()) < epsilon, "edge 2 center");
+        expected = new Vector3(0, 0, -1);
+        Debug.Assert(Vector3.Distance(expected, e3.Center()) < epsilon, "edge 3 center");
+
+        // face
+        expected = new Vector3(0, 0, 0);
+        Debug.Assert(Vector3.Distance(expected, f.Center()) < epsilon, "face center");
+
+        // Loop consistency
+        v0.id = 0; v1.id = 1; v2.id = 2; v3.id = 3;
         BMesh.Loop l = v0.edge.loop;
         BMesh.Loop it = l;
         int prevId = it.prev.vert.id;

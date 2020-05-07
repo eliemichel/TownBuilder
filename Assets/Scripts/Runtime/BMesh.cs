@@ -19,6 +19,7 @@ public class BMesh
 
     public class Edge
     {
+        public int id; // [attribute]
         public Vertex vert1;
         public Vertex vert2;
         public Edge next1; // next edge around vert1. If you don't know whether your vertex is vert1 or vert2, use Next(v)
@@ -76,6 +77,11 @@ public class BMesh
                 } while (it != this.loop);
             }
             return faces;
+        }
+
+        public Vector3 Center()
+        {
+            return (vert1.point + vert2.point) * 0.5f;
         }
     }
 
@@ -142,6 +148,7 @@ public class BMesh
 
     public class Face
     {
+        public int id; // [attribute]
         public int vertcount;
         public Loop loop; // navigate list using next
 
@@ -158,6 +165,18 @@ public class BMesh
                 } while (it != this.loop);
             }
             return verts;
+        }
+
+        public Vector3 Center()
+        {
+            Vector3 p = Vector3.zero;
+            float sum = 0;
+            foreach (var v in NeighborVertices())
+            {
+                p += v.point;
+                sum += 1;
+            }
+            return p / sum;
         }
     }
 

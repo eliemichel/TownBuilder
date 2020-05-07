@@ -12,6 +12,8 @@ public class WorldGenerator : MonoBehaviour
     public int divisions = 5;
     public bool generate = true;
     public int limitStep = 10;
+    public float squarifyQuadsRate = 1.0f;
+    public int squarifyQuadsIterations = 10;
 
     BMesh bmesh;
 
@@ -49,6 +51,7 @@ public class WorldGenerator : MonoBehaviour
     {
         TestBMesh.Run();
         TestAxialCoordinate.Run(divisions);
+        TestBMeshOperators.Run();
     }
 
     public void GenerateQuad()
@@ -60,19 +63,6 @@ public class WorldGenerator : MonoBehaviour
         BMesh.Vertex v2 = bmesh.AddVertex(new Vector3(1, 0, 1));
         BMesh.Vertex v3 = bmesh.AddVertex(new Vector3(1, 0, -1));
         bmesh.AddFace(v0, v1, v2, v3);
-
-        v0.id = 0;
-        v1.id = 1;
-        v2.id = 2;
-        v3.id = 3;
-
-        Debug.Log("Following loop:");
-        BMesh.Loop l = v0.edge.loop;
-        BMesh.Loop it = l;
-        do {
-            Debug.Log(" - #" + it.vert.id);
-            it = it.next;
-        } while (it != l);
 
         bmesh.SetInMeshFilter(GetComponent<MeshFilter>());
     }
@@ -168,7 +158,25 @@ public class WorldGenerator : MonoBehaviour
 
     public void RemoveEdges()
     {
+        if (bmesh == null) return;
         while (RemoveRandomEdge()) { }
+        bmesh.SetInMeshFilter(GetComponent<MeshFilter>());
+    }
+
+    public void Subdivide()
+    {
+        if (bmesh == null) return;
+        BMeshOperators.Subdivide(bmesh);
+        bmesh.SetInMeshFilter(GetComponent<MeshFilter>());
+    }
+
+    public void SquarifyQuads()
+    {
+        if (bmesh == null) return;
+        for (int i = 0; i < squarifyQuadsIterations; ++i)
+        {
+            BMeshOperators.SquarifyQuads(bmesh, squarifyQuadsRate);
+        }
         bmesh.SetInMeshFilter(GetComponent<MeshFilter>());
     }
 
