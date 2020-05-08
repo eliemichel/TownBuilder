@@ -491,7 +491,25 @@ public class BMesh
     }
 
     public class AttributeValue
-    {}
+    {
+        public static AttributeValue Copy(AttributeValue value)
+        {
+            if (value is IntAttributeValue valueAsInt)
+            {
+                var data = new int[valueAsInt.data.Length];
+                valueAsInt.data.CopyTo(data, 0);
+                return new IntAttributeValue { data = data };
+            }
+            if (value is FloatAttributeValue valueAsFloat)
+            {
+                var data = new float[valueAsFloat.data.Length];
+                valueAsFloat.data.CopyTo(data, 0);
+                return new FloatAttributeValue { data = data };
+            }
+            Debug.Assert(false);
+            return null;
+        }
+    }
     public class IntAttributeValue : AttributeValue
     {
         public int[] data;
@@ -591,8 +609,13 @@ public class BMesh
         foreach (Vertex v in vertices)
         {
             if (v.attributes == null) v.attributes = new Dictionary<string, AttributeValue>(); // move in Vertex ctor?
-            v.attributes[attrib.name] = attrib.defaultValue;
+            v.attributes[attrib.name] = AttributeValue.Copy(attrib.defaultValue);
         }
+    }
+
+    public void AddVertexAttribute(string name, AttributeBaseType baseType, int dimensions)
+    {
+        AddVertexAttribute(new AttributeDefinition(name, baseType, dimensions));
     }
 
     #endregion

@@ -1,11 +1,5 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using UnityEditor.Experimental.GraphView;
+﻿using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Assertions;
-
 
 // NB: There are two tile axis systems:
 //  - local hex coords, using directly AxialCoordinate.Center to translate into global XYZ pos
@@ -141,9 +135,10 @@ public class WorldGenerator : MonoBehaviour
         offset = metaGridToWorld * offset;
 
         bmesh = new BMesh();
-        bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("restpos", BMesh.AttributeBaseType.Float, 3));
-        bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("weight", BMesh.AttributeBaseType.Float, 1));
-        bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("glued", BMesh.AttributeBaseType.Int, 1));
+        bmesh.AddVertexAttribute("uv", BMesh.AttributeBaseType.Float, 2);
+        bmesh.AddVertexAttribute("restpos", BMesh.AttributeBaseType.Float, 3);
+        bmesh.AddVertexAttribute("weight", BMesh.AttributeBaseType.Float, 1);
+        bmesh.AddVertexAttribute("glued", BMesh.AttributeBaseType.Float, 1);
 
         for (int i = 0; i < pointcount; ++i)
         {
@@ -157,7 +152,7 @@ public class WorldGenerator : MonoBehaviour
             v.attributes["restpos"] = new BMesh.FloatAttributeValue(v.point);
             v.attributes["weight"] = new BMesh.FloatAttributeValue(isBorder ? 1 : 0);
 
-            var glued = new BMesh.IntAttributeValue(0);
+            var glued = new BMesh.FloatAttributeValue(0);
             if (tileSet != null)
             {
                 foreach (var tileCo in NeighboringTiles(co, n))
@@ -381,7 +376,7 @@ public class WorldGenerator : MonoBehaviour
             Gizmos.color = Color.blue;
             Gizmos.DrawSphere(v.point, weight * 0.1f);
 
-            var glued = v.attributes["glued"] as BMesh.IntAttributeValue;
+            var glued = v.attributes["glued"] as BMesh.FloatAttributeValue;
             Gizmos.color = Color.red;
             Gizmos.DrawSphere(v.point, glued.data[0] * 0.15f);
         }

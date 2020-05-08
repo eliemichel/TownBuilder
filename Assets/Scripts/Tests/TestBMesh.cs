@@ -187,6 +187,13 @@ public class TestBMesh
         }
 
         {
+            var other1 = v1.attributes["other"] as IntAttributeValue;
+            var other2 = v2.attributes["other"] as IntAttributeValue;
+            other1.data[0] = 43;
+            Debug.Assert(other2.data[0] == 42, "default vertex attribute values are independent");
+        }
+
+        {
             var v4 = new Vertex(new Vector3(0, 0, 0))
             {
                 attributes = new Dictionary<string, AttributeValue>
