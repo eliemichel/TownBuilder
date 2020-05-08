@@ -6,7 +6,7 @@ using static BMesh;
 
 public class TestBMeshOperators
 {
-    
+    static float epsilon = 1e-6f;
     static bool TestAttributeLerp()
     {
         var mesh = new BMesh();
@@ -60,13 +60,19 @@ public class TestBMeshOperators
     static bool TestSubdivideTris()
     {
         var mesh = new BMesh();
+        mesh.AddVertexAttribute(new AttributeDefinition("uv", AttributeBaseType.Float, 2));
 
-        BMesh.Vertex v0 = mesh.AddVertex(new Vector3(-1, 0, -1));
-        BMesh.Vertex v1 = mesh.AddVertex(new Vector3(-1, 0, 1));
-        BMesh.Vertex v2 = mesh.AddVertex(new Vector3(1, 0, 1));
-        BMesh.Vertex v3 = mesh.AddVertex(new Vector3(1, 0, -1));
-        BMesh.Face f0 = mesh.AddFace(v0, v1, v2);
-        BMesh.Face f1 = mesh.AddFace(v2, v1, v3);
+        Vertex v0 = mesh.AddVertex(new Vector3(-1, 0, -1));
+        Vertex v1 = mesh.AddVertex(new Vector3(-1, 0, 1));
+        Vertex v2 = mesh.AddVertex(new Vector3(1, 0, 1));
+        Vertex v3 = mesh.AddVertex(new Vector3(1, 0, -1));
+        Face f0 = mesh.AddFace(v0, v1, v2);
+        Face f1 = mesh.AddFace(v2, v1, v3);
+
+        foreach (var v in mesh.vertices)
+        {
+            v.attributes["uv"] = new FloatAttributeValue(v.point.x, v.point.z);
+        }
 
         BMeshOperators.Subdivide(mesh);
 
@@ -78,6 +84,12 @@ public class TestBMeshOperators
         foreach (Face f in mesh.faces)
         {
             Debug.Assert(f.vertcount == 4, "faces are quads");
+        }
+
+        foreach (var v in mesh.vertices)
+        {
+            var uv = v.attributes["uv"] as FloatAttributeValue;
+            Debug.Assert(Mathf.Abs(uv.data[0] - v.point.x) < epsilon && Mathf.Abs(uv.data[1] - v.point.z) < epsilon, "attribute interpolation: " + uv.data[0] + " == " + v.point.x + " && " + uv.data[1] + " == " + v.point.z);
         }
 
         Debug.Log("TestBMeshOperators TestSubdivideQuad passed.");

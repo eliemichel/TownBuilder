@@ -80,8 +80,8 @@ public class BMeshOperators
             // Create one quad per loop in the original face
             Loop it = f.loop;
             do {
-                AttributeLerp(mesh, faceCenter, faceCenter, it.vert, w / f.vertcount);
                 w += 1;
+                AttributeLerp(mesh, faceCenter, faceCenter, it.vert, 1 / w);
 
                 var quad = new Vertex[] {
                     it.vert,
@@ -161,7 +161,7 @@ public class BMeshOperators
 
     // Try to make quads as square as possible (may be called iteratively)
     // Overriding attributes: vertex's id
-    // Optionnaly read attributes: restpos, border
+    // Optionnaly read attributes: restpos, weight
     public static void SquarifyQuads(BMesh mesh, float rate = 1.0f, bool uniformLength = false)
     {
         float avg = 0;
@@ -179,9 +179,9 @@ public class BMeshOperators
             if (mesh.HasVertexAttribute("restpos"))
             {
                 pointUpdates[i] = (v.attributes["restpos"] as FloatAttributeValue).AsVector3() - v.point;
-                if (mesh.HasVertexAttribute("border"))
+                if (mesh.HasVertexAttribute("weight"))
                 {
-                    weights[i] = (v.attributes["border"] as IntAttributeValue).data[0];
+                    weights[i] = (v.attributes["weight"] as FloatAttributeValue).data[0];
                 }
             } else
             {

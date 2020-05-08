@@ -59,7 +59,7 @@ public class WorldGenerator : MonoBehaviour
     {
         bmesh = new BMesh();
         bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("restpos", BMesh.AttributeBaseType.Float, 3));
-        bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("border", BMesh.AttributeBaseType.Int, 1));
+        bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("weight", BMesh.AttributeBaseType.Float, 1));
 
         BMesh.Vertex v0 = bmesh.AddVertex(new Vector3(-1, 0, -1));
         BMesh.Vertex v1 = bmesh.AddVertex(new Vector3(-1, 0, 1));
@@ -68,13 +68,13 @@ public class WorldGenerator : MonoBehaviour
         bmesh.AddFace(v0, v1, v2, v3);
 
         v0.attributes["restpos"] = new BMesh.FloatAttributeValue(v0.point);
-        v0.attributes["border"] = new BMesh.IntAttributeValue(1);
+        v0.attributes["weight"] = new BMesh.FloatAttributeValue(1);
         v1.attributes["restpos"] = new BMesh.FloatAttributeValue(v1.point);
-        v1.attributes["border"] = new BMesh.IntAttributeValue(1);
+        v1.attributes["weight"] = new BMesh.FloatAttributeValue(1);
         v2.attributes["restpos"] = new BMesh.FloatAttributeValue(v2.point);
-        v2.attributes["border"] = new BMesh.IntAttributeValue(1);
+        v2.attributes["weight"] = new BMesh.FloatAttributeValue(1);
         v3.attributes["restpos"] = new BMesh.FloatAttributeValue(v3.point);
-        v3.attributes["border"] = new BMesh.IntAttributeValue(1);
+        v3.attributes["weight"] = new BMesh.FloatAttributeValue(0);
 
         bmesh.SetInMeshFilter(GetComponent<MeshFilter>());
     }
@@ -86,7 +86,7 @@ public class WorldGenerator : MonoBehaviour
 
         bmesh = new BMesh();
         bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("restpos", BMesh.AttributeBaseType.Float, 3));
-        bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("border", BMesh.AttributeBaseType.Int, 1));
+        bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("weight", BMesh.AttributeBaseType.Float, 1));
 
         for (int i = 0; i < pointcount; ++i)
         {
@@ -97,7 +97,7 @@ public class WorldGenerator : MonoBehaviour
             var v = bmesh.AddVertex(new Vector3(c.x, 0, c.y));
             v.id = i;
             v.attributes["restpos"] = new BMesh.FloatAttributeValue(v.point);
-            v.attributes["border"] = new BMesh.IntAttributeValue(prevCo.q != co.q || co.q != nextCo.q || co.q == -n || co.q == n ? 1 : 0);
+            v.attributes["weight"] = new BMesh.FloatAttributeValue(prevCo.q != co.q || co.q != nextCo.q || co.q == -n || co.q == n ? 1 : 0);
         }
 
         int step = 0;
@@ -239,11 +239,8 @@ public class WorldGenerator : MonoBehaviour
         Gizmos.color = Color.blue;
         foreach (var v in bmesh.vertices)
         {
-            int border = (v.attributes["border"] as BMesh.IntAttributeValue).data[0];
-            if (border == 1)
-            {
-                Gizmos.DrawSphere(v.point, 0.1f);
-            }
+            float weight = (v.attributes["weight"] as BMesh.FloatAttributeValue).data[0];
+            Gizmos.DrawSphere(v.point, weight * 0.1f);
         }
     }
 }
