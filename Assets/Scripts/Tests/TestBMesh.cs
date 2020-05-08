@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
+using static BMesh;
 
 public class TestBMesh
 {
@@ -7,17 +9,17 @@ public class TestBMesh
     {
         var mesh = new BMesh();
 
-        BMesh.Vertex v0 = mesh.AddVertex(new Vector3(-0.5f, 0.0f, -Mathf.Sqrt(3) / 6));
-        BMesh.Vertex v1 = mesh.AddVertex(new Vector3(0.5f, 0.0f, -Mathf.Sqrt(3) / 6));
-        BMesh.Vertex v2 = mesh.AddVertex(new Vector3(0, 0.0f, Mathf.Sqrt(3) / 3));
-        BMesh.Face f = mesh.AddFace(v0, v1, v2);
+        Vertex v0 = mesh.AddVertex(new Vector3(-0.5f, 0.0f, -Mathf.Sqrt(3) / 6));
+        Vertex v1 = mesh.AddVertex(new Vector3(0.5f, 0.0f, -Mathf.Sqrt(3) / 6));
+        Vertex v2 = mesh.AddVertex(new Vector3(0, 0.0f, Mathf.Sqrt(3) / 3));
+        Face f = mesh.AddFace(v0, v1, v2);
 
         Debug.Assert(mesh.vertices.Count == 3, "vert count");
         Debug.Assert(mesh.loops.Count == 3, "loop count");
         Debug.Assert(mesh.edges.Count == 3, "edge count");
         Debug.Assert(mesh.faces.Count == 1, "face count");
 
-        BMesh.Loop l = mesh.loops[0];
+        Loop l = mesh.loops[0];
         for (int i = 0; i < 3; ++i)
         {
             var v = mesh.vertices[i];
@@ -46,11 +48,11 @@ public class TestBMesh
     {
         var mesh = new BMesh();
 
-        BMesh.Vertex v0 = mesh.AddVertex(new Vector3(-1, 0, -1));
-        BMesh.Vertex v1 = mesh.AddVertex(new Vector3(-1, 0, 1));
-        BMesh.Vertex v2 = mesh.AddVertex(new Vector3(1, 0, 1));
-        BMesh.Vertex v3 = mesh.AddVertex(new Vector3(1, 0, -1));
-        BMesh.Face f = mesh.AddFace(v0, v1, v2, v3);
+        Vertex v0 = mesh.AddVertex(new Vector3(-1, 0, -1));
+        Vertex v1 = mesh.AddVertex(new Vector3(-1, 0, 1));
+        Vertex v2 = mesh.AddVertex(new Vector3(1, 0, 1));
+        Vertex v3 = mesh.AddVertex(new Vector3(1, 0, -1));
+        Face f = mesh.AddFace(v0, v1, v2, v3);
 
         Debug.Assert(mesh.vertices.Count == 4, "vert count");
         Debug.Assert(mesh.loops.Count == 4, "loop count");
@@ -58,10 +60,10 @@ public class TestBMesh
         Debug.Assert(mesh.faces.Count == 1, "face count");
 
         // Edges
-        BMesh.Edge e0 = mesh.FindEdge(v0, v1);
-        BMesh.Edge e1 = mesh.FindEdge(v1, v2);
-        BMesh.Edge e2 = mesh.FindEdge(v2, v3);
-        BMesh.Edge e3 = mesh.FindEdge(v3, v0);
+        Edge e0 = mesh.FindEdge(v0, v1);
+        Edge e1 = mesh.FindEdge(v1, v2);
+        Edge e2 = mesh.FindEdge(v2, v3);
+        Edge e3 = mesh.FindEdge(v3, v0);
         Debug.Assert(e0 != null, "found edge v0->v1");
         Debug.Assert(e1 != null, "found edge v1->v2");
         Debug.Assert(e2 != null, "found edge v2->v3");
@@ -83,8 +85,8 @@ public class TestBMesh
 
         // Loop consistency
         v0.id = 0; v1.id = 1; v2.id = 2; v3.id = 3;
-        BMesh.Loop l = v0.edge.loop;
-        BMesh.Loop it = l;
+        Loop l = v0.edge.loop;
+        Loop it = l;
         int prevId = it.prev.vert.id;
         int forward = (prevId + 1) % 4 == it.vert.id ? 1 : 0;
         do
@@ -119,20 +121,20 @@ public class TestBMesh
     {
         var mesh = new BMesh();
 
-        BMesh.Vertex v0 = mesh.AddVertex(new Vector3(-1, 0, -1));
-        BMesh.Vertex v1 = mesh.AddVertex(new Vector3(-1, 0, 1));
-        BMesh.Vertex v2 = mesh.AddVertex(new Vector3(1, 0, 1));
-        BMesh.Vertex v3 = mesh.AddVertex(new Vector3(1, 0, -1));
-        BMesh.Face f0 = mesh.AddFace(v0, v1, v2);
-        BMesh.Face f1 = mesh.AddFace(v2, v1, v3);
+        Vertex v0 = mesh.AddVertex(new Vector3(-1, 0, -1));
+        Vertex v1 = mesh.AddVertex(new Vector3(-1, 0, 1));
+        Vertex v2 = mesh.AddVertex(new Vector3(1, 0, 1));
+        Vertex v3 = mesh.AddVertex(new Vector3(1, 0, -1));
+        Face f0 = mesh.AddFace(v0, v1, v2);
+        Face f1 = mesh.AddFace(v2, v1, v3);
 
         Debug.Assert(mesh.vertices.Count == 4, "vert count");
         Debug.Assert(mesh.loops.Count == 6, "loop count");
         Debug.Assert(mesh.edges.Count == 5, "edge count");
         Debug.Assert(mesh.faces.Count == 2, "face count");
 
-        BMesh.Edge e0 = null;
-        foreach (BMesh.Edge e in mesh.edges)
+        Edge e0 = null;
+        foreach (Edge e in mesh.edges)
         {
             if ((e.vert1 == v1 && e.vert2 == v2) || (e.vert1 == v2 && e.vert2 == v1))
             {
@@ -156,32 +158,50 @@ public class TestBMesh
     {
         var mesh = new BMesh();
 
-        BMesh.Vertex v0 = mesh.AddVertex(new Vector3(-1, 0, -1));
-        BMesh.Vertex v1 = mesh.AddVertex(new Vector3(-1, 0, 1));
-        BMesh.Vertex v2 = mesh.AddVertex(new Vector3(1, 0, 1));
-        BMesh.Vertex v3 = mesh.AddVertex(new Vector3(1, 0, -1));
-        BMesh.Face f0 = mesh.AddFace(v0, v1, v2);
-        BMesh.Face f1 = mesh.AddFace(v2, v1, v3);
+        Vertex v0 = mesh.AddVertex(new Vector3(-1, 0, -1));
+        Vertex v1 = mesh.AddVertex(new Vector3(-1, 0, 1));
+        Vertex v2 = mesh.AddVertex(new Vector3(1, 0, 1));
+        Vertex v3 = mesh.AddVertex(new Vector3(1, 0, -1));
+        Face f0 = mesh.AddFace(v0, v1, v2);
+        Face f1 = mesh.AddFace(v2, v1, v3);
 
-        mesh.AddVertexAttribute(new BMesh.AttributeDefinition("test", BMesh.AttributeBaseType.Float, 3));
-        var otherAttr = new BMesh.AttributeDefinition("other", BMesh.AttributeBaseType.Int, 1);
-        var def = otherAttr.defaultValue as BMesh.IntAttributeValue;
+        mesh.AddVertexAttribute(new AttributeDefinition("test", AttributeBaseType.Float, 3));
+        var otherAttr = new AttributeDefinition("other", AttributeBaseType.Int, 1);
+        var def = otherAttr.defaultValue as IntAttributeValue;
         def.data[0] = 42;
         mesh.AddVertexAttribute(otherAttr);
         foreach (var v in mesh.vertices)
         {
             Debug.Assert(v.attributes.ContainsKey("test"), "vertex has test attribute");
-            var test = v.attributes["test"] as BMesh.FloatAttributeValue;
+            var test = v.attributes["test"] as FloatAttributeValue;
             Debug.Assert(test != null, "vertex test attribute has float value");
-            var testAsInt = v.attributes["test"] as BMesh.IntAttributeValue;
+            var testAsInt = v.attributes["test"] as IntAttributeValue;
             Debug.Assert(testAsInt == null, "vertex test attribute has no int value");
             Debug.Assert(test.data.Length == 3, "vertex test attribute has 3 dimensions");
             Debug.Assert(test.data[0] == 0 && test.data[1] == 0 && test.data[2] == 0, "vertex test attribute has value (0, 0, 0)");
 
             Debug.Assert(v.attributes.ContainsKey("other"), "vertex has other attribute");
-            var other = v.attributes["other"] as BMesh.IntAttributeValue;
+            var other = v.attributes["other"] as IntAttributeValue;
             Debug.Assert(other.data.Length == 1, "vertex other attribute has 1 dimension");
             Debug.Assert(other.data[0] == 42, "vertex other attribute has value 42");
+        }
+
+        {
+            var v4 = new Vertex(new Vector3(0, 0, 0))
+            {
+                attributes = new Dictionary<string, AttributeValue>
+                {
+                    ["other"] = new FloatAttributeValue { data = new float[] { 1, 2, 3 } }
+                }
+            };
+            Debug.Log("Test expects warning:");
+            Debug.Assert(mesh.AddVertex(v4) == v4, "add point is conservative");
+            Debug.Assert(v4.attributes.ContainsKey("test"), "new vertex has test attribute");
+            var test = v4.attributes["test"] as FloatAttributeValue;
+            Debug.Assert(test.data[0] == 0 && test.data[1] == 0 && test.data[2] == 0, "new vertex test attribute has value (0, 0, 0)");
+            var other = v4.attributes["other"] as IntAttributeValue;
+            Debug.Assert(other != null, "new vertex other attribute is an int");
+            Debug.Assert(other.data[0] == 42, "new vertex other attribute ignored non int provided value");
         }
 
         Debug.Log("TestBMesh TestAttributes passed.");

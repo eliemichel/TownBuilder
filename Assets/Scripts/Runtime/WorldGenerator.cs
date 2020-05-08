@@ -74,6 +74,8 @@ public class WorldGenerator : MonoBehaviour
         int pointcount = (2 * n + 1) * (2 * n + 1) - n * (n + 1);
 
         bmesh = new BMesh();
+        bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("restpos", BMesh.AttributeBaseType.Float, 3));
+
         for (int i = 0; i < pointcount; ++i)
         {
             var co = AxialCoordinate.FromIndex(i, n);

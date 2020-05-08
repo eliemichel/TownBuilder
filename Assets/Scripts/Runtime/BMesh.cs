@@ -285,8 +285,27 @@ public class BMesh
         faces.Remove(f);
     }
 
+    void EnsureVertexAttributes(Vertex v)
+    {
+        if (v.attributes == null) v.attributes = new Dictionary<string, AttributeValue>();
+        foreach (var attr in vertexAttributes)
+        {
+            if (!v.attributes.ContainsKey(attr.name))
+            {
+                v.attributes[attr.name] = attr.defaultValue;
+            }
+            else if (!attr.type.CheckValue(v.attributes[attr.name]))
+            {
+                Debug.LogWarning("Vertex attribute '" + attr.name + "' is not compatible with mesh attribute definition, ignoring.");
+                // different type, overriding value with default
+                v.attributes[attr.name] = attr.defaultValue;
+            }
+        }
+    }
+
     public Vertex AddVertex(Vertex vert)
     {
+        EnsureVertexAttributes(vert);
         vertices.Add(vert);
         return vert;
     }
@@ -448,6 +467,27 @@ public class BMesh
     {
         public AttributeBaseType baseType;
         public int dimensions;
+
+        public bool CheckValue(AttributeValue value)
+        {
+            Debug.Assert(dimensions > 0);
+            switch (baseType)
+            {
+                case AttributeBaseType.Int:
+                {
+                    var valueAsInt = value as IntAttributeValue;
+                    return valueAsInt != null && valueAsInt.data.Length == dimensions;
+                }
+                case AttributeBaseType.Float:
+                {
+                    var valueAsFloat = value as FloatAttributeValue;
+                    return valueAsFloat != null && valueAsFloat.data.Length == dimensions;
+                }
+                default:
+                    Debug.Assert(false);
+                    return false;
+            }
+        }
     }
 
     public class AttributeValue
