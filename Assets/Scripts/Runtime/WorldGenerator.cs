@@ -13,6 +13,7 @@ public class WorldGenerator : MonoBehaviour
     public bool generate = true;
     public int limitStep = 10;
     public float squarifyQuadsRate = 1.0f;
+    public bool squarifyQuadsUniform = false;
     public int squarifyQuadsIterations = 10;
 
     BMesh bmesh;
@@ -175,7 +176,7 @@ public class WorldGenerator : MonoBehaviour
         if (bmesh == null) return;
         for (int i = 0; i < squarifyQuadsIterations; ++i)
         {
-            BMeshOperators.SquarifyQuads(bmesh, squarifyQuadsRate);
+            BMeshOperators.SquarifyQuads(bmesh, squarifyQuadsRate, squarifyQuadsUniform);
         }
         bmesh.SetInMeshFilter(GetComponent<MeshFilter>());
     }

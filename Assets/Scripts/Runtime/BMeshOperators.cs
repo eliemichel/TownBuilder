@@ -8,6 +8,9 @@ using static BMesh;
 // All operators assume that the provided mesh is not null
 public class BMeshOperators
 {
+    ///////////////////////////////////////////////////////////////////////////
+    // Subdivide
+
     // Overriding attributes: edge's id
     public static void Subdivide(BMesh mesh)
     {
@@ -50,10 +53,71 @@ public class BMeshOperators
         }
     }
 
+    ///////////////////////////////////////////////////////////////////////////
+    // SquarifyQuads
+
+    static Matrix4x4 ComputeLocalAxis(Vector3 r0, Vector3 r1, Vector3 r2, Vector3 r3)
+    {
+        Vector3 Z = (
+                  Vector3.Cross(r0, r1).normalized
+                + Vector3.Cross(r1, r2).normalized
+                + Vector3.Cross(r2, r3).normalized
+                + Vector3.Cross(r3, r0).normalized
+            ).normalized;
+        Vector3 X = r0.normalized;
+        Vector3 Y = Vector3.Cross(Z, X);
+        var localToGlobal = new Matrix4x4(X, Y, Z, Vector4.zero);
+        return localToGlobal;
+    }
+
+    static float AverageRadiusLength(BMesh mesh)
+    {
+        float lengthsum = 0;
+        float weightsum = 0;
+        foreach (Face f in mesh.faces)
+        {
+            Vector3 c = f.Center();
+            List<Vertex> verts = f.NeighborVertices();
+            if (verts.Count != 4) continue;
+            // (r for "radius")
+            Vector3 r0 = verts[0].point - c;
+            Vector3 r1 = verts[1].point - c;
+            Vector3 r2 = verts[2].point - c;
+            Vector3 r3 = verts[3].point - c;
+
+            var localToGlobal = ComputeLocalAxis(r0, r1, r2, r3);
+            var globalToLocal = localToGlobal.transpose;
+
+            // in local coordinates (l for "local")
+            Vector3 l0 = globalToLocal * r0;
+            Vector3 l1 = globalToLocal * r1;
+            Vector3 l2 = globalToLocal * r2;
+            Vector3 l3 = globalToLocal * r3;
+
+            // Rotate vectors (rl for "rotated local")
+            Vector3 rl0 = l0;
+            Vector3 rl1 = new Vector3(l1.y, -l1.x, l1.z);
+            Vector3 rl2 = new Vector3(-l2.x, -l2.y, l2.z);
+            Vector3 rl3 = new Vector3(-l3.y, l3.x, l3.z);
+
+            Vector3 average = (rl0 + rl1 + rl2 + rl3) / 4;
+
+            lengthsum += average.magnitude;
+            weightsum += 1;
+        }
+        return lengthsum / weightsum;
+    }
+
     // Try to make quads as square as possible (may be called iteratively)
     // Overriding attributes: vertex's id
-    public static void SquarifyQuads(BMesh mesh, float rate = 1.0f)
+    public static void SquarifyQuads(BMesh mesh, float rate = 1.0f, bool uniformLength = false)
     {
+        float avg = 0;
+        if (uniformLength)
+        {
+            avg = AverageRadiusLength(mesh);
+        }
+
         var pointUpdates = new Vector3[mesh.vertices.Count];
         var weights = new float[mesh.vertices.Count];
 
@@ -77,16 +141,7 @@ public class BMeshOperators
             Vector3 r2 = verts[2].point - c;
             Vector3 r3 = verts[3].point - c;
 
-            // Compute local axis
-            Vector3 Z = (
-                  Vector3.Cross(r0, r1).normalized
-                + Vector3.Cross(r1, r2).normalized
-                + Vector3.Cross(r2, r3).normalized
-                + Vector3.Cross(r3, r0).normalized
-            ).normalized;
-            Vector3 X = r0.normalized;
-            Vector3 Y = Vector3.Cross(Z, X);
-            var localToGlobal = new Matrix4x4(X, Y, Z, Vector4.zero);
+            var localToGlobal = ComputeLocalAxis(r0, r1, r2, r3);
             var globalToLocal = localToGlobal.transpose;
 
             // in local coordinates (l for "local")
@@ -112,6 +167,10 @@ public class BMeshOperators
             Vector3 rl3 = new Vector3(-l3.y, l3.x, l3.z);
 
             Vector3 average = (rl0 + rl1 + rl2 + rl3) / 4;
+            if (uniformLength)
+            {
+                average = average.normalized * avg;
+            }
 
             // Rotate back (lt for "local target")
             Vector3 lt0 = average;
@@ -133,6 +192,7 @@ public class BMeshOperators
             Vector3 t2 = localToGlobal * lt2;
             Vector3 t3 = localToGlobal * lt3;
 
+            // Accumulate
             pointUpdates[verts[0].id] += t0 - r0;
             pointUpdates[verts[1].id] += t1 - r1;
             pointUpdates[verts[2].id] += t2 - r2;
