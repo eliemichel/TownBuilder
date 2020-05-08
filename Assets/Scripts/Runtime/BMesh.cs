@@ -495,10 +495,34 @@ public class BMesh
     public class IntAttributeValue : AttributeValue
     {
         public int[] data;
+
+        public IntAttributeValue() { }
+        public IntAttributeValue(int i)
+        {
+            data = new int[] { i };
+        }
+        public IntAttributeValue(int i0, int i1)
+        {
+            data = new int[] { i0, i1 };
+        }
     }
     public class FloatAttributeValue : AttributeValue
     {
         public float[] data;
+
+        public FloatAttributeValue() { }
+        public FloatAttributeValue(int f)
+        {
+            data = new float[] { f };
+        }
+        public FloatAttributeValue(int f0, int f1)
+        {
+            data = new float[] { f0, f1 };
+        }
+        public FloatAttributeValue(Vector3 v)
+        {
+            data = new float[] { v.x, v.y, v.z };
+        }
     }
 
     public class AttributeDefinition

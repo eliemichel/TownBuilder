@@ -75,12 +75,18 @@ public class WorldGenerator : MonoBehaviour
 
         bmesh = new BMesh();
         bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("restpos", BMesh.AttributeBaseType.Float, 3));
+        bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("border", BMesh.AttributeBaseType.Int, 1));
 
         for (int i = 0; i < pointcount; ++i)
         {
             var co = AxialCoordinate.FromIndex(i, n);
+            var prevCo = AxialCoordinate.FromIndex(i-1, n);
+            var nextCo = AxialCoordinate.FromIndex(i+1, n);
             Vector2 c = co.Center(size);
-            bmesh.AddVertex(new Vector3(c.x, 0, c.y)).id = i;
+            var v = bmesh.AddVertex(new Vector3(c.x, 0, c.y));
+            v.id = i;
+            v.attributes["restpos"] = new BMesh.FloatAttributeValue(v.point);
+            v.attributes["border"] = new BMesh.IntAttributeValue(prevCo.q != co.q || co.q != nextCo.q || co.q == -n || co.q == n ? 1 : 0);
         }
 
         int step = 0;
@@ -217,6 +223,16 @@ public class WorldGenerator : MonoBehaviour
             BMesh.Vertex nother = nl.edge.ContainsVertex(vert) ? nl.edge.OtherVertex(vert) : nl.edge.OtherVertex(other);
             Vector3 no = vert.point + (other.point - vert.point) * 0.1f;
             Gizmos.DrawRay(no, (nother.point - no) * 0.1f);
+        }
+
+        Gizmos.color = Color.blue;
+        foreach (var v in bmesh.vertices)
+        {
+            int border = (v.attributes["border"] as BMesh.IntAttributeValue).data[0];
+            if (border == 1)
+            {
+                Gizmos.DrawSphere(v.point, 0.1f);
+            }
         }
     }
 }
