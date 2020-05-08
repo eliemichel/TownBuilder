@@ -58,12 +58,23 @@ public class WorldGenerator : MonoBehaviour
     public void GenerateQuad()
     {
         bmesh = new BMesh();
+        bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("restpos", BMesh.AttributeBaseType.Float, 3));
+        bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("border", BMesh.AttributeBaseType.Int, 1));
 
         BMesh.Vertex v0 = bmesh.AddVertex(new Vector3(-1, 0, -1));
         BMesh.Vertex v1 = bmesh.AddVertex(new Vector3(-1, 0, 1));
         BMesh.Vertex v2 = bmesh.AddVertex(new Vector3(1, 0, 1));
         BMesh.Vertex v3 = bmesh.AddVertex(new Vector3(1, 0, -1));
         bmesh.AddFace(v0, v1, v2, v3);
+
+        v0.attributes["restpos"] = new BMesh.FloatAttributeValue(v0.point);
+        v0.attributes["border"] = new BMesh.IntAttributeValue(1);
+        v1.attributes["restpos"] = new BMesh.FloatAttributeValue(v1.point);
+        v1.attributes["border"] = new BMesh.IntAttributeValue(1);
+        v2.attributes["restpos"] = new BMesh.FloatAttributeValue(v2.point);
+        v2.attributes["border"] = new BMesh.IntAttributeValue(1);
+        v3.attributes["restpos"] = new BMesh.FloatAttributeValue(v3.point);
+        v3.attributes["border"] = new BMesh.IntAttributeValue(1);
 
         bmesh.SetInMeshFilter(GetComponent<MeshFilter>());
     }

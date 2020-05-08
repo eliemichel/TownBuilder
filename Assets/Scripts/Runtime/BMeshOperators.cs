@@ -110,6 +110,7 @@ public class BMeshOperators
 
     // Try to make quads as square as possible (may be called iteratively)
     // Overriding attributes: vertex's id
+    // Optionnaly read attributes: restpos, border
     public static void SquarifyQuads(BMesh mesh, float rate = 1.0f, bool uniformLength = false)
     {
         float avg = 0;
@@ -124,8 +125,18 @@ public class BMeshOperators
         int i = 0;
         foreach (Vertex v in mesh.vertices)
         {
-            pointUpdates[i] = Vector3.zero;
-            weights[i] = 0;
+            if (mesh.HasVertexAttribute("restpos"))
+            {
+                pointUpdates[i] = (v.attributes["restpos"] as FloatAttributeValue).AsVector3() - v.point;
+                if (mesh.HasVertexAttribute("border"))
+                {
+                    weights[i] = (v.attributes["border"] as IntAttributeValue).data[0];
+                }
+            } else
+            {
+                pointUpdates[i] = Vector3.zero;
+                weights[i] = 0;
+            }
             v.id = i++;
         }
 

@@ -523,6 +523,14 @@ public class BMesh
         {
             data = new float[] { v.x, v.y, v.z };
         }
+        public Vector3 AsVector3()
+        {
+            return new Vector3(
+                data.Length >= 0 ? data[0] : 0,
+                data.Length >= 1 ? data[1] : 0,
+                data.Length >= 2 ? data[2] : 0
+            );
+        }
     }
 
     public class AttributeDefinition
@@ -559,16 +567,21 @@ public class BMesh
     public List<AttributeDefinition> loopAttributes;
     public List<AttributeDefinition> faceAttributes;
 
-    public bool HasVertexAttribute(AttributeDefinition attrib)
+    public bool HasVertexAttribute(string attribName)
     {
         foreach (var a in vertexAttributes)
         {
-            if (a.name == attrib.name)
+            if (a.name == attribName)
             {
                 return true;
             }
         }
         return false;
+    }
+
+    public bool HasVertexAttribute(AttributeDefinition attrib)
+    {
+        return HasVertexAttribute(attrib.name);
     }
 
     public void AddVertexAttribute(AttributeDefinition attrib)
