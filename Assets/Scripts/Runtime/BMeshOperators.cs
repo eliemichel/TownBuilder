@@ -294,6 +294,7 @@ public class BMeshOperators
         foreach (Vertex v in other.vertices)
         {
             newVerts[i] = mesh.AddVertex(v.point);
+            AttributeLerp(mesh, newVerts[i], v, v, 1); // copy all attributes
             v.id = i;
             ++i;
         }

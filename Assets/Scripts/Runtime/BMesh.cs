@@ -4,13 +4,38 @@ using System.Data;
 using UnityEngine;
 public class BMesh
 {
+    public List<Vertex> vertices;
+    public List<Edge> edges;
+    public List<Loop> loops;
+    public List<Face> faces;
+
+    public List<AttributeDefinition> vertexAttributes;
+    public List<AttributeDefinition> edgeAttributes;
+    public List<AttributeDefinition> loopAttributes;
+    public List<AttributeDefinition> faceAttributes;
+
+    public BMesh()
+    {
+        vertices = new List<Vertex>();
+        loops = new List<Loop>();
+        edges = new List<Edge>();
+        faces = new List<Face>();
+
+        vertexAttributes = new List<AttributeDefinition>();
+        edgeAttributes = new List<AttributeDefinition>();
+        loopAttributes = new List<AttributeDefinition>();
+        faceAttributes = new List<AttributeDefinition>();
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    #region [Topology Types]
     // Except for members marked as "attribute", all these classes only store references to objects allocated by BMesh itself.
     // attributes has no impact on the mesh, they are only set by calling code, including id
     public class Vertex
     {
         public int id; // [attribute]
         public Vector3 point; // [attribute]
-        public Dictionary<string,AttributeValue> attributes; // [attribute] (extra attributes)
+        public Dictionary<string, AttributeValue> attributes; // [attribute] (extra attributes)
         public Edge edge; // one of the edges using this vertex as origin, navogates other using edge.next1/next2
 
         public Vertex(Vector3 _point)
@@ -181,25 +206,10 @@ public class BMesh
             return p / sum;
         }
     }
+    #endregion
 
-    public List<Vertex> vertices;
-    public List<Edge> edges;
-    public List<Loop> loops;
-    public List<Face> faces;
-
-    public BMesh()
-    {
-        vertices = new List<Vertex>();
-        loops = new List<Loop>();
-        edges = new List<Edge>();
-        faces = new List<Face>();
-
-        vertexAttributes = new List<AttributeDefinition>();
-        edgeAttributes = new List<AttributeDefinition>();
-        loopAttributes = new List<AttributeDefinition>();
-        faceAttributes = new List<AttributeDefinition>();
-    }
-
+    ///////////////////////////////////////////////////////////////////////////
+    #region [Topology Methods]
     public Edge FindEdge(Vertex vert1, Vertex vert2)
     {
         Debug.Assert(vert1 != vert2);
@@ -283,24 +293,6 @@ public class BMesh
             l = nextL;
         }
         faces.Remove(f);
-    }
-
-    void EnsureVertexAttributes(Vertex v)
-    {
-        if (v.attributes == null) v.attributes = new Dictionary<string, AttributeValue>();
-        foreach (var attr in vertexAttributes)
-        {
-            if (!v.attributes.ContainsKey(attr.name))
-            {
-                v.attributes[attr.name] = attr.defaultValue;
-            }
-            else if (!attr.type.CheckValue(v.attributes[attr.name]))
-            {
-                Debug.LogWarning("Vertex attribute '" + attr.name + "' is not compatible with mesh attribute definition, ignoring.");
-                // different type, overriding value with default
-                v.attributes[attr.name] = attr.defaultValue;
-            }
-        }
     }
 
     public Vertex AddVertex(Vertex vert)
@@ -405,58 +397,10 @@ public class BMesh
     {
         return AddFace(new Vertex[] { vertices[i0], vertices[i1], vertices[i2], vertices[i3] });
     }
-
-    // Only works with tri or quad meshes!
-    public void SetInMeshFilter(MeshFilter mf)
-    {
-        // Points
-        Vector3[] points = new Vector3[vertices.Count];
-        int i = 0;
-        foreach (var vert in vertices)
-        {
-            vert.id = i;
-            points[i] = vert.point;
-            ++i;
-        }
-
-        // Triangles
-        int tricount = 0;
-        foreach (var f in faces)
-        {
-            Debug.Assert(f.vertcount == 3 || f.vertcount == 4);
-            tricount += f.vertcount - 2;
-        }
-        int[] triangles = new int[3 * tricount];
-        i = 0;
-        foreach (var f in faces)
-        {
-            Debug.Assert(f.vertcount == 3 || f.vertcount == 4);
-            {
-                var l = f.loop;
-                triangles[3 * i + 0] = l.vert.id; l = l.next;
-                triangles[3 * i + 1] = l.vert.id; l = l.next;
-                triangles[3 * i + 2] = l.vert.id; l = l.next;
-                ++i;
-            }
-            if (f.vertcount == 4)
-            {
-                var l = f.loop.next.next;
-                triangles[3 * i + 0] = l.vert.id; l = l.next;
-                triangles[3 * i + 1] = l.vert.id; l = l.next;
-                triangles[3 * i + 2] = l.vert.id; l = l.next;
-                ++i;
-            }
-        }
-
-        // Apply mesh
-        Mesh mesh = new Mesh();
-        mf.mesh = mesh;
-        mesh.vertices = points;
-        mesh.triangles = triangles;
-    }
+    #endregion
 
     ///////////////////////////////////////////////////////////////////////////
-    #region [Attributes]
+    #region [Attributes Types]
 
     public enum AttributeBaseType
     {
@@ -579,11 +523,10 @@ public class BMesh
             }
         }
     }
-
-    public List<AttributeDefinition> vertexAttributes;
-    public List<AttributeDefinition> edgeAttributes;
-    public List<AttributeDefinition> loopAttributes;
-    public List<AttributeDefinition> faceAttributes;
+    #endregion
+    
+    ///////////////////////////////////////////////////////////////////////////
+    #region [Attribute Methods]
 
     public bool HasVertexAttribute(string attribName)
     {
@@ -618,5 +561,88 @@ public class BMesh
         AddVertexAttribute(new AttributeDefinition(name, baseType, dimensions));
     }
 
+
+    void EnsureVertexAttributes(Vertex v)
+    {
+        if (v.attributes == null) v.attributes = new Dictionary<string, AttributeValue>();
+        foreach (var attr in vertexAttributes)
+        {
+            if (!v.attributes.ContainsKey(attr.name))
+            {
+                v.attributes[attr.name] = AttributeValue.Copy(attr.defaultValue);
+            }
+            else if (!attr.type.CheckValue(v.attributes[attr.name]))
+            {
+                Debug.LogWarning("Vertex attribute '" + attr.name + "' is not compatible with mesh attribute definition, ignoring.");
+                // different type, overriding value with default
+                v.attributes[attr.name] = AttributeValue.Copy(attr.defaultValue);
+            }
+        }
+    }
     #endregion
+
+    ///////////////////////////////////////////////////////////////////////////
+    #region [Unity]
+    // Only works with tri or quad meshes!
+    public void SetInMeshFilter(MeshFilter mf)
+    {
+        // Points
+        Vector2[] uvs = null;
+        Vector3[] points = new Vector3[vertices.Count];
+        if (HasVertexAttribute("uv"))
+        {
+            uvs = new Vector2[vertices.Count];
+        }
+        int i = 0;
+        foreach (var vert in vertices)
+        {
+            vert.id = i;
+            points[i] = vert.point;
+            if (uvs != null)
+            {
+                var uv = vert.attributes["uv"] as FloatAttributeValue;
+                uvs[i] = new Vector2(uv.data[0], uv.data[1]);
+                Debug.Log(uvs[i]);
+            }
+            ++i;
+        }
+
+        // Triangles
+        int tricount = 0;
+        foreach (var f in faces)
+        {
+            Debug.Assert(f.vertcount == 3 || f.vertcount == 4);
+            tricount += f.vertcount - 2;
+        }
+        int[] triangles = new int[3 * tricount];
+        i = 0;
+        foreach (var f in faces)
+        {
+            Debug.Assert(f.vertcount == 3 || f.vertcount == 4);
+            {
+                var l = f.loop;
+                triangles[3 * i + 0] = l.vert.id; l = l.next;
+                triangles[3 * i + 1] = l.vert.id; l = l.next;
+                triangles[3 * i + 2] = l.vert.id; l = l.next;
+                ++i;
+            }
+            if (f.vertcount == 4)
+            {
+                var l = f.loop.next.next;
+                triangles[3 * i + 0] = l.vert.id; l = l.next;
+                triangles[3 * i + 1] = l.vert.id; l = l.next;
+                triangles[3 * i + 2] = l.vert.id; l = l.next;
+                ++i;
+            }
+        }
+
+        // Apply mesh
+        Mesh mesh = new Mesh();
+        mf.mesh = mesh;
+        mesh.vertices = points;
+        if (uvs != null) mesh.uv = uvs;
+        mesh.triangles = triangles;
+    }
+    #endregion
+
 }

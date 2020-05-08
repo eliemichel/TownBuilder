@@ -152,7 +152,7 @@ public class WorldGenerator : MonoBehaviour
             v.attributes["restpos"] = new BMesh.FloatAttributeValue(v.point);
             v.attributes["weight"] = new BMesh.FloatAttributeValue(isBorder ? 1 : 0);
 
-            var glued = new BMesh.FloatAttributeValue(0);
+            var glued = v.attributes["glued"] as BMesh.FloatAttributeValue;
             if (tileSet != null)
             {
                 foreach (var tileCo in NeighboringTiles(co, n))
@@ -164,7 +164,9 @@ public class WorldGenerator : MonoBehaviour
                     }
                 }
             }
-            v.attributes["glued"] = glued;
+
+            var uv = v.attributes["uv"] as BMesh.FloatAttributeValue;
+            uv.data = new float[] { co.q / (float)n, co.r / (float)n };
         }
 
         int step = 0;
@@ -219,6 +221,7 @@ public class WorldGenerator : MonoBehaviour
     public void ShowMesh()
     {
         var acc = new BMesh();
+        acc.AddVertexAttribute("uv", BMesh.AttributeBaseType.Float, 2);
         if (tileSet != null)
         {
             foreach (var pair in tileSet)
