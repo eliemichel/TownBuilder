@@ -26,8 +26,7 @@ public class WorldGeneratorEditor : Editor
         if (GUILayout.Button("Remove Edges")) cont.RemoveEdges();
         if (GUILayout.Button("Subdivide")) cont.Subdivide();
         if (GUILayout.Button("SquarifyQuads")) cont.SquarifyQuads();
-        if (GUILayout.Button("Archive Mesh")) cont.ArchiveMesh();
-        if (GUILayout.Button("Show Archived")) cont.ShowArchived();
+        if (GUILayout.Button("Validate Tile")) cont.ValidateTile();
         if (GUILayout.Button("Clear Archived")) cont.ClearArchived();
         if (GUILayout.Button("Run Tests")) cont.Test();
         serializedObject.ApplyModifiedProperties();

@@ -59,6 +59,10 @@ public class AxialCoordinate
 
     public int ToIndex(int n)
     {
+        if (q < -n || q > n || r < -n || r > n || q + r < -n || q + r > n)
+        {
+            return -1; // out of bounds
+        }
         int l = 3 * (n + 1) * n / 2 + n + 1;
         if (q <= 0)
         {

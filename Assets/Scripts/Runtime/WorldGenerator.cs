@@ -1,9 +1,15 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.Assertions;
 
+
+// NB: There are two tile axis systems:
+//  - local hex coords, using directly AxialCoordinate.Center to translate into global XYZ pos
+//  - tile hex coords, to label tiles, which are sets of hexagons with coords in range [-n,n]
 
 [ExecuteInEditMode]
 [RequireComponent(typeof(MeshFilter))]
@@ -84,7 +90,39 @@ public class WorldGenerator : MonoBehaviour
         v3.attributes["restpos"] = new BMesh.FloatAttributeValue(v3.point);
         v3.attributes["weight"] = new BMesh.FloatAttributeValue(0);
 
-        ShowArchived();
+        ShowMesh();
+    }
+
+    // List of tiles next to TileCoordinate() (tile hex coords) that also contain co (local hex coord)
+    List<AxialCoordinate> NeighboringTiles(AxialCoordinate co, int n)
+    {
+        var neighbors = new List<AxialCoordinate>();
+        var tileCo = TileCoordinate();
+        if (co.q == -n)
+        {
+            neighbors.Add(new AxialCoordinate(tileCo.q - 1, tileCo.r));
+        }
+        if (co.q == n)
+        {
+            neighbors.Add(new AxialCoordinate(tileCo.q + 1, tileCo.r));
+        }
+        if (co.r == -n)
+        {
+            neighbors.Add(new AxialCoordinate(tileCo.q + 1, tileCo.r - 1));
+        }
+        if (co.r == n)
+        {
+            neighbors.Add(new AxialCoordinate(tileCo.q - 1, tileCo.r + 1));
+        }
+        if (co.r + co.q == -n)
+        {
+            neighbors.Add(new AxialCoordinate(tileCo.q, tileCo.r - 1));
+        }
+        if (co.r + co.q == n)
+        {
+            neighbors.Add(new AxialCoordinate(tileCo.q, tileCo.r + 1));
+        }
+        return neighbors;
     }
 
     public void GenerateSubdividedHex()
@@ -93,25 +131,45 @@ public class WorldGenerator : MonoBehaviour
         int pointcount = (2 * n + 1) * (2 * n + 1) - n * (n + 1);
 
         // on dual grid
-        var offset = new AxialCoordinate(nextTileQ, nextTileR).Center(size * divisions * Mathf.Sqrt(3));
-        float tmp = offset.x;
-        offset.x = offset.y;
-        offset.y = tmp;
+        float sqrt3 = Mathf.Sqrt(3);
+        var metaGridToWorld = new Matrix4x4(
+            new Vector2(3, -sqrt3) / 2 * divisions,
+            new Vector2(sqrt3, 3) / 2 * divisions,
+            Vector2.zero, Vector2.zero
+        );
+        Vector2 offset = TileCoordinate().Center(size);
+        offset = metaGridToWorld * offset;
 
         bmesh = new BMesh();
         bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("restpos", BMesh.AttributeBaseType.Float, 3));
         bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("weight", BMesh.AttributeBaseType.Float, 1));
+        bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("glued", BMesh.AttributeBaseType.Int, 1));
 
         for (int i = 0; i < pointcount; ++i)
         {
             var co = AxialCoordinate.FromIndex(i, n);
             var prevCo = AxialCoordinate.FromIndex(i-1, n);
             var nextCo = AxialCoordinate.FromIndex(i+1, n);
+            bool isBorder = prevCo.q != co.q || co.q != nextCo.q || co.q == -n || co.q == n;
             Vector2 c = co.Center(size) + offset;
             var v = bmesh.AddVertex(new Vector3(c.x, 0, c.y));
             v.id = i;
             v.attributes["restpos"] = new BMesh.FloatAttributeValue(v.point);
-            v.attributes["weight"] = new BMesh.FloatAttributeValue(prevCo.q != co.q || co.q != nextCo.q || co.q == -n || co.q == n ? 1 : 0);
+            v.attributes["weight"] = new BMesh.FloatAttributeValue(isBorder ? 1 : 0);
+
+            var glued = new BMesh.IntAttributeValue(0);
+            if (tileSet != null)
+            {
+                foreach (var tileCo in NeighboringTiles(co, n))
+                {
+                    if (tileSet.ContainsKey(tileCo))
+                    {
+                        Debug.Log("Vert #" + i + ": found tile at " + tileCo);
+                        glued.data[0] += 1;
+                    }
+                }
+            }
+            v.attributes["glued"] = glued;
         }
 
         int step = 0;
@@ -138,7 +196,7 @@ public class WorldGenerator : MonoBehaviour
         Debug.Assert(bmesh.faces.Count == 6 * n * n);
         Debug.Assert(bmesh.loops.Count == 3 * 6 * n * n);
         Debug.Assert(bmesh.vertices.Count == pointcount);
-        ShowArchived();
+        ShowMesh();
         return;
     }
 
@@ -150,14 +208,20 @@ public class WorldGenerator : MonoBehaviour
         for (int i = 0; i < 3; ++i) SquarifyQuads();
     }
 
+    // Coord of the large tile
+    AxialCoordinate TileCoordinate()
+    {
+        return new AxialCoordinate(nextTileQ, nextTileR);
+    }
+
     public void ValidateTile()
     {
         if (tileSet == null) tileSet = new Dictionary<AxialCoordinate, BMesh>();
-        tileSet[new AxialCoordinate(nextTileQ, nextTileR)] = bmesh;
+        tileSet[TileCoordinate()] = bmesh;
         bmesh = null;
     }
 
-    public void ShowArchived()
+    public void ShowMesh()
     {
         var acc = new BMesh();
         if (tileSet != null)
@@ -167,7 +231,7 @@ public class WorldGenerator : MonoBehaviour
                 BMeshOperators.Merge(acc, pair.Value);
             }
         }
-        BMeshOperators.Merge(acc, bmesh);
+        if (bmesh != null) BMeshOperators.Merge(acc, bmesh);
         acc.SetInMeshFilter(GetComponent<MeshFilter>());
     }
 
@@ -176,12 +240,16 @@ public class WorldGenerator : MonoBehaviour
         tileSet = null;
     }
 
-    public bool FuseEdge(int i) // iff it joins two triangles
+    bool CanFuse(BMesh.Edge e) // iff it joins two triangles
     {
-        var e = bmesh.edges[i];
         var faces = e.NeighborFaces();
-        bool isValidEdge = faces.Count == 2 && faces[0].vertcount == 3 && faces[1].vertcount == 3;
-        if (!isValidEdge) return false;
+        return faces.Count == 2 && faces[0].vertcount == 3 && faces[1].vertcount == 3;
+    }
+
+    public bool FuseEdge(BMesh.Edge e) // iff it joins two triangles
+    {
+        var faces = e.NeighborFaces();
+        if (!CanFuse(e)) return false;
 
         var vertices = new BMesh.Vertex[4];
         vertices[0] = e.vert1;
@@ -201,7 +269,7 @@ public class WorldGenerator : MonoBehaviour
         }
         Debug.Assert(vertices[0] != null && vertices[1] != null && vertices[2] != null && vertices[3] != null);
 
-        bmesh.RemoveEdge(bmesh.edges[i]);
+        bmesh.RemoveEdge(e);
         bmesh.AddFace(vertices);
         return true;
     }
@@ -209,17 +277,20 @@ public class WorldGenerator : MonoBehaviour
     public bool RemoveRandomEdge()
     {
         if (bmesh == null) return false;
-        if (bmesh.edges.Count == 0) return false;
-        int i = Random.Range(0, bmesh.edges.Count);
-        int i0 = i;
-        while (!FuseEdge(i))
+
+        var candidates = new List<BMesh.Edge>();
+        foreach (var e in bmesh.edges)
         {
-            i = (i + 1) % bmesh.edges.Count;
-            if (i == i0)
+            if (CanFuse(e))
             {
-                return false;
+                candidates.Add(e);
             }
         }
+
+        if (candidates.Count == 0) return false;
+
+        int i = Random.Range(0, candidates.Count);
+        FuseEdge(candidates[i]);
         return true;
     }
 
@@ -227,8 +298,7 @@ public class WorldGenerator : MonoBehaviour
     {
         if (bmesh == null) return;
         while (RemoveRandomEdge()) { }
-        //ShowArchived();
-        bmesh.SetInMeshFilter(GetComponent<MeshFilter>());
+        ShowMesh();
     }
 
     public void Subdivide()
@@ -243,7 +313,7 @@ public class WorldGenerator : MonoBehaviour
             weight.data[0] = weight.data[0] < 1.0f ? 0.0f : 1.0f;
         }
 
-        ShowArchived();
+        ShowMesh();
     }
 
     public void SquarifyQuads()
@@ -261,7 +331,7 @@ public class WorldGenerator : MonoBehaviour
         {
             BMeshOperators.SquarifyQuads(bmesh, squarifyQuadsRate, squarifyQuadsUniform);
         }
-        ShowArchived();
+        ShowMesh();
     }
 
     public void Generate()
@@ -305,11 +375,15 @@ public class WorldGenerator : MonoBehaviour
             Gizmos.DrawRay(no, (nother.point - no) * 0.1f);
         }
 
-        Gizmos.color = Color.blue;
         foreach (var v in bmesh.vertices)
         {
             float weight = (v.attributes["weight"] as BMesh.FloatAttributeValue).data[0];
+            Gizmos.color = Color.blue;
             Gizmos.DrawSphere(v.point, weight * 0.1f);
+
+            var glued = v.attributes["glued"] as BMesh.IntAttributeValue;
+            Gizmos.color = Color.red;
+            Gizmos.DrawSphere(v.point, glued.data[0] * 0.15f);
         }
     }
 }
