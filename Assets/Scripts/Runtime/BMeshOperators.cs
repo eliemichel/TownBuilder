@@ -286,19 +286,32 @@ public class BMeshOperators
     ///////////////////////////////////////////////////////////////////////////
     // Merge
 
+    // Overriding attributes: vertex's id
     public static void Merge(BMesh mesh, BMesh other)
     {
+        var newVerts = new Vertex[other.vertices.Count];
+        int i = 0;
         foreach (Vertex v in other.vertices)
         {
-            mesh.AddVertex(v);
+            newVerts[i] = mesh.AddVertex(v.point);
+            v.id = i;
+            ++i;
         }
         foreach (Edge e in other.edges)
         {
-            mesh.AddEdge(e.vert1, e.vert2);
+            mesh.AddEdge(newVerts[e.vert1.id], newVerts[e.vert2.id]);
         }
         foreach (Face f in other.faces)
         {
-            mesh.AddFace(f.NeighborVertices().ToArray());
+            var neighbors = f.NeighborVertices();
+            var newNeighbors = new Vertex[neighbors.Count];
+            int j = 0;
+            foreach (var v in neighbors)
+            {
+                newNeighbors[j] = newVerts[v.id];
+                ++j;
+            }
+            mesh.AddFace(newNeighbors);
         }
     }
 }

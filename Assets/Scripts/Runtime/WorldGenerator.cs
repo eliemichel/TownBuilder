@@ -226,7 +226,8 @@ public class WorldGenerator : MonoBehaviour
     {
         if (bmesh == null) return;
         while (RemoveRandomEdge()) { }
-        ShowArchived();
+        //ShowArchived();
+        bmesh.SetInMeshFilter(GetComponent<MeshFilter>());
     }
 
     public void Subdivide()
