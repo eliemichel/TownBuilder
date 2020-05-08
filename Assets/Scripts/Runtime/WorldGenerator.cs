@@ -5,18 +5,25 @@ using UnityEngine;
 using UnityEngine.Assertions;
 
 
+[ExecuteInEditMode]
 [RequireComponent(typeof(MeshFilter))]
 public class WorldGenerator : MonoBehaviour
 {
     public float size = 1;
     public int divisions = 5;
     public bool generate = true;
+    public bool run = true;
     public int limitStep = 10;
     public float squarifyQuadsRate = 1.0f;
     public bool squarifyQuadsUniform = false;
     public int squarifyQuadsIterations = 10;
+    public float squarifyQuadsBorderWeight = 1.0f;
+
+    public int nextTileQ = 0;
+    public int nextTileR = 0;
 
     BMesh bmesh;
+    List<BMesh> archive;
 
     void GenerateSimpleHex()
     {
@@ -76,13 +83,19 @@ public class WorldGenerator : MonoBehaviour
         v3.attributes["restpos"] = new BMesh.FloatAttributeValue(v3.point);
         v3.attributes["weight"] = new BMesh.FloatAttributeValue(0);
 
-        bmesh.SetInMeshFilter(GetComponent<MeshFilter>());
+        ShowArchived();
     }
 
     public void GenerateSubdividedHex()
     {
         int n = divisions;
         int pointcount = (2 * n + 1) * (2 * n + 1) - n * (n + 1);
+
+        // on dual grid
+        var offset = new AxialCoordinate(nextTileQ, nextTileR).Center(size * divisions * Mathf.Sqrt(3));
+        float tmp = offset.x;
+        offset.x = offset.y;
+        offset.y = tmp;
 
         bmesh = new BMesh();
         bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("restpos", BMesh.AttributeBaseType.Float, 3));
@@ -93,7 +106,7 @@ public class WorldGenerator : MonoBehaviour
             var co = AxialCoordinate.FromIndex(i, n);
             var prevCo = AxialCoordinate.FromIndex(i-1, n);
             var nextCo = AxialCoordinate.FromIndex(i+1, n);
-            Vector2 c = co.Center(size);
+            Vector2 c = co.Center(size) + offset;
             var v = bmesh.AddVertex(new Vector3(c.x, 0, c.y));
             v.id = i;
             v.attributes["restpos"] = new BMesh.FloatAttributeValue(v.point);
@@ -124,8 +137,42 @@ public class WorldGenerator : MonoBehaviour
         Debug.Assert(bmesh.faces.Count == 6 * n * n);
         Debug.Assert(bmesh.loops.Count == 3 * 6 * n * n);
         Debug.Assert(bmesh.vertices.Count == pointcount);
-        bmesh.SetInMeshFilter(GetComponent<MeshFilter>());
+        ShowArchived();
         return;
+    }
+
+    public void GenerateTile()
+    {
+        GenerateSubdividedHex();
+        RemoveEdges();
+        Subdivide();
+        for (int i = 0; i < 3; ++i) SquarifyQuads();
+    }
+
+    public void ArchiveMesh()
+    {
+        if (archive == null) archive = new List<BMesh>();
+        archive.Add(bmesh);
+        bmesh = null;
+    }
+
+    public void ShowArchived()
+    {
+        var acc = new BMesh();
+        if (archive != null)
+        {
+            foreach (BMesh m in archive)
+            {
+                BMeshOperators.Merge(acc, m);
+            }
+        }
+        BMeshOperators.Merge(acc, bmesh);
+        acc.SetInMeshFilter(GetComponent<MeshFilter>());
+    }
+
+    public void ClearArchived()
+    {
+        archive = null;
     }
 
     public bool FuseEdge(int i) // iff it joins two triangles
@@ -163,7 +210,6 @@ public class WorldGenerator : MonoBehaviour
         if (bmesh == null) return false;
         if (bmesh.edges.Count == 0) return false;
         int i = Random.Range(0, bmesh.edges.Count);
-        var e = bmesh.edges[i];
         int i0 = i;
         while (!FuseEdge(i))
         {
@@ -180,24 +226,40 @@ public class WorldGenerator : MonoBehaviour
     {
         if (bmesh == null) return;
         while (RemoveRandomEdge()) { }
-        bmesh.SetInMeshFilter(GetComponent<MeshFilter>());
+        ShowArchived();
     }
 
     public void Subdivide()
     {
         if (bmesh == null) return;
         BMeshOperators.Subdivide(bmesh);
-        bmesh.SetInMeshFilter(GetComponent<MeshFilter>());
+
+        // post process weight attribute
+        foreach (var v in bmesh.vertices)
+        {
+            var weight = v.attributes["weight"] as BMesh.FloatAttributeValue;
+            weight.data[0] = weight.data[0] < 1.0f ? 0.0f : 1.0f;
+        }
+
+        ShowArchived();
     }
 
     public void SquarifyQuads()
     {
         if (bmesh == null) return;
+
+        // pre process weight attribute
+        foreach (var v in bmesh.vertices)
+        {
+            var weight = v.attributes["weight"] as BMesh.FloatAttributeValue;
+            weight.data[0] = weight.data[0] == 0.0f ? 0.0f : squarifyQuadsBorderWeight;
+        }
+
         for (int i = 0; i < squarifyQuadsIterations; ++i)
         {
             BMeshOperators.SquarifyQuads(bmesh, squarifyQuadsRate, squarifyQuadsUniform);
         }
-        bmesh.SetInMeshFilter(GetComponent<MeshFilter>());
+        ShowArchived();
     }
 
     public void Generate()
@@ -211,6 +273,11 @@ public class WorldGenerator : MonoBehaviour
         {
             Generate();
             generate = false;
+        }
+
+        if (run)
+        {
+            SquarifyQuads();
         }
     }
 

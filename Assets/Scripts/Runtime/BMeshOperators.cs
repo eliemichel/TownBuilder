@@ -178,11 +178,17 @@ public class BMeshOperators
         {
             if (mesh.HasVertexAttribute("restpos"))
             {
-                pointUpdates[i] = (v.attributes["restpos"] as FloatAttributeValue).AsVector3() - v.point;
                 if (mesh.HasVertexAttribute("weight"))
                 {
                     weights[i] = (v.attributes["weight"] as FloatAttributeValue).data[0];
                 }
+                else
+                {
+                    weights[i] = 1;
+                }
+                var restpos = (v.attributes["restpos"] as FloatAttributeValue).AsVector3();
+                pointUpdates[i] = (restpos - v.point) * weights[i];
+                
             } else
             {
                 pointUpdates[i] = Vector3.zero;
@@ -274,6 +280,25 @@ public class BMeshOperators
                 v.point += pointUpdates[i] * (rate / weights[i]);
             }
             ++i;
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Merge
+
+    public static void Merge(BMesh mesh, BMesh other)
+    {
+        foreach (Vertex v in other.vertices)
+        {
+            mesh.AddVertex(v);
+        }
+        foreach (Edge e in other.edges)
+        {
+            mesh.AddEdge(e.vert1, e.vert2);
+        }
+        foreach (Face f in other.faces)
+        {
+            mesh.AddFace(f.NeighborVertices().ToArray());
         }
     }
 }
