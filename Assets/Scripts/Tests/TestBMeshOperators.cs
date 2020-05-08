@@ -1,10 +1,36 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using static BMesh;
 
 public class TestBMeshOperators
 {
+    
+    static bool TestAttributeLerp()
+    {
+        var mesh = new BMesh();
+        mesh.AddVertexAttribute(new AttributeDefinition("uv", AttributeBaseType.Float, 2));
+        mesh.AddVertexAttribute(new AttributeDefinition("mat", AttributeBaseType.Int, 1));
+
+        Vertex v0 = mesh.AddVertex(new Vector3(0, 0, 0));
+        Vertex v1 = mesh.AddVertex(new Vector3(0, 0, 0));
+        Vertex v2 = mesh.AddVertex(new Vector3(0, 0, 0));
+
+        v0.attributes["uv"] = new FloatAttributeValue(0.12f, 0.0f);
+        v2.attributes["uv"] = new FloatAttributeValue(0.33f, 1.0f);
+        v0.attributes["mat"] = new IntAttributeValue(0);
+        v2.attributes["mat"] = new IntAttributeValue(1);
+        BMeshOperators.AttributeLerp(mesh, v1, v0, v2, 0.4f);
+        var uv1 = v1.attributes["uv"] as FloatAttributeValue;
+        var mat1 = v1.attributes["mat"] as IntAttributeValue;
+        Debug.Assert(uv1.data.Length == 2 && uv1.data[0] == Mathf.Lerp(0.12f, 0.33f, 0.4f) && uv1.data[1] == 0.4f, "interpolate uv");
+        Debug.Assert(mat1.data.Length == 1 && mat1.data[0] == 0, "interpolate mat");
+
+        Debug.Log("TestBMeshOperators TestAttributeLerp passed.");
+        return true;
+    }
+
     static bool TestSubdivideQuad()
     {
         var mesh = new BMesh();
@@ -60,6 +86,7 @@ public class TestBMeshOperators
 
     public static bool Run()
     {
+        if (!TestAttributeLerp()) return false;
         if (!TestSubdivideQuad()) return false;
         if (!TestSubdivideTris()) return false;
         Debug.Log("All TestBMeshOperators passed.");

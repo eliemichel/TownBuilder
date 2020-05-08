@@ -9,6 +9,52 @@ using static BMesh;
 public class BMeshOperators
 {
     ///////////////////////////////////////////////////////////////////////////
+    // AttributeLerp
+
+    // Set all attributes in destination vertex to attr[v1] * (1 - t) + attr[v2] * t
+    // Overriding attributes: all in vertex 'destination', none in others
+    public static void AttributeLerp(BMesh mesh, Vertex destination, Vertex v1, Vertex v2, float t)
+    {
+        foreach (var attr in mesh.vertexAttributes)
+        {
+            switch (attr.type.baseType)
+            {
+                case AttributeBaseType.Float:
+                {
+                    var val1 = v1.attributes[attr.name] as FloatAttributeValue;
+                    var val2 = v2.attributes[attr.name] as FloatAttributeValue;
+                    int n = val1.data.Length;
+                    Debug.Assert(val2.data.Length == n);
+                    var val = new FloatAttributeValue { data = new float[n] };
+                    for (int i = 0; i < n; ++i)
+                    {
+                        val.data[i] = Mathf.Lerp(val1.data[i], val2.data[i], t);
+                    }
+                    destination.attributes[attr.name] = val;
+                    break;
+                }
+                case AttributeBaseType.Int:
+                {
+                    var val1 = v1.attributes[attr.name] as IntAttributeValue;
+                    var val2 = v2.attributes[attr.name] as IntAttributeValue;
+                    int n = val1.data.Length;
+                    Debug.Assert(val2.data.Length == n);
+                    var val = new IntAttributeValue { data = new int[n] };
+                    for (int i = 0; i < n; ++i)
+                    {
+                        val.data[i] = (int)Mathf.Round(Mathf.Lerp(val1.data[i], val2.data[i], t));
+                    }
+                    destination.attributes[attr.name] = val;
+                    break;
+                }
+                default:
+                    Debug.Assert(false);
+                    break;
+            }
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
     // Subdivide
 
     // Overriding attributes: edge's id
@@ -20,6 +66,7 @@ public class BMeshOperators
         foreach (Edge e in mesh.edges)
         {
             edgeCenters[i] = mesh.AddVertex(e.Center());
+            AttributeLerp(mesh, edgeCenters[i], e.vert1, e.vert2, 0.5f);
             originalEdges[i] = e;
             e.id = i++;
         }
@@ -28,10 +75,14 @@ public class BMeshOperators
         foreach (Face f in originalFaces)
         {
             Vertex faceCenter = mesh.AddVertex(f.Center());
+            float w = 0;
 
             // Create one quad per loop in the original face
             Loop it = f.loop;
             do {
+                AttributeLerp(mesh, faceCenter, faceCenter, it.vert, w / f.vertcount);
+                w += 1;
+
                 var quad = new Vertex[] {
                     it.vert,
                     edgeCenters[it.edge.id],

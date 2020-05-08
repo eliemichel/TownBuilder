@@ -511,11 +511,11 @@ public class BMesh
         public float[] data;
 
         public FloatAttributeValue() { }
-        public FloatAttributeValue(int f)
+        public FloatAttributeValue(float f)
         {
             data = new float[] { f };
         }
-        public FloatAttributeValue(int f0, int f1)
+        public FloatAttributeValue(float f0, float f1)
         {
             data = new float[] { f0, f1 };
         }
