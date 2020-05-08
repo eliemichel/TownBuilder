@@ -23,7 +23,8 @@ public class WorldGenerator : MonoBehaviour
     public int nextTileR = 0;
 
     BMesh bmesh;
-    List<BMesh> archive;
+
+    Dictionary<AxialCoordinate, BMesh> tileSet;
 
     void GenerateSimpleHex()
     {
@@ -149,21 +150,21 @@ public class WorldGenerator : MonoBehaviour
         for (int i = 0; i < 3; ++i) SquarifyQuads();
     }
 
-    public void ArchiveMesh()
+    public void ValidateTile()
     {
-        if (archive == null) archive = new List<BMesh>();
-        archive.Add(bmesh);
+        if (tileSet == null) tileSet = new Dictionary<AxialCoordinate, BMesh>();
+        tileSet[new AxialCoordinate(nextTileQ, nextTileR)] = bmesh;
         bmesh = null;
     }
 
     public void ShowArchived()
     {
         var acc = new BMesh();
-        if (archive != null)
+        if (tileSet != null)
         {
-            foreach (BMesh m in archive)
+            foreach (var pair in tileSet)
             {
-                BMeshOperators.Merge(acc, m);
+                BMeshOperators.Merge(acc, pair.Value);
             }
         }
         BMeshOperators.Merge(acc, bmesh);
@@ -172,7 +173,7 @@ public class WorldGenerator : MonoBehaviour
 
     public void ClearArchived()
     {
-        archive = null;
+        tileSet = null;
     }
 
     public bool FuseEdge(int i) // iff it joins two triangles

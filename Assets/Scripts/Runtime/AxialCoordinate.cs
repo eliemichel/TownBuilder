@@ -27,7 +27,7 @@ public class AxialCoordinate
 
     public override int GetHashCode()
     {
-        return base.GetHashCode();
+        return 486187739 * q + r;
     }
 
     // Returns n such that n(n-1)/2 <= i < n(+1)(n+2)/2
