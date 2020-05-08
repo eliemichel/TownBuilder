@@ -152,11 +152,49 @@ public class TestBMesh
         return true;
     }
 
+    static bool TestAttributes()
+    {
+        var mesh = new BMesh();
+
+        BMesh.Vertex v0 = mesh.AddVertex(new Vector3(-1, 0, -1));
+        BMesh.Vertex v1 = mesh.AddVertex(new Vector3(-1, 0, 1));
+        BMesh.Vertex v2 = mesh.AddVertex(new Vector3(1, 0, 1));
+        BMesh.Vertex v3 = mesh.AddVertex(new Vector3(1, 0, -1));
+        BMesh.Face f0 = mesh.AddFace(v0, v1, v2);
+        BMesh.Face f1 = mesh.AddFace(v2, v1, v3);
+
+        mesh.AddVertexAttribute(new BMesh.AttributeDefinition("test", BMesh.AttributeBaseType.Float, 3));
+        var otherAttr = new BMesh.AttributeDefinition("other", BMesh.AttributeBaseType.Int, 1);
+        var def = otherAttr.defaultValue as BMesh.IntAttributeValue;
+        def.data[0] = 42;
+        mesh.AddVertexAttribute(otherAttr);
+        foreach (var v in mesh.vertices)
+        {
+            Debug.Assert(v.attributes.ContainsKey("test"), "vertex has test attribute");
+            var test = v.attributes["test"] as BMesh.FloatAttributeValue;
+            Debug.Assert(test != null, "vertex test attribute has float value");
+            var testAsInt = v.attributes["test"] as BMesh.IntAttributeValue;
+            Debug.Assert(testAsInt == null, "vertex test attribute has no int value");
+            Debug.Assert(test.data.Length == 3, "vertex test attribute has 3 dimensions");
+            Debug.Assert(test.data[0] == 0 && test.data[1] == 0 && test.data[2] == 0, "vertex test attribute has value (0, 0, 0)");
+
+            Debug.Assert(v.attributes.ContainsKey("other"), "vertex has other attribute");
+            var other = v.attributes["other"] as BMesh.IntAttributeValue;
+            Debug.Assert(other.data.Length == 1, "vertex other attribute has 1 dimension");
+            Debug.Assert(other.data[0] == 42, "vertex other attribute has value 42");
+        }
+
+        Debug.Log("TestBMesh TestAttributes passed.");
+
+        return true;
+    }
+
     public static bool Run()
     {
         if (!Test1()) return false;
         if (!Test2()) return false;
         if (!Test3()) return false;
+        if (!TestAttributes()) return false;
         Debug.Log("All TestBMesh passed.");
         return true;
     }

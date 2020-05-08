@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Data;
 using UnityEngine;
 public class BMesh
 {
@@ -9,6 +10,7 @@ public class BMesh
     {
         public int id; // [attribute]
         public Vector3 point; // [attribute]
+        public Dictionary<string,AttributeValue> attributes; // [attribute] (extra attributes)
         public Edge edge; // one of the edges using this vertex as origin, navogates other using edge.next1/next2
 
         public Vertex(Vector3 _point)
@@ -181,8 +183,8 @@ public class BMesh
     }
 
     public List<Vertex> vertices;
-    public List<Loop> loops;
     public List<Edge> edges;
+    public List<Loop> loops;
     public List<Face> faces;
 
     public BMesh()
@@ -191,6 +193,11 @@ public class BMesh
         loops = new List<Loop>();
         edges = new List<Edge>();
         faces = new List<Face>();
+
+        vertexAttributes = new List<AttributeDefinition>();
+        edgeAttributes = new List<AttributeDefinition>();
+        loopAttributes = new List<AttributeDefinition>();
+        faceAttributes = new List<AttributeDefinition>();
     }
 
     public Edge FindEdge(Vertex vert1, Vertex vert2)
@@ -428,4 +435,88 @@ public class BMesh
         mesh.vertices = points;
         mesh.triangles = triangles;
     }
+
+    ///////////////////////////////////////////////////////////////////////////
+    #region [Attributes]
+
+    public enum AttributeBaseType
+    {
+        Int,
+        Float,
+    }
+    public class AttributeType
+    {
+        public AttributeBaseType baseType;
+        public int dimensions;
+    }
+
+    public class AttributeValue
+    {}
+    public class IntAttributeValue : AttributeValue
+    {
+        public int[] data;
+    }
+    public class FloatAttributeValue : AttributeValue
+    {
+        public float[] data;
+    }
+
+    public class AttributeDefinition
+    {
+        public string name;
+        public AttributeType type;
+        public AttributeValue defaultValue;
+
+        public AttributeDefinition(string name, AttributeBaseType baseType, int dimensions)
+        {
+            this.name = name;
+            type = new AttributeType { baseType = baseType, dimensions = dimensions };
+            defaultValue = NullValue();
+        }
+
+        public AttributeValue NullValue()
+        {
+            Debug.Assert(type.dimensions > 0);
+            switch (type.baseType)
+            {
+                case AttributeBaseType.Int:
+                    return new IntAttributeValue { data = new int[type.dimensions] };
+                case AttributeBaseType.Float:
+                    return new FloatAttributeValue { data = new float[type.dimensions] };
+                default:
+                    Debug.Assert(false);
+                    return new AttributeValue();
+            }
+        }
+    }
+
+    public List<AttributeDefinition> vertexAttributes;
+    public List<AttributeDefinition> edgeAttributes;
+    public List<AttributeDefinition> loopAttributes;
+    public List<AttributeDefinition> faceAttributes;
+
+    public bool HasVertexAttribute(AttributeDefinition attrib)
+    {
+        foreach (var a in vertexAttributes)
+        {
+            if (a.name == attrib.name)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void AddVertexAttribute(AttributeDefinition attrib)
+    {
+        if (HasVertexAttribute(attrib)) return;
+        vertexAttributes.Add(attrib);
+        foreach (Vertex v in vertices)
+        {
+            if (v.attributes == null) v.attributes = new Dictionary<string, AttributeValue>(); // move in Vertex ctor?
+            v.attributes[attrib.name] = attrib.defaultValue;
+        }
+    }
+
+    #endregion
 }
