@@ -1,10 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-// NB: There are two tile axis systems:
-//  - local hex coords, using directly AxialCoordinate.Center to translate into global XYZ pos
-//  - tile hex coords, to label tiles, which are sets of hexagons with coords in range [-n,n]
-
 [ExecuteInEditMode]
 [RequireComponent(typeof(MeshFilter))]
 public class WorldGenerator : MonoBehaviour
@@ -123,22 +119,15 @@ public class WorldGenerator : MonoBehaviour
     {
         int n = divisions;
         int pointcount = (2 * n + 1) * (2 * n + 1) - n * (n + 1);
-
-        // on dual grid
-        float sqrt3 = Mathf.Sqrt(3);
-        var metaGridToWorld = new Matrix4x4(
-            new Vector2(3, -sqrt3) / 2 * divisions,
-            new Vector2(sqrt3, 3) / 2 * divisions,
-            Vector2.zero, Vector2.zero
-        );
-        Vector2 offset = TileCoordinate().Center(size);
-        offset = metaGridToWorld * offset;
+        Vector2 offset = TileCoordinate().CenterTileCoord(size, divisions);
 
         bmesh = new BMesh();
         bmesh.AddVertexAttribute("uv", BMesh.AttributeBaseType.Float, 2);
         bmesh.AddVertexAttribute("restpos", BMesh.AttributeBaseType.Float, 3);
         bmesh.AddVertexAttribute("weight", BMesh.AttributeBaseType.Float, 1);
         bmesh.AddVertexAttribute("glued", BMesh.AttributeBaseType.Float, 1);
+        bmesh.AddVertexAttribute("gluedUv", BMesh.AttributeBaseType.Float, 2);
+        bmesh.AddVertexAttribute("gluedTile", BMesh.AttributeBaseType.Float, 2);
 
         for (int i = 0; i < pointcount; ++i)
         {
@@ -153,6 +142,8 @@ public class WorldGenerator : MonoBehaviour
             v.attributes["weight"] = new BMesh.FloatAttributeValue(isBorder ? 1 : 0);
 
             var glued = v.attributes["glued"] as BMesh.FloatAttributeValue;
+            var gluedUv = v.attributes["gluedUv"] as BMesh.FloatAttributeValue;
+            var gluedTile = v.attributes["gluedTile"] as BMesh.FloatAttributeValue;
             if (tileSet != null)
             {
                 foreach (var tileCo in NeighboringTiles(co, n))
@@ -161,12 +152,19 @@ public class WorldGenerator : MonoBehaviour
                     {
                         Debug.Log("Vert #" + i + ": found tile at " + tileCo);
                         glued.data[0] += 1;
+                        v.attributes["restpos"] = new BMesh.FloatAttributeValue(v.point);
+
+                        var coInTile = AxialCoordinate.AtPosition(c - tileCo.CenterTileCoord(size, divisions), size);
+                        Debug.Log("co " + co + " in current tile " + TileCoordinate() + "is " + coInTile + " in neighbor tile " + tileCo);
+
+                        gluedUv.data = new float[] { coInTile.q, coInTile.r };
+                        gluedTile.data = new float[] { tileCo.q, tileCo.r };
                     }
                 }
             }
 
             var uv = v.attributes["uv"] as BMesh.FloatAttributeValue;
-            uv.data = new float[] { co.q / (float)n, co.r / (float)n };
+            uv.data = new float[] { co.q, co.r };
         }
 
         int step = 0;
@@ -303,14 +301,6 @@ public class WorldGenerator : MonoBehaviour
     {
         if (bmesh == null) return;
         BMeshOperators.Subdivide(bmesh);
-
-        // post process weight attribute
-        foreach (var v in bmesh.vertices)
-        {
-            var weight = v.attributes["weight"] as BMesh.FloatAttributeValue;
-            weight.data[0] = weight.data[0] < 1.0f ? 0.0f : 1.0f;
-        }
-
         ShowMesh();
     }
 
@@ -322,7 +312,34 @@ public class WorldGenerator : MonoBehaviour
         foreach (var v in bmesh.vertices)
         {
             var weight = v.attributes["weight"] as BMesh.FloatAttributeValue;
-            weight.data[0] = weight.data[0] == 0.0f ? 0.0f : squarifyQuadsBorderWeight;
+            var restpos = v.attributes["restpos"] as BMesh.FloatAttributeValue;
+            var uv = v.attributes["uv"] as BMesh.FloatAttributeValue;
+            var glued = v.attributes["glued"] as BMesh.FloatAttributeValue;
+            var gluedUv = v.attributes["gluedUv"] as BMesh.FloatAttributeValue;
+            var gluedTile = v.attributes["gluedTile"] as BMesh.FloatAttributeValue;
+
+            weight.data[0] = weight.data[0] < 1.0f ? 0.0f : squarifyQuadsBorderWeight;
+
+            if (glued.data[0] >= 1 && tileSet != null)
+            {
+                var tileCo = new AxialCoordinate((int)gluedTile.data[0], (int)gluedTile.data[1]);
+                var co = new AxialCoordinate((int)uv.data[0], (int)uv.data[1]);
+                var coInTile = new AxialCoordinate((int)gluedUv.data[0], (int)gluedUv.data[1]);
+                Debug.Log("At squarify: co " + co + " in current tile " + TileCoordinate() + "is " + coInTile + " in neighbor tile " + tileCo);
+                if (tileSet.ContainsKey(tileCo))
+                {
+                    BMesh.Vertex target = BMeshOperators.Nearpoint(tileSet[tileCo], gluedUv, "uv");
+                    Debug.Assert(target != null);
+                    Debug.Log("DIST " + BMesh.AttributeValue.Distance(target.attributes["uv"], gluedUv));
+                    v.attributes["restpos"] = new BMesh.FloatAttributeValue(target.point);
+                    Debug.Log("At squarify: target = " + target.point);
+                    weight.data[0] = 9999;
+                }
+                else
+                {
+                    Debug.Assert(false);
+                }
+            }
         }
 
         for (int i = 0; i < squarifyQuadsIterations; ++i)
@@ -380,8 +397,9 @@ public class WorldGenerator : MonoBehaviour
             Gizmos.DrawSphere(v.point, weight * 0.1f);
 
             var glued = v.attributes["glued"] as BMesh.FloatAttributeValue;
+            Vector3 restpos = (v.attributes["restpos"] as BMesh.FloatAttributeValue).AsVector3();
             Gizmos.color = Color.red;
-            Gizmos.DrawSphere(v.point, glued.data[0] * 0.15f);
+            Gizmos.DrawSphere(restpos, glued.data[0] * 0.15f);
         }
     }
 }

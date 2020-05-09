@@ -315,4 +315,25 @@ public class BMeshOperators
             mesh.AddFace(newNeighbors);
         }
     }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Nearpoint
+    // Find the point for which attribute 'attr' is closest to 'value'
+    public static Vertex Nearpoint(BMesh mesh, AttributeValue value, string attrName)
+    {
+        if (!mesh.HasVertexAttribute(attrName)) return null;
+        Vertex argmin = null;
+        float min = 0;
+        foreach (Vertex v in mesh.vertices)
+        {
+            float d = AttributeValue.Distance(v.attributes[attrName], value);
+            if (argmin == null || d < min)
+            {
+                argmin = v;
+                min = d;
+            }
+        }
+        return argmin;
+    }
+
 }

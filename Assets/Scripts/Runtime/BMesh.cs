@@ -453,6 +453,25 @@ public class BMesh
             Debug.Assert(false);
             return null;
         }
+
+        public static float Distance(AttributeValue value1, AttributeValue value2)
+        {
+            if (value1 is IntAttributeValue value1AsInt)
+            {
+                if (value2 is IntAttributeValue value2AsInt)
+                {
+                    return IntAttributeValue.Distance(value1AsInt, value2AsInt);
+                }
+            }
+            if (value1 is FloatAttributeValue value1AsFloat)
+            {
+                if (value2 is FloatAttributeValue value2AsFloat)
+                {
+                    return FloatAttributeValue.Distance(value1AsFloat, value2AsFloat);
+                }
+            }
+            return float.PositiveInfinity;
+        }
     }
     public class IntAttributeValue : AttributeValue
     {
@@ -466,6 +485,19 @@ public class BMesh
         public IntAttributeValue(int i0, int i1)
         {
             data = new int[] { i0, i1 };
+        }
+
+        public static float Distance(IntAttributeValue value1, IntAttributeValue value2)
+        {
+            int n = value1.data.Length;
+            if (n != value2.data.Length) return float.PositiveInfinity;
+            float s = 0;
+            for (int i = 0; i < n; ++i)
+            {
+                float diff = value1.data[i] - value2.data[i];
+                s += diff * diff;
+            }
+            return Mathf.Sqrt(s);
         }
     }
     public class FloatAttributeValue : AttributeValue
@@ -492,6 +524,19 @@ public class BMesh
                 data.Length >= 1 ? data[1] : 0,
                 data.Length >= 2 ? data[2] : 0
             );
+        }
+
+        public static float Distance(FloatAttributeValue value1, FloatAttributeValue value2)
+        {
+            int n = value1.data.Length;
+            if (n != value2.data.Length) return float.PositiveInfinity;
+            float s = 0;
+            for (int i = 0; i < n; ++i)
+            {
+                float diff = value1.data[i] - value2.data[i];
+                s += diff * diff;
+            }
+            return Mathf.Sqrt(s);
         }
     }
 
@@ -602,7 +647,6 @@ public class BMesh
             {
                 var uv = vert.attributes["uv"] as FloatAttributeValue;
                 uvs[i] = new Vector2(uv.data[0], uv.data[1]);
-                Debug.Log(uvs[i]);
             }
             ++i;
         }
