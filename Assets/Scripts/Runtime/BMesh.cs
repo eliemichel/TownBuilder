@@ -47,6 +47,7 @@ public class BMesh
     public class Edge
     {
         public int id; // [attribute]
+        public Dictionary<string, AttributeValue> attributes; // [attribute] (extra attributes)
         public Vertex vert1;
         public Vertex vert2;
         public Edge next1; // next edge around vert1. If you don't know whether your vertex is vert1 or vert2, use Next(v)
@@ -318,6 +319,7 @@ public class BMesh
             vert1 = vert1,
             vert2 = vert2
         };
+        EnsureEdgeAttributes(edge);
         edges.Add(edge);
 
         // Insert in vert1's edge list
@@ -571,7 +573,7 @@ public class BMesh
     #endregion
     
     ///////////////////////////////////////////////////////////////////////////
-    #region [Attribute Methods]
+    #region [Vertex Attribute Methods]
 
     public bool HasVertexAttribute(string attribName)
     {
@@ -621,6 +623,62 @@ public class BMesh
                 Debug.LogWarning("Vertex attribute '" + attr.name + "' is not compatible with mesh attribute definition, ignoring.");
                 // different type, overriding value with default
                 v.attributes[attr.name] = AttributeValue.Copy(attr.defaultValue);
+            }
+        }
+    }
+    #endregion
+
+    ///////////////////////////////////////////////////////////////////////////
+    #region [Edge Attribute Methods]
+
+    public bool HasEdgeAttribute(string attribName)
+    {
+        foreach (var a in edgeAttributes)
+        {
+            if (a.name == attribName)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public bool HasEdgeAttribute(AttributeDefinition attrib)
+    {
+        return HasEdgeAttribute(attrib.name);
+    }
+
+    public void AddEdgeAttribute(AttributeDefinition attrib)
+    {
+        if (HasEdgeAttribute(attrib)) return;
+        edgeAttributes.Add(attrib);
+        foreach (Edge e in edges)
+        {
+            if (e.attributes == null) e.attributes = new Dictionary<string, AttributeValue>(); // move in Edge ctor?
+            e.attributes[attrib.name] = AttributeValue.Copy(attrib.defaultValue);
+        }
+    }
+
+    public void AddEdgeAttribute(string name, AttributeBaseType baseType, int dimensions)
+    {
+        AddEdgeAttribute(new AttributeDefinition(name, baseType, dimensions));
+    }
+
+
+    void EnsureEdgeAttributes(Edge e)
+    {
+        if (e.attributes == null) e.attributes = new Dictionary<string, AttributeValue>();
+        foreach (var attr in edgeAttributes)
+        {
+            if (!e.attributes.ContainsKey(attr.name))
+            {
+                e.attributes[attr.name] = AttributeValue.Copy(attr.defaultValue);
+            }
+            else if (!attr.type.CheckValue(e.attributes[attr.name]))
+            {
+                Debug.LogWarning("Edge attribute '" + attr.name + "' is not compatible with mesh attribute definition, ignoring.");
+                // different type, overriding value with default
+                e.attributes[attr.name] = AttributeValue.Copy(attr.defaultValue);
             }
         }
     }

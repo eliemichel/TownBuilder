@@ -157,6 +157,8 @@ public class TestBMesh
     static bool TestAttributes()
     {
         var mesh = new BMesh();
+        mesh.AddVertexAttribute(new AttributeDefinition("test", AttributeBaseType.Float, 3));
+        mesh.AddEdgeAttribute("edgetest", AttributeBaseType.Float, 2);
 
         Vertex v0 = mesh.AddVertex(new Vector3(-1, 0, -1));
         Vertex v1 = mesh.AddVertex(new Vector3(-1, 0, 1));
@@ -164,8 +166,7 @@ public class TestBMesh
         Vertex v3 = mesh.AddVertex(new Vector3(1, 0, -1));
         Face f0 = mesh.AddFace(v0, v1, v2);
         Face f1 = mesh.AddFace(v2, v1, v3);
-
-        mesh.AddVertexAttribute(new AttributeDefinition("test", AttributeBaseType.Float, 3));
+        
         var otherAttr = new AttributeDefinition("other", AttributeBaseType.Int, 1);
         var def = otherAttr.defaultValue as IntAttributeValue;
         def.data[0] = 42;
@@ -184,6 +185,17 @@ public class TestBMesh
             var other = v.attributes["other"] as IntAttributeValue;
             Debug.Assert(other.data.Length == 1, "vertex other attribute has 1 dimension");
             Debug.Assert(other.data[0] == 42, "vertex other attribute has value 42");
+        }
+
+        foreach (var e in mesh.edges)
+        {
+            Debug.Assert(e.attributes.ContainsKey("edgetest"), "edge has test attribute");
+            var edgetest = e.attributes["edgetest"] as FloatAttributeValue;
+            Debug.Assert(edgetest != null, "edge test attribute has float value");
+            var edgetestAsInt = e.attributes["edgetest"] as IntAttributeValue;
+            Debug.Assert(edgetestAsInt == null, "edge test attribute has no int value");
+            Debug.Assert(edgetest.data.Length == 2, "edge test attribute has 2 dimensions");
+            Debug.Assert(edgetest.data[0] == 0 && edgetest.data[1] == 0, "edge test attribute has value (0, 0)");
         }
 
         {
