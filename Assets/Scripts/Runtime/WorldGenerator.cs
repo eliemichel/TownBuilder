@@ -120,7 +120,9 @@ public class WorldGenerator : MonoBehaviour
             v.id = i;
             v.attributes["restpos"] = new BMesh.FloatAttributeValue(v.point);
             v.attributes["weight"] = new BMesh.FloatAttributeValue(co.OnRangeEdge(n) ? 1 : 0);
+            v.attributes["uv"] = new BMesh.FloatAttributeValue(co.q, co.r);
 
+            // Try to glue edge points to tiles that are already present
             var glued = v.attributes["glued"] as BMesh.FloatAttributeValue;
             if (tileSet != null)
             {
@@ -128,14 +130,11 @@ public class WorldGenerator : MonoBehaviour
                 {
                     if (tileSet.ContainsKey(tileCo))
                     {
-                        Debug.Log("Vert #" + i + ": found tile at " + tileCo);
                         glued.data[0] = 1;
+                        break;
                     }
                 }
             }
-
-            var uv = v.attributes["uv"] as BMesh.FloatAttributeValue;
-            uv.data = new float[] { co.q, co.r };
         }
 
         int step = 0;
@@ -199,7 +198,7 @@ public class WorldGenerator : MonoBehaviour
             }
         }
         if (bmesh != null) BMeshOperators.Merge(acc, bmesh);
-        acc.SetInMeshFilter(GetComponent<MeshFilter>());
+        BMeshUnity.SetInMeshFilter(acc, GetComponent<MeshFilter>());
     }
 
     public void Clear()
@@ -337,40 +336,7 @@ public class WorldGenerator : MonoBehaviour
     void OnDrawGizmos()
     {
         if (bmesh == null) return;
-        Gizmos.color = Color.yellow;
         Gizmos.matrix = transform.localToWorldMatrix;
-        foreach (var e in bmesh.edges)
-        {
-            Gizmos.DrawLine(e.vert1.point, e.vert2.point);
-        }
-        Gizmos.color = Color.red;
-        foreach (var l in bmesh.loops)
-        {
-            BMesh.Vertex vert = l.vert;
-            BMesh.Vertex other = l.edge.OtherVertex(vert);
-            Gizmos.DrawRay(vert.point, (other.point - vert.point) * 0.1f);
-
-            BMesh.Loop nl = l.next;
-            BMesh.Vertex nother = nl.edge.ContainsVertex(vert) ? nl.edge.OtherVertex(vert) : nl.edge.OtherVertex(other);
-            Vector3 no = vert.point + (other.point - vert.point) * 0.1f;
-            Gizmos.DrawRay(no, (nother.point - no) * 0.1f);
-        }
-
-        foreach (var v in bmesh.vertices)
-        {
-            float weight = (v.attributes["weight"] as BMesh.FloatAttributeValue).data[0];
-            Gizmos.color = Color.blue;
-            Gizmos.DrawSphere(v.point, weight * 0.1f);
-
-            var glued = v.attributes["glued"] as BMesh.FloatAttributeValue;
-            Vector3 restpos = (v.attributes["restpos"] as BMesh.FloatAttributeValue).AsVector3();
-            Gizmos.color = Color.red;
-            Gizmos.DrawSphere(restpos, glued.data[0] * 0.15f);
-
-#if UNITY_EDITOR
-            //var uv = v.attributes["uv"] as BMesh.FloatAttributeValue;
-            //Handles.Label(v.point, "(" + uv.data[0] + "," + uv.data[1] + ")");
-#endif // UNITY_EDITOR
-        }
+        BMeshUnity.DrawGizmos(bmesh);
     }
 }
