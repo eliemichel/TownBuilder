@@ -15,6 +15,7 @@ public class WorldGenerator : MonoBehaviour
     public bool squarifyQuadsUniform = false;
     public int squarifyQuadsIterations = 10;
     public float squarifyQuadsBorderWeight = 1.0f;
+    public int maxHeight = 5;
     public Transform cursor;
 
     public int nextTileQ = 0;
@@ -109,6 +110,7 @@ public class WorldGenerator : MonoBehaviour
         bmesh.AddVertexAttribute("restpos", BMesh.AttributeBaseType.Float, 3);
         bmesh.AddVertexAttribute("weight", BMesh.AttributeBaseType.Float, 1);
         bmesh.AddVertexAttribute("glued", BMesh.AttributeBaseType.Float, 1);
+        bmesh.AddEdgeAttribute("occupancy", BMesh.AttributeBaseType.Float, maxHeight); // core voxel data
 
         for (int i = 0; i < pointcount; ++i)
         {
@@ -224,6 +226,7 @@ public class WorldGenerator : MonoBehaviour
     {
         bmesh = null;
         tileSet = null;
+        currentTileCo = null;
         ShowMesh();
     }
 
@@ -360,5 +363,36 @@ public class WorldGenerator : MonoBehaviour
         if (bmesh == null) return;
         Gizmos.matrix = transform.localToWorldMatrix;
         BMeshUnity.DrawGizmos(bmesh);
+
+        foreach (var v in bmesh.vertices)
+        {
+            float weight = (v.attributes["weight"] as BMesh.FloatAttributeValue).data[0];
+            Gizmos.color = Color.blue;
+            Gizmos.DrawSphere(v.point, weight * 0.1f);
+
+            var glued = v.attributes["glued"] as BMesh.FloatAttributeValue;
+            Vector3 restpos = (v.attributes["restpos"] as BMesh.FloatAttributeValue).AsVector3();
+            Gizmos.color = Color.red;
+            Gizmos.DrawSphere(restpos, glued.data[0] * 0.15f);
+
+#if UNITY_EDITOR
+            //var uv = v.attributes["uv"] as BMesh.FloatAttributeValue;
+            //Handles.Label(v.point, "(" + uv.data[0] + "," + uv.data[1] + ")");
+#endif // UNITY_EDITOR
+        }
+
+        if (bmesh.HasEdgeAttribute("occupancy"))
+        {
+            foreach (var e in bmesh.edges)
+            {
+                var occupancy = e.attributes["occupancy"] as BMesh.FloatAttributeValue;
+                for (int i = 0; i < occupancy.data.Length; ++i)
+                {
+                    if (occupancy.data[i] > 0) Gizmos.color = Color.blue;
+                    else Gizmos.color = Color.gray;
+                    Gizmos.DrawCube(e.Center() + Vector3.up * i * 0.5f, Vector3.one * 0.1f);
+                }
+            }
+        }
     }
 }

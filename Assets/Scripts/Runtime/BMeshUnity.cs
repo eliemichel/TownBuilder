@@ -75,31 +75,14 @@ public class BMeshUnity
         Gizmos.color = Color.red;
         foreach (var l in mesh.loops)
         {
-            BMesh.Vertex vert = l.vert;
-            BMesh.Vertex other = l.edge.OtherVertex(vert);
+            Vertex vert = l.vert;
+            Vertex other = l.edge.OtherVertex(vert);
             Gizmos.DrawRay(vert.point, (other.point - vert.point) * 0.1f);
 
-            BMesh.Loop nl = l.next;
-            BMesh.Vertex nother = nl.edge.ContainsVertex(vert) ? nl.edge.OtherVertex(vert) : nl.edge.OtherVertex(other);
+            Loop nl = l.next;
+            Vertex nother = nl.edge.ContainsVertex(vert) ? nl.edge.OtherVertex(vert) : nl.edge.OtherVertex(other);
             Vector3 no = vert.point + (other.point - vert.point) * 0.1f;
             Gizmos.DrawRay(no, (nother.point - no) * 0.1f);
-        }
-
-        foreach (var v in mesh.vertices)
-        {
-            float weight = (v.attributes["weight"] as BMesh.FloatAttributeValue).data[0];
-            Gizmos.color = Color.blue;
-            Gizmos.DrawSphere(v.point, weight * 0.1f);
-
-            var glued = v.attributes["glued"] as BMesh.FloatAttributeValue;
-            Vector3 restpos = (v.attributes["restpos"] as BMesh.FloatAttributeValue).AsVector3();
-            Gizmos.color = Color.red;
-            Gizmos.DrawSphere(restpos, glued.data[0] * 0.15f);
-
-#if UNITY_EDITOR
-            //var uv = v.attributes["uv"] as BMesh.FloatAttributeValue;
-            //Handles.Label(v.point, "(" + uv.data[0] + "," + uv.data[1] + ")");
-#endif // UNITY_EDITOR
         }
     }
 }
