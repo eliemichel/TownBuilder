@@ -92,7 +92,7 @@ public class TestBMeshOperators
             Debug.Assert(Mathf.Abs(uv.data[0] - v.point.x) < epsilon && Mathf.Abs(uv.data[1] - v.point.z) < epsilon, "attribute interpolation: " + uv.data[0] + " == " + v.point.x + " && " + uv.data[1] + " == " + v.point.z);
         }
 
-        Debug.Log("TestBMeshOperators TestSubdivideQuad passed.");
+        Debug.Log("TestBMeshOperators TestSubdivideTris passed.");
         return true;
     }
 

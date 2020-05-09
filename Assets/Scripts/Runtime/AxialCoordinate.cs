@@ -2,9 +2,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// NB: There are two tile axis systems:
-//  - local hex coords, using directly AxialCoordinate.Center to translate into global XYZ pos
-//  - tile hex coords, to label tiles, which are sets of hexagons with coords in range [-n,n]
 // see also https://www.redblobgames.com/grids/hexagons/
 public class AxialCoordinate
 {
@@ -77,31 +74,26 @@ public class AxialCoordinate
         }
     }
 
-    public Vector2 Center(float size)
+    public virtual Vector2 Center(float size)
     {
         return new Vector2(q * size * 3 / 2, Mathf.Sqrt(3) * size * (r + q / 2.0f));
     }
 
     public static AxialCoordinate AtPosition(Vector2 p, float size)
     {
-        int q = (int)Mathf.Round(p.x * 2 / (size * 3));
-        int r = (int)Mathf.Round(p.y * Mathf.Sqrt(3) / (3 * size) - q / 2.0f);
+        var fco = FloatAxialCoordinate.AtPosition(p, size);
+        int q = (int)Mathf.Round(fco.q);
+        int r = (int)Mathf.Round(fco.r);
         return new AxialCoordinate(q, r);
-    }
-
-    public Vector2 CenterTileCoord(float size, int divisions)
-    {
-        float sqrt3 = Mathf.Sqrt(3);
-        var tileCoordToWorld = new Matrix4x4(
-            new Vector2(3, -sqrt3) / 2 * divisions,
-            new Vector2(sqrt3, 3) / 2 * divisions,
-            Vector2.zero, Vector2.zero
-        );
-        return tileCoordToWorld * Center(size);
     }
 
     public bool InRange(int n)
     {
         return -n <= q && q <= n && -n <= r && r <= n && -n <= q + r && q + r <= n;
+    }
+
+    public bool OnRangeEdge(int n)
+    {
+        return -n == q || q == n || -n == r || r == n || -n == q + r || q + r == n;
     }
 }

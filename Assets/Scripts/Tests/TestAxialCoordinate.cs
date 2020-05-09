@@ -5,7 +5,7 @@ using UnityEngine;
 public class TestAxialCoordinate
 {
     // Start is called before the first frame update
-    public static bool Run(int n)
+    static bool TestIndex(int n)
     {
         int i = 0;
         for (int q = -n; q <= n; ++q)
@@ -29,6 +29,35 @@ public class TestAxialCoordinate
             }
         }
 
+        Debug.Log("TestAxialCoordinate TestIndex passed.");
+        return true;
+    }
+
+    static bool TestTile()
+    {
+        int n = 4;
+        var tile0 = new TileAxialCoordinate(0, 0, n);
+        var tile1 = new TileAxialCoordinate(1, 0, n);
+        var co1 = new AxialCoordinate(-n, 0);
+        var neighbors = tile1.NeighboringTiles(co1);
+        Debug.Assert(neighbors.Count == 2, "two neighbours");
+        Debug.Assert(neighbors.Contains(tile0), "tile0 is a neighbours");
+
+        neighbors = tile1.NeighboringTiles(new AxialCoordinate(-n+1, 0));
+        Debug.Assert(neighbors.Count == 0, "no neighbours for inner subtile");
+
+        Debug.Log("TestAxialCoordinate TestTile passed.");
+        return true;
+    }
+
+    public static bool Run()
+    {
+        if (!TestIndex(1)) return false;
+        if (!TestIndex(2)) return false;
+        if (!TestIndex(4)) return false;
+        if (!TestIndex(9)) return false;
+        if (!TestTile()) return false;
+        Debug.Log("All TestAxialCoordinate passed.");
         return true;
     }
 }

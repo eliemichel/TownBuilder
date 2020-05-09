@@ -23,11 +23,16 @@ public class WorldGeneratorEditor : Editor
         if (GUILayout.Button("Generate Hex Grid")) cont.GenerateSubdividedHex();
         if (GUILayout.Button("Generate Quad")) cont.GenerateQuad();
         if (GUILayout.Button("Generate Tile")) cont.GenerateTile();
+
+        EditorGUILayout.Space();
         if (GUILayout.Button("Remove Edges")) cont.RemoveEdges();
         if (GUILayout.Button("Subdivide")) cont.Subdivide();
         if (GUILayout.Button("SquarifyQuads")) cont.SquarifyQuads();
+
+        EditorGUILayout.Space();
         if (GUILayout.Button("Validate Tile")) cont.ValidateTile();
-        if (GUILayout.Button("Clear Archived")) cont.ClearArchived();
+        if (GUILayout.Button("Clear")) cont.Clear();
+        if (GUILayout.Button("Play Scenario")) cont.PlayTestScenario();
         if (GUILayout.Button("Run Tests")) cont.Test();
         serializedObject.ApplyModifiedProperties();
     }

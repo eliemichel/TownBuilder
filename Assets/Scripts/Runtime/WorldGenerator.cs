@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 
 [ExecuteInEditMode]
@@ -55,8 +56,24 @@ public class WorldGenerator : MonoBehaviour
     public void Test()
     {
         TestBMesh.Run();
-        TestAxialCoordinate.Run(divisions);
+        TestAxialCoordinate.Run();
         TestBMeshOperators.Run();
+    }
+
+    public void PlayTestScenario()
+    {
+        Clear();
+        nextTileQ = 0;
+        nextTileR = 0;
+        GenerateTile();
+        ValidateTile();
+        nextTileQ = 1;
+        nextTileR = 0;
+        GenerateTile();
+        ValidateTile();
+        nextTileQ = 0;
+        nextTileR = 1;
+        GenerateTile();
     }
 
     public void GenerateQuad()
@@ -83,82 +100,36 @@ public class WorldGenerator : MonoBehaviour
         ShowMesh();
     }
 
-    // List of tiles next to TileCoordinate() (tile hex coords) that also contain co (local hex coord)
-    List<AxialCoordinate> NeighboringTiles(AxialCoordinate co, int n)
-    {
-        var neighbors = new List<AxialCoordinate>();
-        var tileCo = TileCoordinate();
-        if (co.q == -n)
-        {
-            neighbors.Add(new AxialCoordinate(tileCo.q - 1, tileCo.r));
-        }
-        if (co.q == n)
-        {
-            neighbors.Add(new AxialCoordinate(tileCo.q + 1, tileCo.r));
-        }
-        if (co.r == -n)
-        {
-            neighbors.Add(new AxialCoordinate(tileCo.q + 1, tileCo.r - 1));
-        }
-        if (co.r == n)
-        {
-            neighbors.Add(new AxialCoordinate(tileCo.q - 1, tileCo.r + 1));
-        }
-        if (co.r + co.q == -n)
-        {
-            neighbors.Add(new AxialCoordinate(tileCo.q, tileCo.r - 1));
-        }
-        if (co.r + co.q == n)
-        {
-            neighbors.Add(new AxialCoordinate(tileCo.q, tileCo.r + 1));
-        }
-        return neighbors;
-    }
-
     public void GenerateSubdividedHex()
     {
         int n = divisions;
         int pointcount = (2 * n + 1) * (2 * n + 1) - n * (n + 1);
-        Vector2 offset = TileCoordinate().CenterTileCoord(size, divisions);
+        Vector2 offset = TileCoordinate().Center(size);
 
         bmesh = new BMesh();
         bmesh.AddVertexAttribute("uv", BMesh.AttributeBaseType.Float, 2);
         bmesh.AddVertexAttribute("restpos", BMesh.AttributeBaseType.Float, 3);
         bmesh.AddVertexAttribute("weight", BMesh.AttributeBaseType.Float, 1);
         bmesh.AddVertexAttribute("glued", BMesh.AttributeBaseType.Float, 1);
-        bmesh.AddVertexAttribute("gluedUv", BMesh.AttributeBaseType.Float, 2);
-        bmesh.AddVertexAttribute("gluedTile", BMesh.AttributeBaseType.Float, 2);
 
         for (int i = 0; i < pointcount; ++i)
         {
             var co = AxialCoordinate.FromIndex(i, n);
-            var prevCo = AxialCoordinate.FromIndex(i-1, n);
-            var nextCo = AxialCoordinate.FromIndex(i+1, n);
-            bool isBorder = prevCo.q != co.q || co.q != nextCo.q || co.q == -n || co.q == n;
             Vector2 c = co.Center(size) + offset;
             var v = bmesh.AddVertex(new Vector3(c.x, 0, c.y));
             v.id = i;
             v.attributes["restpos"] = new BMesh.FloatAttributeValue(v.point);
-            v.attributes["weight"] = new BMesh.FloatAttributeValue(isBorder ? 1 : 0);
+            v.attributes["weight"] = new BMesh.FloatAttributeValue(co.OnRangeEdge(n) ? 1 : 0);
 
             var glued = v.attributes["glued"] as BMesh.FloatAttributeValue;
-            var gluedUv = v.attributes["gluedUv"] as BMesh.FloatAttributeValue;
-            var gluedTile = v.attributes["gluedTile"] as BMesh.FloatAttributeValue;
             if (tileSet != null)
             {
-                foreach (var tileCo in NeighboringTiles(co, n))
+                foreach (var tileCo in TileCoordinate().NeighboringTiles(co))
                 {
                     if (tileSet.ContainsKey(tileCo))
                     {
                         Debug.Log("Vert #" + i + ": found tile at " + tileCo);
-                        glued.data[0] += 1;
-                        v.attributes["restpos"] = new BMesh.FloatAttributeValue(v.point);
-
-                        var coInTile = AxialCoordinate.AtPosition(c - tileCo.CenterTileCoord(size, divisions), size);
-                        Debug.Log("co " + co + " in current tile " + TileCoordinate() + "is " + coInTile + " in neighbor tile " + tileCo);
-
-                        gluedUv.data = new float[] { coInTile.q, coInTile.r };
-                        gluedTile.data = new float[] { tileCo.q, tileCo.r };
+                        glued.data[0] = 1;
                     }
                 }
             }
@@ -204,9 +175,9 @@ public class WorldGenerator : MonoBehaviour
     }
 
     // Coord of the large tile
-    AxialCoordinate TileCoordinate()
+    TileAxialCoordinate TileCoordinate()
     {
-        return new AxialCoordinate(nextTileQ, nextTileR);
+        return new TileAxialCoordinate(nextTileQ, nextTileR, divisions);
     }
 
     public void ValidateTile()
@@ -231,7 +202,7 @@ public class WorldGenerator : MonoBehaviour
         acc.SetInMeshFilter(GetComponent<MeshFilter>());
     }
 
-    public void ClearArchived()
+    public void Clear()
     {
         tileSet = null;
     }
@@ -315,29 +286,24 @@ public class WorldGenerator : MonoBehaviour
             var restpos = v.attributes["restpos"] as BMesh.FloatAttributeValue;
             var uv = v.attributes["uv"] as BMesh.FloatAttributeValue;
             var glued = v.attributes["glued"] as BMesh.FloatAttributeValue;
-            var gluedUv = v.attributes["gluedUv"] as BMesh.FloatAttributeValue;
-            var gluedTile = v.attributes["gluedTile"] as BMesh.FloatAttributeValue;
 
             weight.data[0] = weight.data[0] < 1.0f ? 0.0f : squarifyQuadsBorderWeight;
 
             if (glued.data[0] >= 1 && tileSet != null)
             {
-                var tileCo = new AxialCoordinate((int)gluedTile.data[0], (int)gluedTile.data[1]);
-                var co = new AxialCoordinate((int)uv.data[0], (int)uv.data[1]);
-                var coInTile = new AxialCoordinate((int)gluedUv.data[0], (int)gluedUv.data[1]);
-                Debug.Log("At squarify: co " + co + " in current tile " + TileCoordinate() + "is " + coInTile + " in neighbor tile " + tileCo);
-                if (tileSet.ContainsKey(tileCo))
+                var fco = new FloatAxialCoordinate(uv.data[0], uv.data[1]);
+                foreach (var tileCo in TileCoordinate().NeighboringTiles(fco))
                 {
-                    BMesh.Vertex target = BMeshOperators.Nearpoint(tileSet[tileCo], gluedUv, "uv");
-                    Debug.Assert(target != null);
-                    Debug.Log("DIST " + BMesh.AttributeValue.Distance(target.attributes["uv"], gluedUv));
-                    v.attributes["restpos"] = new BMesh.FloatAttributeValue(target.point);
-                    Debug.Log("At squarify: target = " + target.point);
-                    weight.data[0] = 9999;
-                }
-                else
-                {
-                    Debug.Assert(false);
+                    if (tileSet.ContainsKey(tileCo))
+                    {
+                        var gluedCo = TileCoordinate().ConvertLocalCoordTo(fco, tileCo);
+                        var gluedUv = new BMesh.FloatAttributeValue(gluedCo.q, gluedCo.r);
+                        BMesh.Vertex target = BMeshOperators.Nearpoint(tileSet[tileCo], gluedUv, "uv");
+                        Debug.Assert(target != null);
+                        Debug.Assert(BMesh.AttributeValue.Distance(target.attributes["uv"], gluedUv) < 1e-6);
+                        v.attributes["restpos"] = new BMesh.FloatAttributeValue(target.point);
+                        weight.data[0] = 9999;
+                    }
                 }
             }
         }
@@ -400,6 +366,11 @@ public class WorldGenerator : MonoBehaviour
             Vector3 restpos = (v.attributes["restpos"] as BMesh.FloatAttributeValue).AsVector3();
             Gizmos.color = Color.red;
             Gizmos.DrawSphere(restpos, glued.data[0] * 0.15f);
+
+#if UNITY_EDITOR
+            //var uv = v.attributes["uv"] as BMesh.FloatAttributeValue;
+            //Handles.Label(v.point, "(" + uv.data[0] + "," + uv.data[1] + ")");
+#endif // UNITY_EDITOR
         }
     }
 }
