@@ -341,7 +341,7 @@ public class BMeshOperators
     // Marching Cubes
     // read attribute 'occupancyAttr' from 'grid' vertices to get voxel occupancy
     // and use faces as cells to build 'mesh'. Requires grid to contain only quads
-    public static void MarchingCubes(BMesh mesh, BMesh grid, string occupancyAttr)
+    public static void MarchingCubes2D(BMesh mesh, BMesh grid, string occupancyAttr)
     {
         foreach (var f in grid.faces)
         {
@@ -351,22 +351,76 @@ public class BMeshOperators
             var occupancies = verts.ConvertAll(v => (v.attributes[occupancyAttr] as FloatAttributeValue).data);
             for (int k = 0; k < occupancies.Count; ++k)
             {
-                occupancies[k][0] = Mathf.Round(occupancies[k][0]);
+                occupancies[k][0] = Mathf.Ceil(occupancies[k][0]);
             }
             float o0 = occupancies[0][0];
             float o1 = occupancies[1][0];
             float o2 = occupancies[2][0];
             float o3 = occupancies[3][0];
-            if (o0 == 0 && o1 == 0 && o2 == 0 && o3 == 0) continue;
 
-            Debug.Log(o0 + o1 + o2 + o3);
-
-            if (o0 + o1 + o2 + o3 == 1)
+            var l = new List<int>();
+            for (int k = 0; k < occupancies.Count; ++k)
             {
-                int i = 0;
-                if (o1 == 1) i = 1;
-                if (o2 == 1) i = 2;
-                if (o3 == 1) i = 3;
+                if (occupancies[k][0] == 1) l.Add(k);
+            }
+
+            if (l.Count == 0) continue;
+
+            if (l.Count == 1)
+            {
+                int i = l[0];
+                int j = i > 0 ? i - 1 : 3;
+                var v0 = mesh.AddVertex(edges[j].Center());
+                var v1 = mesh.AddVertex(edges[i].Center());
+                var v0p = mesh.AddVertex(edges[j].Center() + Vector3.up);
+                var v1p = mesh.AddVertex(edges[i].Center() + Vector3.up);
+                Debug.Log("Adding corner face...");
+                mesh.AddFace(v0, v0p, v1p, v1);
+            }
+
+            if (l.Count == 2)
+            {
+                int i0 = l[0];
+                int i1 = l[1];
+                int prev0 = i0 > 0 ? i0 - 1 : 3;
+                if (i1 == prev0)
+                {
+                    i1 = i0;
+                    i0 = prev0;
+                }
+                prev0 = i0 > 0 ? i0 - 1 : 3;
+                int next0 = (i0 + 1) % 4;
+                int prev1 = i1 > 0 ? i1 - 1 : 3;
+                int next1 = (i1 + 1) % 4;
+                if (i0 == prev1)
+                {
+                    var v0 = mesh.AddVertex(edges[prev0].Center());
+                    var v1 = mesh.AddVertex(edges[i1].Center());
+                    var v0p = mesh.AddVertex(edges[prev0].Center() + Vector3.up);
+                    var v1p = mesh.AddVertex(edges[i1].Center() + Vector3.up);
+                    Debug.Log("Adding regular wall face...");
+                    mesh.AddFace(v0, v0p, v1p, v1);
+                }
+                else
+                {
+                    var v0 = mesh.AddVertex(edges[prev0].Center());
+                    var v1 = mesh.AddVertex(edges[i0].Center());
+                    var v0p = mesh.AddVertex(edges[prev0].Center() + Vector3.up);
+                    var v1p = mesh.AddVertex(edges[i0].Center() + Vector3.up);
+                    mesh.AddFace(v0, v0p, v1p, v1);
+
+                    v0 = mesh.AddVertex(edges[prev1].Center());
+                    v1 = mesh.AddVertex(edges[i1].Center());
+                    v0p = mesh.AddVertex(edges[prev1].Center() + Vector3.up);
+                    v1p = mesh.AddVertex(edges[i1].Center() + Vector3.up);
+                    Debug.Log("Adding op corner faces...");
+                    mesh.AddFace(v0, v0p, v1p, v1);
+                }
+            }
+
+            if (l.Count == 3)
+            {
+                int i = l[0];
                 int j = i > 0 ? i - 1 : 3;
                 var v0 = mesh.AddVertex(edges[j].Center());
                 var v1 = mesh.AddVertex(edges[i].Center());
@@ -376,66 +430,169 @@ public class BMeshOperators
                 mesh.AddFace(v0, v1, v1p, v0p);
             }
 
-            if (o0 + o1 + o2 + o3 == 2)
+            if (l.Count == 4) continue;
+        }
+    }
+
+    class MarchingCubesOperator // namespace for helper types
+    {
+        // Permutation of points to put them in canonial form
+        class Transform
+        {
+            public int offset;
+
+            public Transform(int _offset)
             {
-                int i0 = -1;
-                int i1 = -1;
-                for (int k = 0; k < occupancies.Count; ++k)
-                {
-                    if (occupancies[k][0] == 1)
-                    {
-                        if (i0 == -1)
-                        {
-                            i0 = k;
-                        }
-                        else if (i1 == -1)
-                        {
-                            i1 = k;
-                            break;
-                        }
-                    }
-                }
-                int prev0 = i0 > 0 ? i0 - 1 : 3;
-                int next0 = (i0 + 1) % 4;
-                int prev1 = i1 > 0 ? i1 - 1 : 3;
-                int next1 = (i1 + 1) % 4;
-
-                if (i1 == prev0)
-                {
-                    i1 = i0;
-                    i0 = i1;
-                    prev0 = i0 > 0 ? i0 - 1 : 3;
-                    next0 = (i0 + 1) % 4;
-                    prev1 = i1 > 0 ? i1 - 1 : 3;
-                    next1 = (i1 + 1) % 4;
-                }
-                if (i0 == prev1)
-                {
-                    var v0 = mesh.AddVertex(edges[prev0].Center());
-                    var v1 = mesh.AddVertex(edges[i1].Center());
-                    var v0p = mesh.AddVertex(edges[prev0].Center() + Vector3.up);
-                    var v1p = mesh.AddVertex(edges[i1].Center() + Vector3.up);
-                    Debug.Log("Adding regular wall face...");
-                    mesh.AddFace(v0, v1, v1p, v0p);
-                }
-                else
-                {
-                    var v0 = mesh.AddVertex(edges[prev0].Center());
-                    var v1 = mesh.AddVertex(edges[i0].Center());
-                    var v0p = mesh.AddVertex(edges[prev0].Center() + Vector3.up);
-                    var v1p = mesh.AddVertex(edges[i0].Center() + Vector3.up);
-                    mesh.AddFace(v0, v1, v1p, v0p);
-
-                    v0 = mesh.AddVertex(edges[prev1].Center());
-                    v1 = mesh.AddVertex(edges[i1].Center());
-                    v0p = mesh.AddVertex(edges[prev1].Center() + Vector3.up);
-                    v1p = mesh.AddVertex(edges[i1].Center() + Vector3.up);
-                    Debug.Log("Adding op corner faces...");
-                    mesh.AddFace(v0, v1, v1p, v0p);
-                }
+                offset = _offset;
             }
 
-            if (o0 == 1 && o1 == 1 && o2 == 1 && o3 == 1) continue;
+            public int ToCanonical(int index)
+            {
+                return (index - offset + 4) % 4;
+            }
+
+            public int FromCanonical(int index)
+            {
+                return (index + offset) % 4;
+            }
         }
+
+        enum Pattern
+        {
+            Wall,
+            Corner,
+            DoubleCorner,
+            InnerCorner,
+            None
+        }
+
+        class Configuration
+        {
+            public Transform transform;
+            public Pattern pattern;
+
+            public Configuration(Transform _transform, Pattern _pattern)
+            {
+                transform = _transform;
+                pattern = _pattern;
+            }
+        }
+
+        public static void Run(BMesh mesh, BMesh grid, string occupancyAttr)
+        {
+            foreach (var f in grid.faces)
+            {
+                Debug.Assert(f.vertcount == 4);
+                var verts = f.NeighborVertices();
+                var edges = f.NeighborEdges();
+                var occupancies = verts.ConvertAll(v => (v.attributes[occupancyAttr] as FloatAttributeValue).data);
+                for (int k = 0; k < occupancies.Count; ++k)
+                {
+                    occupancies[k][0] = Mathf.Ceil(occupancies[k][0]);
+                }
+                int o0 = occupancies[0][0] > 0 ? 1 : 0;
+                int o1 = occupancies[1][0] > 0 ? 1 : 0;
+                int o2 = occupancies[2][0] > 0 ? 1 : 0;
+                int o3 = occupancies[3][0] > 0 ? 1 : 0;
+
+                int hash = (
+                    (o0 << 0) +
+                    (o1 << 1) +
+                    (o2 << 2) +
+                    (o3 << 3)
+                );
+                var lut = new Configuration[]
+                {
+                    new Configuration(new Transform(0), Pattern.None),
+                    new Configuration(new Transform(0), Pattern.Corner),
+                    new Configuration(new Transform(1), Pattern.Corner),
+                    new Configuration(new Transform(0), Pattern.Wall),
+
+                    new Configuration(new Transform(2), Pattern.Corner),
+                    new Configuration(new Transform(0), Pattern.DoubleCorner),
+                    new Configuration(new Transform(1), Pattern.Wall),
+                    new Configuration(new Transform(3), Pattern.InnerCorner),
+
+                    new Configuration(new Transform(3), Pattern.Corner),
+                    new Configuration(new Transform(3), Pattern.Wall),
+                    new Configuration(new Transform(1), Pattern.DoubleCorner),
+                    new Configuration(new Transform(2), Pattern.InnerCorner),
+
+                    new Configuration(new Transform(2), Pattern.Wall),
+                    new Configuration(new Transform(1), Pattern.InnerCorner),
+                    new Configuration(new Transform(0), Pattern.InnerCorner),
+                    new Configuration(new Transform(0), Pattern.None)
+                };
+
+                var config = lut[hash];
+
+                switch (config.pattern)
+                {
+                    case Pattern.Wall:
+                        {
+                            int i = config.transform.FromCanonical(1);
+                            int j = config.transform.FromCanonical(3);
+                            var v0 = mesh.AddVertex(edges[j].Center());
+                            var v1 = mesh.AddVertex(edges[i].Center());
+                            var v0p = mesh.AddVertex(edges[j].Center() + Vector3.up);
+                            var v1p = mesh.AddVertex(edges[i].Center() + Vector3.up);
+                            Debug.Log("Adding Wall face...");
+                            mesh.AddFace(v0, v0p, v1p, v1);
+                            break;
+                        }
+                    case Pattern.Corner:
+                        {
+                            int i = config.transform.FromCanonical(0);
+                            int j = config.transform.FromCanonical(3);
+                            var v0 = mesh.AddVertex(edges[j].Center());
+                            var v1 = mesh.AddVertex(edges[i].Center());
+                            var v0p = mesh.AddVertex(edges[j].Center() + Vector3.up);
+                            var v1p = mesh.AddVertex(edges[i].Center() + Vector3.up);
+                            Debug.Log("Adding Corner face...");
+                            mesh.AddFace(v0, v0p, v1p, v1);
+                            break;
+                        }
+                    case Pattern.DoubleCorner:
+                        {
+                            int i = config.transform.FromCanonical(0);
+                            int j = config.transform.FromCanonical(3);
+                            var v0 = mesh.AddVertex(edges[j].Center());
+                            var v1 = mesh.AddVertex(edges[i].Center());
+                            var v0p = mesh.AddVertex(edges[j].Center() + Vector3.up);
+                            var v1p = mesh.AddVertex(edges[i].Center() + Vector3.up);
+                            Debug.Log("Adding DoubleCorner faces...");
+                            mesh.AddFace(v0, v0p, v1p, v1);
+
+                            i = config.transform.FromCanonical(1);
+                            j = config.transform.FromCanonical(2);
+                            v0 = mesh.AddVertex(edges[j].Center());
+                            v1 = mesh.AddVertex(edges[i].Center());
+                            v0p = mesh.AddVertex(edges[j].Center() + Vector3.up);
+                            v1p = mesh.AddVertex(edges[i].Center() + Vector3.up);
+                            mesh.AddFace(v0, v0p, v1p, v1);
+                            break;
+                        }
+                    case Pattern.InnerCorner:
+                        {
+                            int i = config.transform.FromCanonical(0);
+                            int j = config.transform.FromCanonical(3);
+                            var v0 = mesh.AddVertex(edges[j].Center());
+                            var v1 = mesh.AddVertex(edges[i].Center());
+                            var v0p = mesh.AddVertex(edges[j].Center() + Vector3.up);
+                            var v1p = mesh.AddVertex(edges[i].Center() + Vector3.up);
+                            Debug.Log("Adding InnerCorner face...");
+                            mesh.AddFace(v0, v1, v1p, v0p);
+                            break;
+                        }
+                    case Pattern.None:
+                        break;
+                }
+            }
+        }
+    }
+
+    public static void MarchingCubes(BMesh mesh, BMesh grid, string occupancyAttr)
+    {
+        MarchingCubesOperator.Run(mesh, grid, occupancyAttr);
     }
 }

@@ -390,6 +390,7 @@ public class WorldGenerator : MonoBehaviour
         if (bmesh == null) return;
         Gizmos.matrix = transform.localToWorldMatrix;
         BMeshUnity.DrawGizmos(bmesh);
+        if (skinmesh != null) BMeshUnity.DrawGizmos(skinmesh);
 
         foreach (var v in bmesh.vertices)
         {
