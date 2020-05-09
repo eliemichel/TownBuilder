@@ -23,6 +23,7 @@ public class WorldGeneratorEditor : Editor
         if (GUILayout.Button("Generate Hex Grid")) cont.GenerateSubdividedHex();
         if (GUILayout.Button("Generate Quad")) cont.GenerateQuad();
         if (GUILayout.Button("Generate Tile")) cont.GenerateTile();
+        if (GUILayout.Button("Generate Tile At Cursor")) cont.GenerateTileAtCursor();
 
         EditorGUILayout.Space();
         if (GUILayout.Button("Remove Edges")) cont.RemoveEdges();

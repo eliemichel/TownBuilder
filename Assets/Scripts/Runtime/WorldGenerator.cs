@@ -15,12 +15,13 @@ public class WorldGenerator : MonoBehaviour
     public bool squarifyQuadsUniform = false;
     public int squarifyQuadsIterations = 10;
     public float squarifyQuadsBorderWeight = 1.0f;
+    public Transform cursor;
 
     public int nextTileQ = 0;
     public int nextTileR = 0;
 
     BMesh bmesh;
-
+    TileAxialCoordinate currentTileCo;
     Dictionary<AxialCoordinate, BMesh> tileSet;
 
     void GenerateSimpleHex()
@@ -63,13 +64,9 @@ public class WorldGenerator : MonoBehaviour
     public void PlayTestScenario()
     {
         Clear();
-        nextTileQ = 0;
-        nextTileR = 0;
-        GenerateTile();
+        GenerateTile(new TileAxialCoordinate(0, 0, divisions));
         ValidateTile();
-        nextTileQ = 1;
-        nextTileR = 0;
-        GenerateTile();
+        GenerateTile(new TileAxialCoordinate(1, 0, divisions));
         ValidateTile();
         nextTileQ = 0;
         nextTileR = 1;
@@ -100,11 +97,12 @@ public class WorldGenerator : MonoBehaviour
         ShowMesh();
     }
 
-    public void GenerateSubdividedHex()
+    public void GenerateSubdividedHex(TileAxialCoordinate tileCo = null)
     {
+        if (tileCo == null) tileCo = NextTileCoordinate();
         int n = divisions;
         int pointcount = (2 * n + 1) * (2 * n + 1) - n * (n + 1);
-        Vector2 offset = TileCoordinate().Center(size);
+        Vector2 offset = tileCo.Center(size);
 
         bmesh = new BMesh();
         bmesh.AddVertexAttribute("uv", BMesh.AttributeBaseType.Float, 2);
@@ -126,9 +124,9 @@ public class WorldGenerator : MonoBehaviour
             var glued = v.attributes["glued"] as BMesh.FloatAttributeValue;
             if (tileSet != null)
             {
-                foreach (var tileCo in TileCoordinate().NeighboringTiles(co))
+                foreach (var neighborTileCo in tileCo.NeighboringTiles(co))
                 {
-                    if (tileSet.ContainsKey(tileCo))
+                    if (tileSet.ContainsKey(neighborTileCo))
                     {
                         glued.data[0] = 1;
                         break;
@@ -161,29 +159,50 @@ public class WorldGenerator : MonoBehaviour
         Debug.Assert(bmesh.faces.Count == 6 * n * n);
         Debug.Assert(bmesh.loops.Count == 3 * 6 * n * n);
         Debug.Assert(bmesh.vertices.Count == pointcount);
+        currentTileCo = tileCo;
         ShowMesh();
-        return;
     }
 
-    public void GenerateTile()
+    public void GenerateTile(TileAxialCoordinate tileCo = null)
     {
-        GenerateSubdividedHex();
+        if (tileCo == null) tileCo = NextTileCoordinate();
+        GenerateSubdividedHex(tileCo);
+        RemoveEdges();
+        Subdivide();
+        for (int i = 0; i < 3; ++i) SquarifyQuads();
+    }
+
+    public void GenerateTileAtCursor()
+    {
+        if (cursor == null) return;
+        Vector2 p = new Vector2(cursor.position.x, cursor.position.z);
+        var tileCo = TileAxialCoordinate.AtPosition(p, size, divisions);
+        if (tileSet != null && tileSet.ContainsKey(tileCo)) return;
+        if (currentTileCo != null)
+        {
+            if (currentTileCo.Equals(tileCo)) return;
+            else ValidateTile();
+        }
+        Debug.Log("Generating tile at " + tileCo + "...");
+        GenerateSubdividedHex(tileCo);
         RemoveEdges();
         Subdivide();
         for (int i = 0; i < 3; ++i) SquarifyQuads();
     }
 
     // Coord of the large tile
-    TileAxialCoordinate TileCoordinate()
+    TileAxialCoordinate NextTileCoordinate()
     {
         return new TileAxialCoordinate(nextTileQ, nextTileR, divisions);
     }
 
     public void ValidateTile()
     {
+        if (currentTileCo == null || bmesh == null) return;
         if (tileSet == null) tileSet = new Dictionary<AxialCoordinate, BMesh>();
-        tileSet[TileCoordinate()] = bmesh;
+        tileSet[currentTileCo] = bmesh;
         bmesh = null;
+        currentTileCo = null;
     }
 
     public void ShowMesh()
@@ -203,7 +222,9 @@ public class WorldGenerator : MonoBehaviour
 
     public void Clear()
     {
+        bmesh = null;
         tileSet = null;
+        ShowMesh();
     }
 
     bool CanFuse(BMesh.Edge e) // iff it joins two triangles
@@ -291,15 +312,16 @@ public class WorldGenerator : MonoBehaviour
             if (glued.data[0] >= 1 && tileSet != null)
             {
                 var fco = new FloatAxialCoordinate(uv.data[0], uv.data[1]);
-                foreach (var tileCo in TileCoordinate().NeighboringTiles(fco))
+                foreach (var neighborTileCo in currentTileCo.NeighboringTiles(fco))
                 {
-                    if (tileSet.ContainsKey(tileCo))
+                    if (tileSet.ContainsKey(neighborTileCo))
                     {
-                        var gluedCo = TileCoordinate().ConvertLocalCoordTo(fco, tileCo);
+                        var gluedCo = currentTileCo.ConvertLocalCoordTo(fco, neighborTileCo);
                         var gluedUv = new BMesh.FloatAttributeValue(gluedCo.q, gluedCo.r);
-                        BMesh.Vertex target = BMeshOperators.Nearpoint(tileSet[tileCo], gluedUv, "uv");
+                        BMesh.Vertex target = BMeshOperators.Nearpoint(tileSet[neighborTileCo], gluedUv, "uv");
                         Debug.Assert(target != null);
-                        Debug.Assert(BMesh.AttributeValue.Distance(target.attributes["uv"], gluedUv) < 1e-6);
+                        float dist = BMesh.AttributeValue.Distance(target.attributes["uv"], gluedUv);
+                        Debug.Assert(dist < 1e-5, "Distance in UVs is too large: " + dist);
                         v.attributes["restpos"] = new BMesh.FloatAttributeValue(target.point);
                         weight.data[0] = 9999;
                     }
@@ -316,7 +338,7 @@ public class WorldGenerator : MonoBehaviour
 
     public void Generate()
     {
-        GenerateSubdividedHex();
+        GenerateSubdividedHex(NextTileCoordinate());
     }
 
     void Update()
@@ -329,7 +351,7 @@ public class WorldGenerator : MonoBehaviour
 
         if (run)
         {
-            SquarifyQuads();
+            GenerateTileAtCursor();
         }
     }
 

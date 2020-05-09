@@ -16,15 +16,37 @@ public class TileAxialCoordinate : AxialCoordinate
         n = _n;
     }
 
-    public override Vector2 Center(float size)
+    static Matrix4x4 TileCoordToWorld(int n)
     {
         float sqrt3 = Mathf.Sqrt(3);
-        var tileCoordToWorld = new Matrix4x4(
+        return new Matrix4x4(
             new Vector2(3, -sqrt3) / 2 * n,
             new Vector2(sqrt3, 3) / 2 * n,
             Vector2.zero, Vector2.zero
         );
-        return tileCoordToWorld * base.Center(size);
+    }
+
+    static Matrix4x4 WordCoordToTile(int n)
+    {
+        float sqrt3 = Mathf.Sqrt(3);
+        return (new Matrix4x4(
+            new Vector2(1, sqrt3/3) / 2 / n,
+            new Vector2(-sqrt3/3, 1) / 2 / n,
+            Vector2.zero, Vector2.zero
+        ));
+    }
+
+    public static TileAxialCoordinate AtPosition(Vector2 p, float size, int n)
+    {
+        var fco = FloatAxialCoordinate.AtPosition(WordCoordToTile(n) * p, size);
+        int q = (int)Mathf.Round(fco.q);
+        int r = (int)Mathf.Round(fco.r);
+        return new TileAxialCoordinate(q, r, n);
+    }
+
+    public override Vector2 Center(float size)
+    {
+        return TileCoordToWorld(n) * base.Center(size);
     }
 
     // List of tiles next to TileCoordinate() (tile hex coords) that also contain co (local hex coord)

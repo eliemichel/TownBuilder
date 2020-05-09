@@ -13,6 +13,11 @@ public class FloatAxialCoordinate
         r = _r;
     }
 
+    public override string ToString()
+    {
+        return "FloatAxialCoordinate(" + q + " " + r + ")";
+    }
+
     public virtual Vector2 Center(float size)
     {
         return new Vector2(q * size * 3 / 2, Mathf.Sqrt(3) * size * (r + q / 2.0f));
