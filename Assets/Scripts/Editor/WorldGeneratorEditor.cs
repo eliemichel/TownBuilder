@@ -29,6 +29,7 @@ public class WorldGeneratorEditor : Editor
         if (GUILayout.Button("Remove Edges")) cont.RemoveEdges();
         if (GUILayout.Button("Subdivide")) cont.Subdivide();
         if (GUILayout.Button("SquarifyQuads")) cont.SquarifyQuads();
+        if (GUILayout.Button("ComputeSkin")) cont.ComputeSkin();
 
         EditorGUILayout.Space();
         if (GUILayout.Button("Validate Tile")) cont.ValidateTile();

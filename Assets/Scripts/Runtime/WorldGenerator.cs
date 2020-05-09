@@ -21,9 +21,16 @@ public class WorldGenerator : MonoBehaviour
     public int nextTileQ = 0;
     public int nextTileR = 0;
 
+    class Tile
+    {
+        public BMesh mesh; // control mesh
+        public BMesh skin; // visible mesh
+    }
+
     BMesh bmesh;
+    BMesh skinmesh;
     TileAxialCoordinate currentTileCo;
-    Dictionary<AxialCoordinate, BMesh> tileSet;
+    Dictionary<AxialCoordinate, Tile> tileSet;
 
     void GenerateSimpleHex()
     {
@@ -110,7 +117,7 @@ public class WorldGenerator : MonoBehaviour
         bmesh.AddVertexAttribute("restpos", BMesh.AttributeBaseType.Float, 3);
         bmesh.AddVertexAttribute("weight", BMesh.AttributeBaseType.Float, 1);
         bmesh.AddVertexAttribute("glued", BMesh.AttributeBaseType.Float, 1);
-        bmesh.AddEdgeAttribute("occupancy", BMesh.AttributeBaseType.Float, maxHeight); // core voxel data
+        bmesh.AddVertexAttribute("occupancy", BMesh.AttributeBaseType.Float, maxHeight); // core voxel data
 
         for (int i = 0; i < pointcount; ++i)
         {
@@ -163,6 +170,11 @@ public class WorldGenerator : MonoBehaviour
         Debug.Assert(bmesh.vertices.Count == pointcount);
         currentTileCo = tileCo;
         ShowMesh();
+
+        // DEBUG
+        var occupancy = bmesh.vertices[pointcount / 2].attributes["occupancy"] as BMesh.FloatAttributeValue;
+        occupancy.data[0] = 1;
+        occupancy.data[1] = 1;
     }
 
     public void GenerateTile(TileAxialCoordinate tileCo = null)
@@ -201,9 +213,10 @@ public class WorldGenerator : MonoBehaviour
     public void ValidateTile()
     {
         if (currentTileCo == null || bmesh == null) return;
-        if (tileSet == null) tileSet = new Dictionary<AxialCoordinate, BMesh>();
-        tileSet[currentTileCo] = bmesh;
+        if (tileSet == null) tileSet = new Dictionary<AxialCoordinate, Tile>();
+        tileSet[currentTileCo] = new Tile { mesh = bmesh, skin = skinmesh };
         bmesh = null;
+        skinmesh = null;
         currentTileCo = null;
     }
 
@@ -215,16 +228,22 @@ public class WorldGenerator : MonoBehaviour
         {
             foreach (var pair in tileSet)
             {
-                BMeshOperators.Merge(acc, pair.Value);
+                BMeshOperators.Merge(acc, pair.Value.mesh);
+                if (pair.Value.skin != null)
+                {
+                    BMeshOperators.Merge(acc, pair.Value.skin);
+                }
             }
         }
         if (bmesh != null) BMeshOperators.Merge(acc, bmesh);
+        if (skinmesh != null) BMeshOperators.Merge(acc, skinmesh);
         BMeshUnity.SetInMeshFilter(acc, GetComponent<MeshFilter>());
     }
 
     public void Clear()
     {
         bmesh = null;
+        skinmesh = null;
         tileSet = null;
         currentTileCo = null;
         ShowMesh();
@@ -321,7 +340,7 @@ public class WorldGenerator : MonoBehaviour
                     {
                         var gluedCo = currentTileCo.ConvertLocalCoordTo(fco, neighborTileCo);
                         var gluedUv = new BMesh.FloatAttributeValue(gluedCo.q, gluedCo.r);
-                        BMesh.Vertex target = BMeshOperators.Nearpoint(tileSet[neighborTileCo], gluedUv, "uv");
+                        BMesh.Vertex target = BMeshOperators.Nearpoint(tileSet[neighborTileCo].mesh, gluedUv, "uv");
                         Debug.Assert(target != null);
                         float dist = BMesh.AttributeValue.Distance(target.attributes["uv"], gluedUv);
                         Debug.Assert(dist < 1e-5, "Distance in UVs is too large: " + dist);
@@ -336,6 +355,14 @@ public class WorldGenerator : MonoBehaviour
         {
             BMeshOperators.SquarifyQuads(bmesh, squarifyQuadsRate, squarifyQuadsUniform);
         }
+        ShowMesh();
+    }
+
+    public void ComputeSkin()
+    {
+        if (bmesh == null) return;
+        skinmesh = new BMesh();
+        BMeshOperators.MarchingCubes(skinmesh, bmesh, "occupancy");
         ShowMesh();
     }
 
@@ -381,16 +408,16 @@ public class WorldGenerator : MonoBehaviour
 #endif // UNITY_EDITOR
         }
 
-        if (bmesh.HasEdgeAttribute("occupancy"))
+        if (bmesh.HasVertexAttribute("occupancy"))
         {
-            foreach (var e in bmesh.edges)
+            foreach (var v in bmesh.vertices)
             {
-                var occupancy = e.attributes["occupancy"] as BMesh.FloatAttributeValue;
+                var occupancy = v.attributes["occupancy"] as BMesh.FloatAttributeValue;
                 for (int i = 0; i < occupancy.data.Length; ++i)
                 {
                     if (occupancy.data[i] > 0) Gizmos.color = Color.blue;
                     else Gizmos.color = Color.gray;
-                    Gizmos.DrawCube(e.Center() + Vector3.up * i * 0.5f, Vector3.one * 0.1f);
+                    Gizmos.DrawCube(v.point + Vector3.up * i, Vector3.one * 0.1f);
                 }
             }
         }

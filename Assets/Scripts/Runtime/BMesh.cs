@@ -195,6 +195,22 @@ public class BMesh
             return verts;
         }
 
+        // garrantied to match NeighborVertices order (edge[0] = vert[0]->vert[1], etc.)
+        public List<Edge> NeighborEdges()
+        {
+            var edges = new List<Edge>();
+            if (this.loop != null)
+            {
+                Loop it = this.loop;
+                do
+                {
+                    edges.Add(it.edge);
+                    it = it.next;
+                } while (it != this.loop);
+            }
+            return edges;
+        }
+
         public Vector3 Center()
         {
             Vector3 p = Vector3.zero;
