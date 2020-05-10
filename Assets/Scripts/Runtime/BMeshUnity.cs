@@ -85,8 +85,21 @@ public class BMeshUnity
             Vector3 no = vert.point + (other.point - vert.point) * 0.1f;
             Gizmos.DrawRay(no, (nother.point - no) * 0.1f);
         }
-
+        Gizmos.color = Color.green;
         int i = 0;
+        foreach (var f in mesh.faces)
+        {
+            Vector3 c = f.Center();
+            Gizmos.DrawLine(c, f.loop.vert.point);
+            Gizmos.DrawRay(c, (f.loop.next.vert.point - c) * 0.2f);
+#if UNITY_EDITOR
+            //var uv = v.attributes["uv"] as BMesh.FloatAttributeValue;
+            Handles.Label(c, "f" + i);
+            ++i;
+#endif // UNITY_EDITOR
+        }
+
+        i = 0;
         foreach (Vertex v in mesh.vertices)
         {
 #if UNITY_EDITOR

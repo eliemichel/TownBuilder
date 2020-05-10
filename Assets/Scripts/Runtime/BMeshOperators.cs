@@ -347,6 +347,7 @@ public class BMeshOperators
         class Transform
         {
             public int[] permutation; // permutation from canonical to config
+            public bool flipped = false;
 
             public Transform(int offset)
             {
@@ -369,6 +370,12 @@ public class BMeshOperators
                             break;
                         case 'z':
                             RotateZ();
+                            break;
+                        case 's':
+                            MirrorX();
+                            break;
+                        default:
+                            Debug.Assert(false);
                             break;
                     }
                 }
@@ -422,6 +429,23 @@ public class BMeshOperators
                 };
             }
 
+            void MirrorX()
+            {
+                permutation = new int[]
+                {
+                    permutation[1],
+                    permutation[0],
+                    permutation[3],
+                    permutation[2],
+
+                    permutation[5],
+                    permutation[4],
+                    permutation[7],
+                    permutation[6]
+                };
+                flipped = !flipped;
+            }
+
             public int FromCanonical(int index)
             {
                 return permutation[index];
@@ -473,7 +497,8 @@ public class BMeshOperators
             WingCorner,
             OppositeCorner,
             WallTopVar,
-            TripleCorner
+            TripleCorner,
+            TowerRoof
         }
 
         class Configuration
@@ -490,8 +515,8 @@ public class BMeshOperators
 
         static readonly Configuration[] LUT = new Configuration[]
         {
-            #region
-            new Configuration(new Transform(""), Pattern.TripleCorner),
+            #region top = [0 0 0 0] OK
+            new Configuration(new Transform(""), Pattern.None),
             new Configuration(new Transform(""), Pattern.CornerTop),
             new Configuration(new Transform("zzz"), Pattern.CornerTop),
             new Configuration(new Transform(""), Pattern.WallTop),
@@ -509,32 +534,188 @@ public class BMeshOperators
             new Configuration(new Transform("zz"), Pattern.WallTop),
             new Configuration(new Transform("zzz"), Pattern.InnerCornerTop),
             new Configuration(new Transform(""), Pattern.InnerCornerTop),
-            new Configuration(new Transform(""), Pattern.None),
+            new Configuration(new Transform(""), Pattern.Roof),
             #endregion
             // --------------------------------------------------------- //
-            #region
-            new Configuration(new Transform(""), Pattern.None),
+            #region top = [1 0 0 0] OK
+            new Configuration(new Transform("xxx"), Pattern.CornerTop),
             new Configuration(new Transform(""), Pattern.Corner),
+            new Configuration(new Transform("xxx"), Pattern.DoubleCornerTop),
+            new Configuration(new Transform("xxxzzz"), Pattern.InnerCornerTop),
+
+            new Configuration(new Transform("zz"), Pattern.OppositeCorner),
+            new Configuration(new Transform("y"), Pattern.WallTopVar),
+            new Configuration(new Transform("zzzs"), Pattern.WallTopVar),
+            new Configuration(new Transform("szz"), Pattern.WingCorner),
+
+            new Configuration(new Transform("y"), Pattern.DoubleCornerTop),
+            new Configuration(new Transform("yz"), Pattern.InnerCornerTop),
+            new Configuration(new Transform("z"), Pattern.TripleCorner),
+            new Configuration(new Transform("zz"), Pattern.TowerCorner),
+
+            new Configuration(new Transform("zz"), Pattern.WallTopVar),
+            new Configuration(new Transform("zzz"), Pattern.WingCorner),
+            new Configuration(new Transform(""), Pattern.InnerCornerTopVar),
+            new Configuration(new Transform(""), Pattern.TowerRoof),
+            #endregion
+            // --------------------------------------------------------- //
+            #region top = [0 1 0 0] OK
+            new Configuration(new Transform("zzzxxx"), Pattern.CornerTop),
+            new Configuration(new Transform("zzzy"), Pattern.DoubleCornerTop),
             new Configuration(new Transform("zzz"), Pattern.Corner),
-            new Configuration(new Transform(""), Pattern.Wall),
+            new Configuration(new Transform("zzzyz"), Pattern.InnerCornerTop),
+
+            new Configuration(new Transform("zzzxxx"), Pattern.DoubleCornerTop),
+            new Configuration(new Transform("zzzz"), Pattern.TripleCorner),
+            new Configuration(new Transform("zzzxxxzzz"), Pattern.InnerCornerTop),
+            new Configuration(new Transform("zzzzz"), Pattern.TowerCorner),
+
+            new Configuration(new Transform("zzzzz"), Pattern.OppositeCorner),
+            new Configuration(new Transform("zzzzz"), Pattern.WallTopVar),
+            new Configuration(new Transform("zzzy"), Pattern.WallTopVar),
+            new Configuration(new Transform("zzzzzz"), Pattern.WingCorner),
+
+            new Configuration(new Transform("zzzzzzs"), Pattern.WallTopVar),
+            new Configuration(new Transform("zzz"), Pattern.InnerCornerTopVar),
+            new Configuration(new Transform("zzzszz"), Pattern.WingCorner),
+            new Configuration(new Transform("zzz"), Pattern.TowerRoof),
+            #endregion
+            // --------------------------------------------------------- //
+            #region top = [1 1 0 0]
+            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform(0), Pattern.Corner),
+            new Configuration(new Transform(1), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.Wall),
+
+            new Configuration(new Transform(2), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.DoubleCorner),
+            new Configuration(new Transform(1), Pattern.Wall),
+            new Configuration(new Transform(3), Pattern.InnerCorner),
+
+            new Configuration(new Transform(3), Pattern.Corner),
+            new Configuration(new Transform(3), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.DoubleCorner),
+            new Configuration(new Transform(2), Pattern.InnerCorner),
+
+            new Configuration(new Transform(2), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.None),
+            #endregion
+
+            // --------------------------------------------------------- //
+            #region top = [0 0 1 0] OK
+            new Configuration(new Transform("zzxxx"), Pattern.CornerTop),
+            new Configuration(new Transform("zzzz"), Pattern.OppositeCorner),
+            new Configuration(new Transform("zzy"), Pattern.DoubleCornerTop),
+            new Configuration(new Transform("zzzz"), Pattern.WallTopVar),
 
             new Configuration(new Transform("zz"), Pattern.Corner),
-            new Configuration(new Transform(""), Pattern.DoubleCorner),
-            new Configuration(new Transform("zzz"), Pattern.Wall),
-            new Configuration(new Transform("z"), Pattern.InnerCorner),
+            new Configuration(new Transform("zzy"), Pattern.WallTopVar),
+            new Configuration(new Transform("zzyz"), Pattern.InnerCornerTop),
+            new Configuration(new Transform("zzzzz"), Pattern.WingCorner),
+
+            new Configuration(new Transform("zzxxx"), Pattern.DoubleCornerTop),
+            new Configuration(new Transform("zzzzzs"), Pattern.WallTopVar),
+            new Configuration(new Transform("zzz"), Pattern.TripleCorner),
+            new Configuration(new Transform("zz"), Pattern.InnerCornerTopVar),
+
+            new Configuration(new Transform("zzxxxzzz"), Pattern.InnerCornerTop),
+            new Configuration(new Transform("zzszz"), Pattern.WingCorner),
+            new Configuration(new Transform("zzzz"), Pattern.TowerCorner),
+            new Configuration(new Transform("zz"), Pattern.TowerRoof),
+            #endregion
+            // --------------------------------------------------------- //
+            #region top = [1 0 1 0]
+            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform(0), Pattern.Corner),
+            new Configuration(new Transform(1), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.Wall),
+
+            new Configuration(new Transform(2), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.DoubleCorner),
+            new Configuration(new Transform(1), Pattern.Wall),
+            new Configuration(new Transform(3), Pattern.InnerCorner),
+
+            new Configuration(new Transform(3), Pattern.Corner),
+            new Configuration(new Transform(3), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.DoubleCorner),
+            new Configuration(new Transform(2), Pattern.InnerCorner),
+
+            new Configuration(new Transform(2), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.None),
+            #endregion
+            // --------------------------------------------------------- //
+            #region top = [0 1 1 0]
+            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform(0), Pattern.Corner),
+            new Configuration(new Transform(1), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.Wall),
+
+            new Configuration(new Transform(2), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.DoubleCorner),
+            new Configuration(new Transform(1), Pattern.Wall),
+            new Configuration(new Transform(3), Pattern.InnerCorner),
+
+            new Configuration(new Transform(3), Pattern.Corner),
+            new Configuration(new Transform(3), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.DoubleCorner),
+            new Configuration(new Transform(2), Pattern.InnerCorner),
+
+            new Configuration(new Transform(2), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.None),
+            #endregion
+            // --------------------------------------------------------- //
+            #region top = [1 1 1 0]
+            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform(0), Pattern.Corner),
+            new Configuration(new Transform(1), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.Wall),
+
+            new Configuration(new Transform(2), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.DoubleCorner),
+            new Configuration(new Transform(1), Pattern.Wall),
+            new Configuration(new Transform(3), Pattern.InnerCorner),
+
+            new Configuration(new Transform(3), Pattern.Corner),
+            new Configuration(new Transform(3), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.DoubleCorner),
+            new Configuration(new Transform(2), Pattern.InnerCorner),
+
+            new Configuration(new Transform(2), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.None),
+            #endregion
+
+            // --------------------------------------------------------- //
+            #region top = [0 0 0 1] OK
+            new Configuration(new Transform("zxxx"), Pattern.CornerTop),
+            new Configuration(new Transform("zxxx"), Pattern.DoubleCornerTop),
+            new Configuration(new Transform("zzz"), Pattern.OppositeCorner),
+            new Configuration(new Transform("zzzzs"), Pattern.WallTopVar),
+
+            new Configuration(new Transform("zy"), Pattern.DoubleCornerTop),
+            new Configuration(new Transform("zz"), Pattern.TripleCorner),
+            new Configuration(new Transform("zzz"), Pattern.WallTopVar),
+            new Configuration(new Transform("z"), Pattern.InnerCornerTopVar),
 
             new Configuration(new Transform("z"), Pattern.Corner),
-            new Configuration(new Transform("z"), Pattern.Wall),
-            new Configuration(new Transform("zzz"), Pattern.DoubleCorner),
-            new Configuration(new Transform("zz"), Pattern.InnerCorner),
+            new Configuration(new Transform("zxxxzzz"), Pattern.InnerCornerTop),
+            new Configuration(new Transform("zy"), Pattern.WallTopVar),
+            new Configuration(new Transform("zszz"), Pattern.WingCorner),
 
-            new Configuration(new Transform("zz"), Pattern.Wall),
-            new Configuration(new Transform("zzz"), Pattern.InnerCorner),
-            new Configuration(new Transform(""), Pattern.InnerCorner),
-            new Configuration(new Transform(""), Pattern.None),
+            new Configuration(new Transform("zyz"), Pattern.InnerCornerTop),
+            new Configuration(new Transform("zzz"), Pattern.TowerCorner),
+            new Configuration(new Transform("zzzz"), Pattern.WingCorner),
+            new Configuration(new Transform("z"), Pattern.TowerRoof),
             #endregion
             // --------------------------------------------------------- //
-            #region
+            #region top = [1 0 0 1]
             new Configuration(new Transform(0), Pattern.None),
             new Configuration(new Transform(0), Pattern.Corner),
             new Configuration(new Transform(1), Pattern.Corner),
@@ -556,7 +737,7 @@ public class BMeshOperators
             new Configuration(new Transform(0), Pattern.None),
             #endregion
             // --------------------------------------------------------- //
-            #region
+            #region top = [0 1 0 1]
             new Configuration(new Transform(0), Pattern.None),
             new Configuration(new Transform(0), Pattern.Corner),
             new Configuration(new Transform(1), Pattern.Corner),
@@ -578,7 +759,30 @@ public class BMeshOperators
             new Configuration(new Transform(0), Pattern.None),
             #endregion
             // --------------------------------------------------------- //
-            #region
+            #region top = [1 1 0 1]
+            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform(0), Pattern.Corner),
+            new Configuration(new Transform(1), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.Wall),
+
+            new Configuration(new Transform(2), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.DoubleCorner),
+            new Configuration(new Transform(1), Pattern.Wall),
+            new Configuration(new Transform(3), Pattern.InnerCorner),
+
+            new Configuration(new Transform(3), Pattern.Corner),
+            new Configuration(new Transform(3), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.DoubleCorner),
+            new Configuration(new Transform(2), Pattern.InnerCorner),
+
+            new Configuration(new Transform(2), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.None),
+            #endregion
+
+            // --------------------------------------------------------- //
+            #region top = [0 0 1 1]
             new Configuration(new Transform(0), Pattern.None),
             new Configuration(new Transform(0), Pattern.Corner),
             new Configuration(new Transform(1), Pattern.Corner),
@@ -600,7 +804,7 @@ public class BMeshOperators
             new Configuration(new Transform(0), Pattern.None),
             #endregion
             // --------------------------------------------------------- //
-            #region
+            #region top = [1 0 1 1]
             new Configuration(new Transform(0), Pattern.None),
             new Configuration(new Transform(0), Pattern.Corner),
             new Configuration(new Transform(1), Pattern.Corner),
@@ -622,7 +826,7 @@ public class BMeshOperators
             new Configuration(new Transform(0), Pattern.None),
             #endregion
             // --------------------------------------------------------- //
-            #region
+            #region top = [0 1 1 1]
             new Configuration(new Transform(0), Pattern.None),
             new Configuration(new Transform(0), Pattern.Corner),
             new Configuration(new Transform(1), Pattern.Corner),
@@ -644,183 +848,7 @@ public class BMeshOperators
             new Configuration(new Transform(0), Pattern.None),
             #endregion
             // --------------------------------------------------------- //
-            #region
-            new Configuration(new Transform(0), Pattern.None),
-            new Configuration(new Transform(0), Pattern.Corner),
-            new Configuration(new Transform(1), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.Wall),
-
-            new Configuration(new Transform(2), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.DoubleCorner),
-            new Configuration(new Transform(1), Pattern.Wall),
-            new Configuration(new Transform(3), Pattern.InnerCorner),
-
-            new Configuration(new Transform(3), Pattern.Corner),
-            new Configuration(new Transform(3), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.DoubleCorner),
-            new Configuration(new Transform(2), Pattern.InnerCorner),
-
-            new Configuration(new Transform(2), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.None),
-            #endregion
-            // --------------------------------------------------------- //
-            #region
-            new Configuration(new Transform(0), Pattern.None),
-            new Configuration(new Transform(0), Pattern.Corner),
-            new Configuration(new Transform(1), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.Wall),
-
-            new Configuration(new Transform(2), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.DoubleCorner),
-            new Configuration(new Transform(1), Pattern.Wall),
-            new Configuration(new Transform(3), Pattern.InnerCorner),
-
-            new Configuration(new Transform(3), Pattern.Corner),
-            new Configuration(new Transform(3), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.DoubleCorner),
-            new Configuration(new Transform(2), Pattern.InnerCorner),
-
-            new Configuration(new Transform(2), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.None),
-            #endregion
-            // --------------------------------------------------------- //
-            #region
-            new Configuration(new Transform(0), Pattern.None),
-            new Configuration(new Transform(0), Pattern.Corner),
-            new Configuration(new Transform(1), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.Wall),
-
-            new Configuration(new Transform(2), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.DoubleCorner),
-            new Configuration(new Transform(1), Pattern.Wall),
-            new Configuration(new Transform(3), Pattern.InnerCorner),
-
-            new Configuration(new Transform(3), Pattern.Corner),
-            new Configuration(new Transform(3), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.DoubleCorner),
-            new Configuration(new Transform(2), Pattern.InnerCorner),
-
-            new Configuration(new Transform(2), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.None),
-            #endregion
-            // --------------------------------------------------------- //
-            #region
-            new Configuration(new Transform(0), Pattern.None),
-            new Configuration(new Transform(0), Pattern.Corner),
-            new Configuration(new Transform(1), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.Wall),
-
-            new Configuration(new Transform(2), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.DoubleCorner),
-            new Configuration(new Transform(1), Pattern.Wall),
-            new Configuration(new Transform(3), Pattern.InnerCorner),
-
-            new Configuration(new Transform(3), Pattern.Corner),
-            new Configuration(new Transform(3), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.DoubleCorner),
-            new Configuration(new Transform(2), Pattern.InnerCorner),
-
-            new Configuration(new Transform(2), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.None),
-            #endregion
-            // --------------------------------------------------------- //
-            #region
-            new Configuration(new Transform(0), Pattern.None),
-            new Configuration(new Transform(0), Pattern.Corner),
-            new Configuration(new Transform(1), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.Wall),
-
-            new Configuration(new Transform(2), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.DoubleCorner),
-            new Configuration(new Transform(1), Pattern.Wall),
-            new Configuration(new Transform(3), Pattern.InnerCorner),
-
-            new Configuration(new Transform(3), Pattern.Corner),
-            new Configuration(new Transform(3), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.DoubleCorner),
-            new Configuration(new Transform(2), Pattern.InnerCorner),
-
-            new Configuration(new Transform(2), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.None),
-            #endregion
-            // --------------------------------------------------------- //
-            #region
-            new Configuration(new Transform(0), Pattern.None),
-            new Configuration(new Transform(0), Pattern.Corner),
-            new Configuration(new Transform(1), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.Wall),
-
-            new Configuration(new Transform(2), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.DoubleCorner),
-            new Configuration(new Transform(1), Pattern.Wall),
-            new Configuration(new Transform(3), Pattern.InnerCorner),
-
-            new Configuration(new Transform(3), Pattern.Corner),
-            new Configuration(new Transform(3), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.DoubleCorner),
-            new Configuration(new Transform(2), Pattern.InnerCorner),
-
-            new Configuration(new Transform(2), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.None),
-            #endregion
-            // --------------------------------------------------------- //
-            #region
-            new Configuration(new Transform(0), Pattern.None),
-            new Configuration(new Transform(0), Pattern.Corner),
-            new Configuration(new Transform(1), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.Wall),
-
-            new Configuration(new Transform(2), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.DoubleCorner),
-            new Configuration(new Transform(1), Pattern.Wall),
-            new Configuration(new Transform(3), Pattern.InnerCorner),
-
-            new Configuration(new Transform(3), Pattern.Corner),
-            new Configuration(new Transform(3), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.DoubleCorner),
-            new Configuration(new Transform(2), Pattern.InnerCorner),
-
-            new Configuration(new Transform(2), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.None),
-            #endregion
-            // --------------------------------------------------------- //
-            #region
-            new Configuration(new Transform(0), Pattern.None),
-            new Configuration(new Transform(0), Pattern.Corner),
-            new Configuration(new Transform(1), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.Wall),
-
-            new Configuration(new Transform(2), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.DoubleCorner),
-            new Configuration(new Transform(1), Pattern.Wall),
-            new Configuration(new Transform(3), Pattern.InnerCorner),
-
-            new Configuration(new Transform(3), Pattern.Corner),
-            new Configuration(new Transform(3), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.DoubleCorner),
-            new Configuration(new Transform(2), Pattern.InnerCorner),
-
-            new Configuration(new Transform(2), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.None),
-            #endregion
-            // --------------------------------------------------------- //
-            #region
+            #region top = [1 1 1 1]
             new Configuration(new Transform(0), Pattern.None),
             new Configuration(new Transform(0), Pattern.Corner),
             new Configuration(new Transform(1), Pattern.Corner),
@@ -851,11 +879,16 @@ public class BMeshOperators
             {
                 newVerts[i] = mesh.AddVertex(transform.EdgeCenter(indices[2 * i + 0], indices[2 * i + 1], verts, edges));
             }
+            if (transform.flipped)
+            {
+                System.Array.Reverse(newVerts);
+            }
             mesh.AddFace(newVerts);
         }
 
         public static void Run(BMesh mesh, BMesh grid, string occupancyAttr)
         {
+            int debug = 0;
             foreach (var f in grid.faces)
             {
                 Debug.Assert(f.vertcount == 4);
@@ -865,14 +898,20 @@ public class BMeshOperators
                 var occupancies = vertList.ConvertAll(v => (v.attributes[occupancyAttr] as FloatAttributeValue).data);
 
                 int hash = 0;
-                for (int k = 0; k < 4; ++k)
+                for (int k = 0; k < 8; ++k)
                 {
                     float[] o = occupancies[k % 4];
                     int b = o.Length > k / 4 && o[k / 4] > 0 ? 1 : 0;
                     hash += b << k;
                 }
 
-                var config = LUT[hash % 1];
+                if (debug == 57)
+                {
+                    Debug.Log("DEBUG " + hash);
+                }
+                ++debug;
+
+                var config = LUT[hash];
 
                 switch (config.pattern)
                 {
@@ -1025,6 +1064,17 @@ public class BMeshOperators
                             indices = new int[] { 1,2,  2,6,  2,3 };
                             JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
                             indices = new int[] { 4,5,  5,6,  1,5 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            break;
+                        }
+                    case Pattern.TowerRoof: // flipped InnerCornerTop
+                        {
+                            Debug.Log("Adding TowerRoof face...");
+                            var indices = new int[] { 1,5,  2,6,  4,5 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            indices = new int[] { 4,5,  2,6,  7,4 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            indices = new int[] { 7,4,  2,6,  3,7 };
                             JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
                             break;
                         }
