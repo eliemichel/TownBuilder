@@ -994,21 +994,21 @@ public class BMeshOperators
                             break;
                         case Pattern.Wall:
                             {
-                                Debug.Log("Adding Wall face...");
+                                //Debug.Log("Adding Wall face...");
                                 var indices = new int[] { 3, 0, 7, 4, 5, 6, 1, 2 };
                                 JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
                                 break;
                             }
                         case Pattern.Corner:
                             {
-                                Debug.Log("Adding Corner face...");
+                                //Debug.Log("Adding Corner face...");
                                 var indices = new int[] { 3, 0, 7, 4, 4, 5, 0, 1 };
                                 JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
                                 break;
                             }
                         case Pattern.DoubleCorner:
                             {
-                                Debug.Log("Adding DoubleCorner faces...");
+                                //Debug.Log("Adding DoubleCorner faces...");
                                 var indices = new int[] { 3, 0, 7, 4, 4, 5, 0, 1 };
                                 JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
 
@@ -1018,28 +1018,28 @@ public class BMeshOperators
                             }
                         case Pattern.InnerCorner:
                             {
-                                Debug.Log("Adding InnerCorner face...");
+                                //Debug.Log("Adding InnerCorner face...");
                                 var indices = new int[] { 0, 1, 4, 5, 7, 4, 3, 0 };
                                 JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
                                 break;
                             }
                         case Pattern.WallTop:
                             {
-                                Debug.Log("Adding WallTop face...");
+                                //Debug.Log("Adding WallTop face...");
                                 var indices = new int[] { 3, 0, 0, 4, 1, 5, 1, 2 };
                                 JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
                                 break;
                             }
                         case Pattern.CornerTop:
                             {
-                                Debug.Log("Adding CornerTop face...");
+                                //Debug.Log("Adding CornerTop face...");
                                 var indices = new int[] { 3, 0, 0, 4, 0, 1 };
                                 JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
                                 break;
                             }
                         case Pattern.DoubleCornerTop:
                             {
-                                Debug.Log("Adding DoubleCornerTop faces...");
+                                //Debug.Log("Adding DoubleCornerTop faces...");
                                 var indices = new int[] { 3, 0, 0, 4, 0, 1 };
                                 JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
                                 indices = new int[] { 1, 2, 2, 6, 2, 3 };
@@ -1048,7 +1048,7 @@ public class BMeshOperators
                             }
                         case Pattern.InnerCornerTop:
                             {
-                                Debug.Log("Adding InnerCornerTop faces...");
+                                //Debug.Log("Adding InnerCornerTop faces...");
                                 var indices = new int[] { 3, 0, 0, 1, 2, 6 };
                                 JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
                                 indices = new int[] { 0, 1, 1, 5, 2, 6 };
@@ -1059,14 +1059,14 @@ public class BMeshOperators
                             }
                         case Pattern.Roof:
                             {
-                                Debug.Log("Adding Roof face...");
+                                //Debug.Log("Adding Roof face...");
                                 var indices = new int[] { 0, 4, 1, 5, 2, 6, 3, 7 };
                                 JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
                                 break;
                             }
                         case Pattern.InnerCornerTopVar:
                             {
-                                Debug.Log("Adding InnerCornerTopVar face...");
+                                //Debug.Log("Adding InnerCornerTopVar face...");
                                 var indices = new int[] { 3, 0, 0, 1, 2, 6 };
                                 JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
                                 indices = new int[] { 0, 1, 1, 5, 2, 6 };
@@ -1079,7 +1079,7 @@ public class BMeshOperators
                             }
                         case Pattern.CrossedCorner:
                             {
-                                Debug.Log("Adding CorssedCorner face...");
+                                //Debug.Log("Adding CorssedCorner face...");
                                 var indices = new int[] { 3, 0, 0, 4, 0, 1 };
                                 JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
                                 indices = new int[] { 1, 2, 2, 6, 2, 3 };
@@ -1092,7 +1092,7 @@ public class BMeshOperators
                             }
                         case Pattern.TowerCorner:
                             {
-                                Debug.Log("Adding TowerCorner face...");
+                                //Debug.Log("Adding TowerCorner face...");
                                 var indices = new int[] { 0, 1, 1, 5, 3, 7, 3, 0 };
                                 JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
                                 indices = new int[] { 3, 7, 1, 5, 5, 6, 6, 7 };
@@ -1101,7 +1101,7 @@ public class BMeshOperators
                             }
                         case Pattern.WingCorner:
                             {
-                                Debug.Log("Adding WingCorner face...");
+                                //Debug.Log("Adding WingCorner face...");
                                 var indices = new int[] { 1, 5, 2, 6, 0, 1 };
                                 JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
                                 indices = new int[] { 0, 1, 2, 6, 3, 0 };
@@ -1114,7 +1114,7 @@ public class BMeshOperators
                             }
                         case Pattern.OppositeCorner:
                             {
-                                Debug.Log("Adding OppositeCorner face...");
+                                //Debug.Log("Adding OppositeCorner face...");
                                 var indices = new int[] { 3, 0, 0, 4, 0, 1 };
                                 JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
                                 indices = new int[] { 5, 6, 6, 7, 2, 6 };
@@ -1123,7 +1123,7 @@ public class BMeshOperators
                             }
                         case Pattern.WallTopVar:
                             {
-                                Debug.Log("Adding WallTopVar face...");
+                                //Debug.Log("Adding WallTopVar face...");
                                 var indices = new int[] { 3, 0, 0, 4, 1, 5, 1, 2 };
                                 JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
                                 indices = new int[] { 5, 6, 6, 7, 2, 6 };
@@ -1133,7 +1133,7 @@ public class BMeshOperators
                             }
                         case Pattern.TripleCorner:
                             {
-                                Debug.Log("Adding TripleCorner face...");
+                                //Debug.Log("Adding TripleCorner face...");
                                 var indices = new int[] { 3, 0, 0, 4, 0, 1 };
                                 JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
                                 indices = new int[] { 1, 2, 2, 6, 2, 3 };
@@ -1144,7 +1144,7 @@ public class BMeshOperators
                             }
                         case Pattern.TowerRoof: // flipped InnerCornerTop
                             {
-                                Debug.Log("Adding TowerRoof face...");
+                                //Debug.Log("Adding TowerRoof face...");
                                 var indices = new int[] { 1, 5, 2, 6, 4, 5 };
                                 JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
                                 indices = new int[] { 4, 5, 2, 6, 7, 4 };

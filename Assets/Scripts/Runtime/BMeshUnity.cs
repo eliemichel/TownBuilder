@@ -64,6 +64,7 @@ public class BMeshUnity
         unityMesh.vertices = points;
         if (uvs != null) unityMesh.uv = uvs;
         unityMesh.triangles = triangles;
+        unityMesh.RecalculateNormals();
     }
 
     public static void DrawGizmos(BMesh mesh)
@@ -93,8 +94,7 @@ public class BMeshUnity
             Gizmos.DrawLine(c, f.loop.vert.point);
             Gizmos.DrawRay(c, (f.loop.next.vert.point - c) * 0.2f);
 #if UNITY_EDITOR
-            //var uv = v.attributes["uv"] as BMesh.FloatAttributeValue;
-            Handles.Label(c, "f" + i);
+            //Handles.Label(c, "f" + i);
             ++i;
 #endif // UNITY_EDITOR
         }
@@ -104,7 +104,7 @@ public class BMeshUnity
         {
 #if UNITY_EDITOR
             //var uv = v.attributes["uv"] as BMesh.FloatAttributeValue;
-            Handles.Label(v.point, "" + i);
+            //Handles.Label(v.point, "" + i);
             ++i;
 #endif // UNITY_EDITOR
         }
