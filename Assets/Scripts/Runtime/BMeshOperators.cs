@@ -500,7 +500,7 @@ public class BMeshOperators
             InnerCornerTop,
             Roof,
             InnerCornerTopVar,
-            CorssedCorner,
+            CrossedCorner,
             TowerCorner,
             WingCorner,
             OppositeCorner,
@@ -634,26 +634,26 @@ public class BMeshOperators
             new Configuration(new Transform("zz"), Pattern.TowerRoof),
             #endregion
             // --------------------------------------------------------- //
-            #region top = [1 0 1 0]
-            new Configuration(new Transform(0), Pattern.None),
-            new Configuration(new Transform(0), Pattern.Corner),
-            new Configuration(new Transform(1), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.Wall),
+            #region top = [1 0 1 0] OK
+            new Configuration(new Transform("xxz"), Pattern.DoubleCornerTop),
+            new Configuration(new Transform("ys"), Pattern.WallTopVar),
+            new Configuration(new Transform("yyz"), Pattern.TripleCorner),
+            new Configuration(new Transform("xxxzzz"), Pattern.InnerCornerTopVar),
 
-            new Configuration(new Transform(2), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.DoubleCorner),
-            new Configuration(new Transform(1), Pattern.Wall),
-            new Configuration(new Transform(3), Pattern.InnerCorner),
+            new Configuration(new Transform("xzzz"), Pattern.WallTopVar),
+            new Configuration(new Transform(""), Pattern.DoubleCorner),
+            new Configuration(new Transform("yyyzzz"), Pattern.InnerCornerTopVar),
+            new Configuration(new Transform("xzsf"), Pattern.WallTopVar),
 
-            new Configuration(new Transform(3), Pattern.Corner),
-            new Configuration(new Transform(3), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.DoubleCorner),
-            new Configuration(new Transform(2), Pattern.InnerCorner),
+            new Configuration(new Transform("xzz"), Pattern.TripleCorner),
+            new Configuration(new Transform("yz"), Pattern.InnerCornerTopVar),
+            new Configuration(new Transform("z"), Pattern.CrossedCorner),
+            new Configuration(new Transform("xzzzf"), Pattern.TripleCorner),
 
-            new Configuration(new Transform(2), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform("xz"), Pattern.InnerCornerTopVar),
+            new Configuration(new Transform("yyyf"), Pattern.WallTopVar),
+            new Configuration(new Transform("xxzzf"), Pattern.TripleCorner),
+            new Configuration(new Transform("xxf"), Pattern.DoubleCornerTop),
             #endregion
             // --------------------------------------------------------- //
             #region top = [0 1 1 0] OK
@@ -678,26 +678,26 @@ public class BMeshOperators
             new Configuration(new Transform("zzzxxf"), Pattern.WallTop),
             #endregion
             // --------------------------------------------------------- //
-            #region top = [1 1 1 0]
-            new Configuration(new Transform(0), Pattern.None),
-            new Configuration(new Transform(0), Pattern.Corner),
-            new Configuration(new Transform(1), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.Wall),
+            #region top = [1 1 1 0] OK
+            new Configuration(new Transform("xx"), Pattern.InnerCornerTop),
+            new Configuration(new Transform("xx"), Pattern.WingCorner),
+            new Configuration(new Transform("xx"), Pattern.TowerCorner),
+            new Configuration(new Transform("xxxzzz"), Pattern.TowerRoof),
 
-            new Configuration(new Transform(2), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.DoubleCorner),
-            new Configuration(new Transform(1), Pattern.Wall),
-            new Configuration(new Transform(3), Pattern.InnerCorner),
+            new Configuration(new Transform("yy"), Pattern.WingCorner),
+            new Configuration(new Transform("xzf"), Pattern.WallTopVar),
+            new Configuration(new Transform("yyyzzz"), Pattern.TowerRoof),
+            new Configuration(new Transform("zf"), Pattern.Corner),
 
-            new Configuration(new Transform(3), Pattern.Corner),
-            new Configuration(new Transform(3), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.DoubleCorner),
-            new Configuration(new Transform(2), Pattern.InnerCorner),
+            new Configuration(new Transform("xx"), Pattern.InnerCornerTopVar),
+            new Configuration(new Transform("zzzf"), Pattern.WallTopVar),
+            new Configuration(new Transform("zzf"), Pattern.TripleCorner),
+            new Configuration(new Transform("xzf"), Pattern.DoubleCornerTop),
 
-            new Configuration(new Transform(2), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform("sf"), Pattern.WallTopVar),
+            new Configuration(new Transform("zzzf"), Pattern.OppositeCorner),
+            new Configuration(new Transform("yzf"), Pattern.DoubleCornerTop),
+            new Configuration(new Transform("yzf"), Pattern.CornerTop),
             #endregion
 
             // --------------------------------------------------------- //
@@ -745,48 +745,48 @@ public class BMeshOperators
             new Configuration(new Transform("zxxf"), Pattern.WallTop),
             #endregion
             // --------------------------------------------------------- //
-            #region top = [0 1 0 1]
-            new Configuration(new Transform(0), Pattern.None),
-            new Configuration(new Transform(0), Pattern.Corner),
-            new Configuration(new Transform(1), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.Wall),
+            #region top = [0 1 0 1] OK
+            new Configuration(new Transform("zxxz"), Pattern.DoubleCornerTop),
+            new Configuration(new Transform("zyyz"), Pattern.TripleCorner),
+            new Configuration(new Transform("zxzzz"), Pattern.WallTopVar),
+            new Configuration(new Transform("zyyyzzz"), Pattern.InnerCornerTopVar),
 
-            new Configuration(new Transform(2), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.DoubleCorner),
-            new Configuration(new Transform(1), Pattern.Wall),
-            new Configuration(new Transform(3), Pattern.InnerCorner),
+            new Configuration(new Transform("zxzz"), Pattern.TripleCorner),
+            new Configuration(new Transform("zz"), Pattern.CrossedCorner),
+            new Configuration(new Transform("zxz"), Pattern.InnerCornerTopVar),
+            new Configuration(new Transform("zxxzzf"), Pattern.TripleCorner),
 
-            new Configuration(new Transform(3), Pattern.Corner),
-            new Configuration(new Transform(3), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.DoubleCorner),
-            new Configuration(new Transform(2), Pattern.InnerCorner),
+            new Configuration(new Transform("zys"), Pattern.WallTopVar),
+            new Configuration(new Transform("zxxxzzz"), Pattern.InnerCornerTopVar),
+            new Configuration(new Transform("z"), Pattern.DoubleCorner),
+            new Configuration(new Transform("zxzsf"), Pattern.WallTopVar),
 
-            new Configuration(new Transform(2), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform("zyz"), Pattern.InnerCornerTopVar),
+            new Configuration(new Transform("zxzzzf"), Pattern.TripleCorner),
+            new Configuration(new Transform("zyyyf"), Pattern.WallTopVar),
+            new Configuration(new Transform("zxxf"), Pattern.DoubleCornerTop),
             #endregion
             // --------------------------------------------------------- //
-            #region top = [1 1 0 1]
-            new Configuration(new Transform(0), Pattern.None),
-            new Configuration(new Transform(0), Pattern.Corner),
-            new Configuration(new Transform(1), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.Wall),
+            #region top = [1 1 0 1] OK
+            new Configuration(new Transform("zxx"), Pattern.InnerCornerTop),
+            new Configuration(new Transform("zxx"), Pattern.TowerCorner),
+            new Configuration(new Transform("zyy"), Pattern.WingCorner),
+            new Configuration(new Transform("zyyyzzz"), Pattern.TowerRoof),
 
-            new Configuration(new Transform(2), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.DoubleCorner),
-            new Configuration(new Transform(1), Pattern.Wall),
-            new Configuration(new Transform(3), Pattern.InnerCorner),
+            new Configuration(new Transform("zxx"), Pattern.InnerCornerTopVar),
+            new Configuration(new Transform("zzzf"), Pattern.TripleCorner),
+            new Configuration(new Transform("zsf"), Pattern.WallTopVar),
+            new Configuration(new Transform("zyzf"), Pattern.DoubleCornerTop),
 
-            new Configuration(new Transform(3), Pattern.Corner),
-            new Configuration(new Transform(3), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.DoubleCorner),
-            new Configuration(new Transform(2), Pattern.InnerCorner),
+            new Configuration(new Transform("zxx"), Pattern.WingCorner),
+            new Configuration(new Transform("zxxxzzz"), Pattern.TowerRoof),
+            new Configuration(new Transform("zxzf"), Pattern.WallTopVar),
+            new Configuration(new Transform("zzf"), Pattern.Corner),
 
-            new Configuration(new Transform(2), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform("zzzzf"), Pattern.WallTopVar),
+            new Configuration(new Transform("zxzf"), Pattern.DoubleCornerTop),
+            new Configuration(new Transform("zzzzf"), Pattern.OppositeCorner),
+            new Configuration(new Transform("zyzf"), Pattern.CornerTop),
             #endregion
 
             // --------------------------------------------------------- //
@@ -812,80 +812,81 @@ public class BMeshOperators
             new Configuration(new Transform("zzxxf"), Pattern.WallTop),
             #endregion
             // --------------------------------------------------------- //
-            #region top = [1 0 1 1]
-            new Configuration(new Transform(0), Pattern.None),
-            new Configuration(new Transform(0), Pattern.Corner),
-            new Configuration(new Transform(1), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.Wall),
+            #region top = [1 0 1 1] OK
+            new Configuration(new Transform("zzxx"), Pattern.InnerCornerTop),
+            new Configuration(new Transform("zzyy"), Pattern.WingCorner),
+            new Configuration(new Transform("zzxx"), Pattern.InnerCornerTopVar),
+            new Configuration(new Transform("zzsf"), Pattern.WallTopVar),
 
-            new Configuration(new Transform(2), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.DoubleCorner),
-            new Configuration(new Transform(1), Pattern.Wall),
-            new Configuration(new Transform(3), Pattern.InnerCorner),
+            new Configuration(new Transform("zzxx"), Pattern.WingCorner),
+            new Configuration(new Transform("zzxzf"), Pattern.WallTopVar),
+            new Configuration(new Transform("zzzzzf"), Pattern.WallTopVar),
+            new Configuration(new Transform("zzzzzf"), Pattern.OppositeCorner),
 
-            new Configuration(new Transform(3), Pattern.Corner),
-            new Configuration(new Transform(3), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.DoubleCorner),
-            new Configuration(new Transform(2), Pattern.InnerCorner),
+            new Configuration(new Transform("zzxx"), Pattern.TowerCorner),
+            new Configuration(new Transform("zzyyyzzz"), Pattern.TowerRoof),
+            new Configuration(new Transform("zzzzf"), Pattern.TripleCorner),
+            new Configuration(new Transform("zzyzf"), Pattern.DoubleCornerTop),
 
-            new Configuration(new Transform(2), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform("zzxxxzzz"), Pattern.TowerRoof),
+            new Configuration(new Transform("zzzf"), Pattern.Corner),
+            new Configuration(new Transform("zzxzf"), Pattern.DoubleCornerTop),
+            new Configuration(new Transform("zzyzf"), Pattern.CornerTop),
             #endregion
             // --------------------------------------------------------- //
-            #region top = [0 1 1 1]
-            new Configuration(new Transform(0), Pattern.None),
-            new Configuration(new Transform(0), Pattern.Corner),
-            new Configuration(new Transform(1), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.Wall),
+            #region top = [0 1 1 1] OK
+            new Configuration(new Transform("zzzxx"), Pattern.InnerCornerTop),
+            new Configuration(new Transform("zzzxx"), Pattern.InnerCornerTopVar),
+            new Configuration(new Transform("zzzxx"), Pattern.WingCorner),
+            new Configuration(new Transform("zzzzzzf"), Pattern.WallTopVar),
 
-            new Configuration(new Transform(2), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.DoubleCorner),
-            new Configuration(new Transform(1), Pattern.Wall),
-            new Configuration(new Transform(3), Pattern.InnerCorner),
+            new Configuration(new Transform("zzzxx"), Pattern.TowerCorner),
+            new Configuration(new Transform("zzzzzf"), Pattern.TripleCorner),
+            new Configuration(new Transform("zzzxxxzzz"), Pattern.TowerRoof),
+            new Configuration(new Transform("zzzxzf"), Pattern.DoubleCornerTop),
 
-            new Configuration(new Transform(3), Pattern.Corner),
-            new Configuration(new Transform(3), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.DoubleCorner),
-            new Configuration(new Transform(2), Pattern.InnerCorner),
+            new Configuration(new Transform("zzzyy"), Pattern.WingCorner),
+            new Configuration(new Transform("zzzsf"), Pattern.WallTopVar),
+            new Configuration(new Transform("zzzxzf"), Pattern.WallTopVar),
+            new Configuration(new Transform("zzzzzzf"), Pattern.OppositeCorner),
 
-            new Configuration(new Transform(2), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform("zzzyyyzzz"), Pattern.TowerRoof),
+            new Configuration(new Transform("zzzyzf"), Pattern.DoubleCornerTop),
+            new Configuration(new Transform("zzzzf"), Pattern.Corner),
+            new Configuration(new Transform("zzzyzf"), Pattern.CornerTop),
             #endregion
             // --------------------------------------------------------- //
-            #region top = [1 1 1 1]
-            new Configuration(new Transform(0), Pattern.None),
-            new Configuration(new Transform(0), Pattern.Corner),
-            new Configuration(new Transform(1), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.Wall),
+            #region top = [1 1 1 1] OK
+            new Configuration(new Transform("xx"), Pattern.Roof),
+            new Configuration(new Transform("xxz"), Pattern.TowerRoof),
+            new Configuration(new Transform("xxzz"), Pattern.TowerRoof),
+            new Configuration(new Transform("zzf"), Pattern.WallTop),
 
-            new Configuration(new Transform(2), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.DoubleCorner),
-            new Configuration(new Transform(1), Pattern.Wall),
-            new Configuration(new Transform(3), Pattern.InnerCorner),
+            new Configuration(new Transform("xxzzz"), Pattern.TowerRoof),
+            new Configuration(new Transform("zf"), Pattern.DoubleCornerTop),
+            new Configuration(new Transform("zf"), Pattern.WallTop),
+            new Configuration(new Transform("zf"), Pattern.CornerTop),
 
-            new Configuration(new Transform(3), Pattern.Corner),
-            new Configuration(new Transform(3), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.DoubleCorner),
-            new Configuration(new Transform(2), Pattern.InnerCorner),
+            new Configuration(new Transform("zf"), Pattern.InnerCornerTop),
+            new Configuration(new Transform("zzzf"), Pattern.WallTop),
+            new Configuration(new Transform("f"), Pattern.DoubleCornerTop),
+            new Configuration(new Transform("zzf"), Pattern.CornerTop),
 
-            new Configuration(new Transform(2), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.None)
+            new Configuration(new Transform("f"), Pattern.WallTop),
+            new Configuration(new Transform("zzzf"), Pattern.CornerTop),
+            new Configuration(new Transform("f"), Pattern.CornerTop),
+            new Configuration(new Transform(""), Pattern.None)
             #endregion
             // --------------------------------------------------------- //
         };
 
-        static void JoinEdgeCenters(BMesh mesh, int[] indices, Vertex[] verts, Edge[] edges, Transform transform)
+        static void JoinEdgeCenters(BMesh mesh, int[] indices, Vertex[] verts, Edge[] edges, Transform transform, int floor)
         {
+            Vector3 floorOffset = floor * Vector3.up;
             var newVerts = new Vertex[indices.Length/2];
             for (int i = 0; i < indices.Length/2; ++i)
             {
-                newVerts[i] = mesh.AddVertex(transform.EdgeCenter(indices[2 * i + 0], indices[2 * i + 1], verts, edges));
+                newVerts[i] = mesh.AddVertex(transform.EdgeCenter(indices[2 * i + 0], indices[2 * i + 1], verts, edges) + floorOffset);
             }
             if (transform.flipped)
             {
@@ -896,7 +897,6 @@ public class BMeshOperators
 
         public static void Run(BMesh mesh, BMesh grid, string occupancyAttr)
         {
-            int debug = 0;
             foreach (var f in grid.faces)
             {
                 Debug.Assert(f.vertcount == 4);
@@ -905,187 +905,188 @@ public class BMeshOperators
                 var edges = f.NeighborEdges().ToArray();
                 var occupancies = vertList.ConvertAll(v => (v.attributes[occupancyAttr] as FloatAttributeValue).data);
 
-                int hash = 0;
-                for (int k = 0; k < 8; ++k)
+                bool reachedTop = false;
+                for (int floor = 0; !reachedTop && floor < 99; ++floor)
                 {
-                    float[] o = occupancies[k % 4];
-                    int b = o.Length > k / 4 && o[k / 4] > 0 ? 1 : 0;
-                    hash += b << k;
-                }
+                    reachedTop = true;
+                    int hash = 0;
+                    for (int k = 0; k < 8; ++k)
+                    {
+                        float[] o = occupancies[k % 4];
+                        int fl = floor + (k / 4);
+                        if (o.Length > fl) reachedTop = false;
+                        int b = o.Length > fl && o[fl] > 0 ? 1 : 0;
+                        hash += b << k;
+                    }
 
-                if (debug == 57)
-                {
-                    Debug.Log("DEBUG " + hash);
-                }
-                ++debug;
+                    var config = LUT[hash];
 
-                var config = LUT[hash];
+                    switch (config.pattern)
+                    {
+                        case Pattern.None:
+                            break;
+                        case Pattern.Wall:
+                            {
+                                Debug.Log("Adding Wall face...");
+                                var indices = new int[] { 3, 0, 7, 4, 5, 6, 1, 2 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                break;
+                            }
+                        case Pattern.Corner:
+                            {
+                                Debug.Log("Adding Corner face...");
+                                var indices = new int[] { 3, 0, 7, 4, 4, 5, 0, 1 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                break;
+                            }
+                        case Pattern.DoubleCorner:
+                            {
+                                Debug.Log("Adding DoubleCorner faces...");
+                                var indices = new int[] { 3, 0, 7, 4, 4, 5, 0, 1 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
 
-                switch (config.pattern)
-                {
-                    case Pattern.None:
-                        break;
-                    case Pattern.Wall:
-                        {
-                            Debug.Log("Adding Wall face...");
-                            var indices = new int[] { 3,0,  7,4,  5,6,  1,2 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            break;
-                        }
-                    case Pattern.Corner:
-                        {
-                            Debug.Log("Adding Corner face...");
-                            var indices = new int[] { 3,0,  7,4,  4,5,  0,1 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            break;
-                        }
-                    case Pattern.DoubleCorner:
-                        {
-                            Debug.Log("Adding DoubleCorner faces...");
-                            var indices = new int[] { 3,0,  7,4,  4,5,  0,1 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-
-                            indices = new int[] { 1,2,  5,6,  6,7,  2,3 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            break;
-                        }
-                    case Pattern.InnerCorner:
-                        {
-                            Debug.Log("Adding InnerCorner face...");
-                            var indices = new int[] { 0,1,  4,5,  7,4,  3,0 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            break;
-                        }
-                    case Pattern.WallTop:
-                        {
-                            Debug.Log("Adding WallTop face...");
-                            var indices = new int[] { 3,0,  0,4,  1,5,  1,2 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            break;
-                        }
-                    case Pattern.CornerTop:
-                        {
-                            Debug.Log("Adding CornerTop face...");
-                            var indices = new int[] { 3,0,  0,4,  0,1 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            break;
-                        }
-                    case Pattern.DoubleCornerTop:
-                        {
-                            Debug.Log("Adding DoubleCornerTop faces...");
-                            var indices = new int[] { 3,0,  0,4,  0,1 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            indices = new int[] { 1,2,  2,6,  2,3 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            break;
-                        }
-                    case Pattern.InnerCornerTop:
-                        {
-                            Debug.Log("Adding InnerCornerTop faces...");
-                            var indices = new int[] { 3,0,  0,1,  2,6 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            indices = new int[] { 0,1,  1,5,  2,6 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            indices = new int[] { 3,0,  2,6,  3,7 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            break;
-                        }
-                    case Pattern.Roof:
-                        {
-                            Debug.Log("Adding Roof face...");
-                            var indices = new int[] { 0,4,  1,5,  2,6,  3,7 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            break;
-                        }
-                    case Pattern.InnerCornerTopVar:
-                        {
-                            Debug.Log("Adding InnerCornerTopVar face...");
-                            var indices = new int[] { 3,0,  0,1,  2,6 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            indices = new int[] { 0,1,  1,5,  2,6 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            indices = new int[] { 3,0,  2,6,  3,7 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            indices = new int[] { 4,5,  0,4,  7,4 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            break;
-                        }
-                    case Pattern.CorssedCorner:
-                        {
-                            Debug.Log("Adding CorssedCorner face...");
-                            var indices = new int[] { 3,0,  0,4,  0,1 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            indices = new int[] { 1,2,  2,6,  2,3 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            indices = new int[] { 4,5,  5,6,  1,5 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            indices = new int[] { 6,7,  7,4,  3,7 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            break;
-                        }
-                    case Pattern.TowerCorner:
-                        {
-                            Debug.Log("Adding TowerCorner face...");
-                            var indices = new int[] { 0,1,  1,5,  3,7,  3,0 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            indices = new int[] { 3,7,  1,5,  5,6,  6,7 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            break;
-                        }
-                    case Pattern.WingCorner:
-                        {
-                            Debug.Log("Adding WingCorner face...");
-                            var indices = new int[] { 1,5,  2,6,  0,1 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            indices = new int[] { 0,1,  2,6,  3,0 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            indices = new int[] { 3,0,  2,6,  6,7 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            indices = new int[] { 3,0,  6,7,  7,4 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            break;
-                        }
-                    case Pattern.OppositeCorner:
-                        {
-                            Debug.Log("Adding OppositeCorner face...");
-                            var indices = new int[] { 3,0,  0,4,  0,1 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            indices = new int[] { 5,6,  6,7,  2,6 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            break;
-                        }
-                    case Pattern.WallTopVar:
-                        {
-                            Debug.Log("Adding WallTopVar face...");
-                            var indices = new int[] { 3,0,  0,4,  1,5,  1,2 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            indices = new int[] { 5,6,  6,7,  2,6 };
-                            //indices = new int[] { 6,7,  7,4,  3,7 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            break;
-                        }
-                    case Pattern.TripleCorner:
-                        {
-                            Debug.Log("Adding TripleCorner face...");
-                            var indices = new int[] { 3,0,  0,4,  0,1 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            indices = new int[] { 1,2,  2,6,  2,3 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            indices = new int[] { 4,5,  5,6,  1,5 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            break;
-                        }
-                    case Pattern.TowerRoof: // flipped InnerCornerTop
-                        {
-                            Debug.Log("Adding TowerRoof face...");
-                            var indices = new int[] { 1,5,  2,6,  4,5 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            indices = new int[] { 4,5,  2,6,  7,4 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            indices = new int[] { 7,4,  2,6,  3,7 };
-                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
-                            break;
-                        }
+                                indices = new int[] { 1, 2, 5, 6, 6, 7, 2, 3 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                break;
+                            }
+                        case Pattern.InnerCorner:
+                            {
+                                Debug.Log("Adding InnerCorner face...");
+                                var indices = new int[] { 0, 1, 4, 5, 7, 4, 3, 0 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                break;
+                            }
+                        case Pattern.WallTop:
+                            {
+                                Debug.Log("Adding WallTop face...");
+                                var indices = new int[] { 3, 0, 0, 4, 1, 5, 1, 2 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                break;
+                            }
+                        case Pattern.CornerTop:
+                            {
+                                Debug.Log("Adding CornerTop face...");
+                                var indices = new int[] { 3, 0, 0, 4, 0, 1 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                break;
+                            }
+                        case Pattern.DoubleCornerTop:
+                            {
+                                Debug.Log("Adding DoubleCornerTop faces...");
+                                var indices = new int[] { 3, 0, 0, 4, 0, 1 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                indices = new int[] { 1, 2, 2, 6, 2, 3 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                break;
+                            }
+                        case Pattern.InnerCornerTop:
+                            {
+                                Debug.Log("Adding InnerCornerTop faces...");
+                                var indices = new int[] { 3, 0, 0, 1, 2, 6 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                indices = new int[] { 0, 1, 1, 5, 2, 6 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                indices = new int[] { 3, 0, 2, 6, 3, 7 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                break;
+                            }
+                        case Pattern.Roof:
+                            {
+                                Debug.Log("Adding Roof face...");
+                                var indices = new int[] { 0, 4, 1, 5, 2, 6, 3, 7 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                break;
+                            }
+                        case Pattern.InnerCornerTopVar:
+                            {
+                                Debug.Log("Adding InnerCornerTopVar face...");
+                                var indices = new int[] { 3, 0, 0, 1, 2, 6 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                indices = new int[] { 0, 1, 1, 5, 2, 6 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                indices = new int[] { 3, 0, 2, 6, 3, 7 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                indices = new int[] { 4, 5, 0, 4, 7, 4 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                break;
+                            }
+                        case Pattern.CrossedCorner:
+                            {
+                                Debug.Log("Adding CorssedCorner face...");
+                                var indices = new int[] { 3, 0, 0, 4, 0, 1 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                indices = new int[] { 1, 2, 2, 6, 2, 3 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                indices = new int[] { 4, 5, 5, 6, 1, 5 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                indices = new int[] { 6, 7, 7, 4, 3, 7 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                break;
+                            }
+                        case Pattern.TowerCorner:
+                            {
+                                Debug.Log("Adding TowerCorner face...");
+                                var indices = new int[] { 0, 1, 1, 5, 3, 7, 3, 0 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                indices = new int[] { 3, 7, 1, 5, 5, 6, 6, 7 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                break;
+                            }
+                        case Pattern.WingCorner:
+                            {
+                                Debug.Log("Adding WingCorner face...");
+                                var indices = new int[] { 1, 5, 2, 6, 0, 1 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                indices = new int[] { 0, 1, 2, 6, 3, 0 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                indices = new int[] { 3, 0, 2, 6, 6, 7 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                indices = new int[] { 3, 0, 6, 7, 7, 4 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                break;
+                            }
+                        case Pattern.OppositeCorner:
+                            {
+                                Debug.Log("Adding OppositeCorner face...");
+                                var indices = new int[] { 3, 0, 0, 4, 0, 1 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                indices = new int[] { 5, 6, 6, 7, 2, 6 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                break;
+                            }
+                        case Pattern.WallTopVar:
+                            {
+                                Debug.Log("Adding WallTopVar face...");
+                                var indices = new int[] { 3, 0, 0, 4, 1, 5, 1, 2 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                indices = new int[] { 5, 6, 6, 7, 2, 6 };
+                                //indices = new int[] { 6,7,  7,4,  3,7 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                break;
+                            }
+                        case Pattern.TripleCorner:
+                            {
+                                Debug.Log("Adding TripleCorner face...");
+                                var indices = new int[] { 3, 0, 0, 4, 0, 1 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                indices = new int[] { 1, 2, 2, 6, 2, 3 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                indices = new int[] { 4, 5, 5, 6, 1, 5 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                break;
+                            }
+                        case Pattern.TowerRoof: // flipped InnerCornerTop
+                            {
+                                Debug.Log("Adding TowerRoof face...");
+                                var indices = new int[] { 1, 5, 2, 6, 4, 5 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                indices = new int[] { 4, 5, 2, 6, 7, 4 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                indices = new int[] { 7, 4, 2, 6, 3, 7 };
+                                JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                                break;
+                            }
+                    }
                 }
             }
         }
