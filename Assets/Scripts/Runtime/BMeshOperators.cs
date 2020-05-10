@@ -341,119 +341,90 @@ public class BMeshOperators
     // Marching Cubes
     // read attribute 'occupancyAttr' from 'grid' vertices to get voxel occupancy
     // and use faces as cells to build 'mesh'. Requires grid to contain only quads
-    public static void MarchingCubes2D(BMesh mesh, BMesh grid, string occupancyAttr)
-    {
-        foreach (var f in grid.faces)
-        {
-            Debug.Assert(f.vertcount == 4);
-            var verts = f.NeighborVertices();
-            var edges = f.NeighborEdges();
-            var occupancies = verts.ConvertAll(v => (v.attributes[occupancyAttr] as FloatAttributeValue).data);
-            for (int k = 0; k < occupancies.Count; ++k)
-            {
-                occupancies[k][0] = Mathf.Ceil(occupancies[k][0]);
-            }
-            float o0 = occupancies[0][0];
-            float o1 = occupancies[1][0];
-            float o2 = occupancies[2][0];
-            float o3 = occupancies[3][0];
-
-            var l = new List<int>();
-            for (int k = 0; k < occupancies.Count; ++k)
-            {
-                if (occupancies[k][0] == 1) l.Add(k);
-            }
-
-            if (l.Count == 0) continue;
-
-            if (l.Count == 1)
-            {
-                int i = l[0];
-                int j = i > 0 ? i - 1 : 3;
-                var v0 = mesh.AddVertex(edges[j].Center());
-                var v1 = mesh.AddVertex(edges[i].Center());
-                var v0p = mesh.AddVertex(edges[j].Center() + Vector3.up);
-                var v1p = mesh.AddVertex(edges[i].Center() + Vector3.up);
-                Debug.Log("Adding corner face...");
-                mesh.AddFace(v0, v0p, v1p, v1);
-            }
-
-            if (l.Count == 2)
-            {
-                int i0 = l[0];
-                int i1 = l[1];
-                int prev0 = i0 > 0 ? i0 - 1 : 3;
-                if (i1 == prev0)
-                {
-                    i1 = i0;
-                    i0 = prev0;
-                }
-                prev0 = i0 > 0 ? i0 - 1 : 3;
-                int next0 = (i0 + 1) % 4;
-                int prev1 = i1 > 0 ? i1 - 1 : 3;
-                int next1 = (i1 + 1) % 4;
-                if (i0 == prev1)
-                {
-                    var v0 = mesh.AddVertex(edges[prev0].Center());
-                    var v1 = mesh.AddVertex(edges[i1].Center());
-                    var v0p = mesh.AddVertex(edges[prev0].Center() + Vector3.up);
-                    var v1p = mesh.AddVertex(edges[i1].Center() + Vector3.up);
-                    Debug.Log("Adding regular wall face...");
-                    mesh.AddFace(v0, v0p, v1p, v1);
-                }
-                else
-                {
-                    var v0 = mesh.AddVertex(edges[prev0].Center());
-                    var v1 = mesh.AddVertex(edges[i0].Center());
-                    var v0p = mesh.AddVertex(edges[prev0].Center() + Vector3.up);
-                    var v1p = mesh.AddVertex(edges[i0].Center() + Vector3.up);
-                    mesh.AddFace(v0, v0p, v1p, v1);
-
-                    v0 = mesh.AddVertex(edges[prev1].Center());
-                    v1 = mesh.AddVertex(edges[i1].Center());
-                    v0p = mesh.AddVertex(edges[prev1].Center() + Vector3.up);
-                    v1p = mesh.AddVertex(edges[i1].Center() + Vector3.up);
-                    Debug.Log("Adding op corner faces...");
-                    mesh.AddFace(v0, v0p, v1p, v1);
-                }
-            }
-
-            if (l.Count == 3)
-            {
-                int i = l[0];
-                int j = i > 0 ? i - 1 : 3;
-                var v0 = mesh.AddVertex(edges[j].Center());
-                var v1 = mesh.AddVertex(edges[i].Center());
-                var v0p = mesh.AddVertex(edges[j].Center() + Vector3.up);
-                var v1p = mesh.AddVertex(edges[i].Center() + Vector3.up);
-                Debug.Log("Adding corner face...");
-                mesh.AddFace(v0, v1, v1p, v0p);
-            }
-
-            if (l.Count == 4) continue;
-        }
-    }
-
     class MarchingCubesOperator // namespace for helper types
     {
         // Permutation of points to put them in canonial form
         class Transform
         {
-            public int offset;
+            public int[] permutation; // permutation from canonical to config
 
-            public Transform(int _offset)
+            public Transform(int offset)
             {
-                offset = _offset;
+                permutation = new int[] { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
+                for (int i = 0; i < (4 - offset); ++i) RotateZ();
             }
 
-            public int ToCanonical(int index)
+            public Transform(string encoded)
             {
-                return (index - offset + 4) % 4;
+                permutation = new int[] { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
+                foreach (char c in encoded)
+                {
+                    switch (c)
+                    {
+                        case 'x':
+                            RotateX();
+                            break;
+                        case 'y':
+                            RotateY();
+                            break;
+                        case 'z':
+                            RotateZ();
+                            break;
+                    }
+                }
+            }
+
+            void RotateX()
+            {
+                permutation = new int[]
+                {
+                    permutation[3],
+                    permutation[2],
+                    permutation[6],
+                    permutation[7],
+
+                    permutation[0],
+                    permutation[1],
+                    permutation[5],
+                    permutation[4]
+                };
+            }
+
+            void RotateY()
+            {
+                permutation = new int[]
+                {
+                    permutation[4],
+                    permutation[0],
+                    permutation[3],
+                    permutation[7],
+
+                    permutation[5],
+                    permutation[1],
+                    permutation[2],
+                    permutation[6]
+                };
+            }
+
+            void RotateZ()
+            {
+                permutation = new int[]
+                {
+                    permutation[3],
+                    permutation[0],
+                    permutation[1],
+                    permutation[2],
+
+                    permutation[7],
+                    permutation[4],
+                    permutation[5],
+                    permutation[6]
+                };
             }
 
             public int FromCanonical(int index)
             {
-                return (index + offset) % 4;
+                return permutation[index];
             }
         }
 
@@ -478,6 +449,362 @@ public class BMeshOperators
             }
         }
 
+        static readonly Configuration[] LUT = new Configuration[]
+        {
+            #region
+            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform(0), Pattern.Corner),
+            new Configuration(new Transform(1), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.Wall),
+
+            new Configuration(new Transform(2), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.DoubleCorner),
+            new Configuration(new Transform(1), Pattern.Wall),
+            new Configuration(new Transform(3), Pattern.InnerCorner),
+
+            new Configuration(new Transform(3), Pattern.Corner),
+            new Configuration(new Transform(3), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.DoubleCorner),
+            new Configuration(new Transform(2), Pattern.InnerCorner),
+
+            new Configuration(new Transform(2), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.None),
+            #endregion
+            // --------------------------------------------------------- //
+            #region
+            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform(0), Pattern.Corner),
+            new Configuration(new Transform(1), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.Wall),
+
+            new Configuration(new Transform(2), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.DoubleCorner),
+            new Configuration(new Transform(1), Pattern.Wall),
+            new Configuration(new Transform(3), Pattern.InnerCorner),
+
+            new Configuration(new Transform(3), Pattern.Corner),
+            new Configuration(new Transform(3), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.DoubleCorner),
+            new Configuration(new Transform(2), Pattern.InnerCorner),
+
+            new Configuration(new Transform(2), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.None),
+            #endregion
+            // --------------------------------------------------------- //
+            #region
+            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform(0), Pattern.Corner),
+            new Configuration(new Transform(1), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.Wall),
+
+            new Configuration(new Transform(2), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.DoubleCorner),
+            new Configuration(new Transform(1), Pattern.Wall),
+            new Configuration(new Transform(3), Pattern.InnerCorner),
+
+            new Configuration(new Transform(3), Pattern.Corner),
+            new Configuration(new Transform(3), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.DoubleCorner),
+            new Configuration(new Transform(2), Pattern.InnerCorner),
+
+            new Configuration(new Transform(2), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.None),
+            #endregion
+            // --------------------------------------------------------- //
+            #region
+            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform(0), Pattern.Corner),
+            new Configuration(new Transform(1), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.Wall),
+
+            new Configuration(new Transform(2), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.DoubleCorner),
+            new Configuration(new Transform(1), Pattern.Wall),
+            new Configuration(new Transform(3), Pattern.InnerCorner),
+
+            new Configuration(new Transform(3), Pattern.Corner),
+            new Configuration(new Transform(3), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.DoubleCorner),
+            new Configuration(new Transform(2), Pattern.InnerCorner),
+
+            new Configuration(new Transform(2), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.None),
+            #endregion
+            // --------------------------------------------------------- //
+            #region
+            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform(0), Pattern.Corner),
+            new Configuration(new Transform(1), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.Wall),
+
+            new Configuration(new Transform(2), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.DoubleCorner),
+            new Configuration(new Transform(1), Pattern.Wall),
+            new Configuration(new Transform(3), Pattern.InnerCorner),
+
+            new Configuration(new Transform(3), Pattern.Corner),
+            new Configuration(new Transform(3), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.DoubleCorner),
+            new Configuration(new Transform(2), Pattern.InnerCorner),
+
+            new Configuration(new Transform(2), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.None),
+            #endregion
+            // --------------------------------------------------------- //
+            #region
+            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform(0), Pattern.Corner),
+            new Configuration(new Transform(1), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.Wall),
+
+            new Configuration(new Transform(2), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.DoubleCorner),
+            new Configuration(new Transform(1), Pattern.Wall),
+            new Configuration(new Transform(3), Pattern.InnerCorner),
+
+            new Configuration(new Transform(3), Pattern.Corner),
+            new Configuration(new Transform(3), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.DoubleCorner),
+            new Configuration(new Transform(2), Pattern.InnerCorner),
+
+            new Configuration(new Transform(2), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.None),
+            #endregion
+            // --------------------------------------------------------- //
+            #region
+            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform(0), Pattern.Corner),
+            new Configuration(new Transform(1), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.Wall),
+
+            new Configuration(new Transform(2), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.DoubleCorner),
+            new Configuration(new Transform(1), Pattern.Wall),
+            new Configuration(new Transform(3), Pattern.InnerCorner),
+
+            new Configuration(new Transform(3), Pattern.Corner),
+            new Configuration(new Transform(3), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.DoubleCorner),
+            new Configuration(new Transform(2), Pattern.InnerCorner),
+
+            new Configuration(new Transform(2), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.None),
+            #endregion
+            // --------------------------------------------------------- //
+            #region
+            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform(0), Pattern.Corner),
+            new Configuration(new Transform(1), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.Wall),
+
+            new Configuration(new Transform(2), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.DoubleCorner),
+            new Configuration(new Transform(1), Pattern.Wall),
+            new Configuration(new Transform(3), Pattern.InnerCorner),
+
+            new Configuration(new Transform(3), Pattern.Corner),
+            new Configuration(new Transform(3), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.DoubleCorner),
+            new Configuration(new Transform(2), Pattern.InnerCorner),
+
+            new Configuration(new Transform(2), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.None),
+            #endregion
+            // --------------------------------------------------------- //
+            #region
+            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform(0), Pattern.Corner),
+            new Configuration(new Transform(1), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.Wall),
+
+            new Configuration(new Transform(2), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.DoubleCorner),
+            new Configuration(new Transform(1), Pattern.Wall),
+            new Configuration(new Transform(3), Pattern.InnerCorner),
+
+            new Configuration(new Transform(3), Pattern.Corner),
+            new Configuration(new Transform(3), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.DoubleCorner),
+            new Configuration(new Transform(2), Pattern.InnerCorner),
+
+            new Configuration(new Transform(2), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.None),
+            #endregion
+            // --------------------------------------------------------- //
+            #region
+            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform(0), Pattern.Corner),
+            new Configuration(new Transform(1), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.Wall),
+
+            new Configuration(new Transform(2), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.DoubleCorner),
+            new Configuration(new Transform(1), Pattern.Wall),
+            new Configuration(new Transform(3), Pattern.InnerCorner),
+
+            new Configuration(new Transform(3), Pattern.Corner),
+            new Configuration(new Transform(3), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.DoubleCorner),
+            new Configuration(new Transform(2), Pattern.InnerCorner),
+
+            new Configuration(new Transform(2), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.None),
+            #endregion
+            // --------------------------------------------------------- //
+            #region
+            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform(0), Pattern.Corner),
+            new Configuration(new Transform(1), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.Wall),
+
+            new Configuration(new Transform(2), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.DoubleCorner),
+            new Configuration(new Transform(1), Pattern.Wall),
+            new Configuration(new Transform(3), Pattern.InnerCorner),
+
+            new Configuration(new Transform(3), Pattern.Corner),
+            new Configuration(new Transform(3), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.DoubleCorner),
+            new Configuration(new Transform(2), Pattern.InnerCorner),
+
+            new Configuration(new Transform(2), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.None),
+            #endregion
+            // --------------------------------------------------------- //
+            #region
+            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform(0), Pattern.Corner),
+            new Configuration(new Transform(1), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.Wall),
+
+            new Configuration(new Transform(2), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.DoubleCorner),
+            new Configuration(new Transform(1), Pattern.Wall),
+            new Configuration(new Transform(3), Pattern.InnerCorner),
+
+            new Configuration(new Transform(3), Pattern.Corner),
+            new Configuration(new Transform(3), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.DoubleCorner),
+            new Configuration(new Transform(2), Pattern.InnerCorner),
+
+            new Configuration(new Transform(2), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.None),
+            #endregion
+            // --------------------------------------------------------- //
+            #region
+            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform(0), Pattern.Corner),
+            new Configuration(new Transform(1), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.Wall),
+
+            new Configuration(new Transform(2), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.DoubleCorner),
+            new Configuration(new Transform(1), Pattern.Wall),
+            new Configuration(new Transform(3), Pattern.InnerCorner),
+
+            new Configuration(new Transform(3), Pattern.Corner),
+            new Configuration(new Transform(3), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.DoubleCorner),
+            new Configuration(new Transform(2), Pattern.InnerCorner),
+
+            new Configuration(new Transform(2), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.None),
+            #endregion
+            // --------------------------------------------------------- //
+            #region
+            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform(0), Pattern.Corner),
+            new Configuration(new Transform(1), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.Wall),
+
+            new Configuration(new Transform(2), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.DoubleCorner),
+            new Configuration(new Transform(1), Pattern.Wall),
+            new Configuration(new Transform(3), Pattern.InnerCorner),
+
+            new Configuration(new Transform(3), Pattern.Corner),
+            new Configuration(new Transform(3), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.DoubleCorner),
+            new Configuration(new Transform(2), Pattern.InnerCorner),
+
+            new Configuration(new Transform(2), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.None),
+            #endregion
+            // --------------------------------------------------------- //
+            #region
+            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform(0), Pattern.Corner),
+            new Configuration(new Transform(1), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.Wall),
+
+            new Configuration(new Transform(2), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.DoubleCorner),
+            new Configuration(new Transform(1), Pattern.Wall),
+            new Configuration(new Transform(3), Pattern.InnerCorner),
+
+            new Configuration(new Transform(3), Pattern.Corner),
+            new Configuration(new Transform(3), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.DoubleCorner),
+            new Configuration(new Transform(2), Pattern.InnerCorner),
+
+            new Configuration(new Transform(2), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.None),
+            #endregion
+            // --------------------------------------------------------- //
+            #region
+            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform(0), Pattern.Corner),
+            new Configuration(new Transform(1), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.Wall),
+
+            new Configuration(new Transform(2), Pattern.Corner),
+            new Configuration(new Transform(0), Pattern.DoubleCorner),
+            new Configuration(new Transform(1), Pattern.Wall),
+            new Configuration(new Transform(3), Pattern.InnerCorner),
+
+            new Configuration(new Transform(3), Pattern.Corner),
+            new Configuration(new Transform(3), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.DoubleCorner),
+            new Configuration(new Transform(2), Pattern.InnerCorner),
+
+            new Configuration(new Transform(2), Pattern.Wall),
+            new Configuration(new Transform(1), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.InnerCorner),
+            new Configuration(new Transform(0), Pattern.None)
+            #endregion
+            // --------------------------------------------------------- //
+        };
+
         public static void Run(BMesh mesh, BMesh grid, string occupancyAttr)
         {
             foreach (var f in grid.faces)
@@ -486,45 +813,16 @@ public class BMeshOperators
                 var verts = f.NeighborVertices();
                 var edges = f.NeighborEdges();
                 var occupancies = verts.ConvertAll(v => (v.attributes[occupancyAttr] as FloatAttributeValue).data);
-                for (int k = 0; k < occupancies.Count; ++k)
+
+                int hash = 0;
+                for (int k = 0; k < 4; ++k)
                 {
-                    occupancies[k][0] = Mathf.Ceil(occupancies[k][0]);
+                    float[] o = occupancies[k % 4];
+                    int b = o.Length > k / 4 && o[k / 4] > 0 ? 1 : 0;
+                    hash += b << k;
                 }
-                int o0 = occupancies[0][0] > 0 ? 1 : 0;
-                int o1 = occupancies[1][0] > 0 ? 1 : 0;
-                int o2 = occupancies[2][0] > 0 ? 1 : 0;
-                int o3 = occupancies[3][0] > 0 ? 1 : 0;
 
-                int hash = (
-                    (o0 << 0) +
-                    (o1 << 1) +
-                    (o2 << 2) +
-                    (o3 << 3)
-                );
-                var lut = new Configuration[]
-                {
-                    new Configuration(new Transform(0), Pattern.None),
-                    new Configuration(new Transform(0), Pattern.Corner),
-                    new Configuration(new Transform(1), Pattern.Corner),
-                    new Configuration(new Transform(0), Pattern.Wall),
-
-                    new Configuration(new Transform(2), Pattern.Corner),
-                    new Configuration(new Transform(0), Pattern.DoubleCorner),
-                    new Configuration(new Transform(1), Pattern.Wall),
-                    new Configuration(new Transform(3), Pattern.InnerCorner),
-
-                    new Configuration(new Transform(3), Pattern.Corner),
-                    new Configuration(new Transform(3), Pattern.Wall),
-                    new Configuration(new Transform(1), Pattern.DoubleCorner),
-                    new Configuration(new Transform(2), Pattern.InnerCorner),
-
-                    new Configuration(new Transform(2), Pattern.Wall),
-                    new Configuration(new Transform(1), Pattern.InnerCorner),
-                    new Configuration(new Transform(0), Pattern.InnerCorner),
-                    new Configuration(new Transform(0), Pattern.None)
-                };
-
-                var config = lut[hash];
+                var config = LUT[hash];
 
                 switch (config.pattern)
                 {
