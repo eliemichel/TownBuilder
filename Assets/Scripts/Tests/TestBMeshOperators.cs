@@ -116,10 +116,12 @@ public class TestBMeshOperators
         var mesh = new BMesh();
         BMeshOperators.MarchingCubes(mesh, grid, "occupancy");
 
-        Debug.Assert(mesh.faces.Count == 4, "face count");
-        Debug.Assert(mesh.loops.Count == 12, "loop count");
-        Debug.Assert(mesh.vertices.Count == 5, "vertex count");
-        Debug.Assert(mesh.edges.Count == 8, "edge count");
+        Debug.Assert(mesh.faces.Count == 4, "face count (expected 4, found " + mesh.faces.Count + ")");
+        Debug.Assert(mesh.loops.Count == 12, "loop count (expected 12, found " + mesh.loops.Count + ")");
+        Debug.Assert(mesh.vertices.Count == 5, "vertex count (expected 5, found " + mesh.vertices.Count + ")");
+        Debug.Assert(mesh.edges.Count == 8, "edge count (expected 8, found " + mesh.edges.Count + ")");
+
+        if (!BMeshOperators.TestMarchingCubes()) return false;
 
         Debug.Log("TestBMeshOperators TestMarchingCubes passed.");
         return true;

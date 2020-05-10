@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using UnityEditor.PackageManager;
 using UnityEngine;
 using static BMesh;
 
@@ -348,6 +349,7 @@ public class BMeshOperators
         {
             public int[] permutation; // permutation from canonical to config
             public bool flipped = false;
+            public bool insideout = false;
 
             public Transform(int offset)
             {
@@ -452,6 +454,7 @@ public class BMeshOperators
             void Flip()
             {
                 flipped = !flipped;
+                insideout = !insideout;
             }
 
             public int FromCanonical(int index)
@@ -684,7 +687,7 @@ public class BMeshOperators
             new Configuration(new Transform("xx"), Pattern.TowerCorner),
             new Configuration(new Transform("xxxzzz"), Pattern.TowerRoof),
 
-            new Configuration(new Transform("yy"), Pattern.WingCorner),
+            new Configuration(new Transform("xxzs"), Pattern.WingCorner),
             new Configuration(new Transform("xzf"), Pattern.WallTopVar),
             new Configuration(new Transform("yyyzzz"), Pattern.TowerRoof),
             new Configuration(new Transform("zf"), Pattern.Corner),
@@ -770,7 +773,7 @@ public class BMeshOperators
             #region top = [1 1 0 1] OK
             new Configuration(new Transform("zxx"), Pattern.InnerCornerTop),
             new Configuration(new Transform("zxx"), Pattern.TowerCorner),
-            new Configuration(new Transform("zyy"), Pattern.WingCorner),
+            new Configuration(new Transform("zxxzs"), Pattern.WingCorner),
             new Configuration(new Transform("zyyyzzz"), Pattern.TowerRoof),
 
             new Configuration(new Transform("zxx"), Pattern.InnerCornerTopVar),
@@ -814,7 +817,7 @@ public class BMeshOperators
             // --------------------------------------------------------- //
             #region top = [1 0 1 1] OK
             new Configuration(new Transform("zzxx"), Pattern.InnerCornerTop),
-            new Configuration(new Transform("zzyy"), Pattern.WingCorner),
+            new Configuration(new Transform("zzxxzs"), Pattern.WingCorner),
             new Configuration(new Transform("zzxx"), Pattern.InnerCornerTopVar),
             new Configuration(new Transform("zzsf"), Pattern.WallTopVar),
 
@@ -845,7 +848,7 @@ public class BMeshOperators
             new Configuration(new Transform("zzzxxxzzz"), Pattern.TowerRoof),
             new Configuration(new Transform("zzzxzf"), Pattern.DoubleCornerTop),
 
-            new Configuration(new Transform("zzzyy"), Pattern.WingCorner),
+            new Configuration(new Transform("zzzxxzs"), Pattern.WingCorner),
             new Configuration(new Transform("zzzsf"), Pattern.WallTopVar),
             new Configuration(new Transform("zzzxzf"), Pattern.WallTopVar),
             new Configuration(new Transform("zzzzzzf"), Pattern.OppositeCorner),
@@ -879,6 +882,70 @@ public class BMeshOperators
             #endregion
             // --------------------------------------------------------- //
         };
+
+        static int[] PatternOccupancy(Pattern pattern)
+        {
+            switch (pattern)
+            {
+                case Pattern.None:
+                    return new int[] { 0, 0, 0, 0, 0, 0, 0, 0 };
+                case Pattern.Wall:
+                    return new int[] { 1, 1, 0, 0, 1, 1, 0, 0 };
+                case Pattern.Corner:
+                    return new int[] { 1, 0, 0, 0, 1, 0, 0, 0 };
+                case Pattern.DoubleCorner:
+                    return new int[] { 1, 0, 1, 0, 1, 0, 1, 0 };
+                case Pattern.InnerCorner:
+                    return new int[] { 0, 1, 1, 1, 0, 1, 1, 1 };
+                case Pattern.WallTop:
+                    return new int[] { 1, 1, 0, 0, 0, 0, 0, 0 };
+                case Pattern.CornerTop:
+                    return new int[] { 1, 0, 0, 0, 0, 0, 0, 0 };
+                case Pattern.DoubleCornerTop:
+                    return new int[] { 1, 0, 1, 0, 0, 0, 0, 0 };
+                case Pattern.InnerCornerTop:
+                    return new int[] { 0, 1, 1, 1, 0, 0, 0, 0 };
+                case Pattern.Roof:
+                    return new int[] { 1, 1, 1, 1, 0, 0, 0, 0 };
+                case Pattern.InnerCornerTopVar:
+                    return new int[] { 0, 1, 1, 1, 1, 0, 0, 0 };
+                case Pattern.CrossedCorner:
+                    return new int[] { 1, 0, 1, 0, 0, 1, 0, 1 };
+                case Pattern.TowerCorner:
+                    return new int[] { 0, 1, 1, 1, 0, 0, 1, 0 };
+                case Pattern.WingCorner:
+                    return new int[] { 0, 1, 1, 1, 0, 0, 0, 1 };
+                case Pattern.OppositeCorner:
+                    return new int[] { 1, 0, 0, 0, 0, 0, 1, 0 };
+                case Pattern.WallTopVar:
+                    return new int[] { 1, 1, 0, 0, 0, 0, 1, 0 };
+                case Pattern.TripleCorner:
+                    return new int[] { 1, 0, 1, 0, 0, 1, 0, 0 };
+                case Pattern.TowerRoof:
+                    return new int[] { 1, 1, 1, 1, 1, 0, 0, 0 };
+            }
+            Debug.Assert(false);
+            return null;
+        }
+
+        public static bool Test()
+        {
+            Debug.Assert(LUT.Length == 256, "lut size");
+            for (int i = 0; i < 256; ++i)
+            {
+                var config = LUT[i];
+                var occupancy = PatternOccupancy(config.pattern);
+                int checksum = 0;
+                for (int k = 0; k < 8; ++k) {
+                    int o = occupancy[k];
+                    if (config.transform.insideout) o = 1 - o;
+                    checksum += o << config.transform.FromCanonical(k);
+                }
+                Debug.Assert(checksum == i % 255, "occupancy does no match for LUT entry #" + i + " (found " + checksum + ")");
+            }
+
+            return true;
+        }
 
         static void JoinEdgeCenters(BMesh mesh, int[] indices, Vertex[] verts, Edge[] edges, Transform transform, int floor)
         {
@@ -1092,8 +1159,14 @@ public class BMeshOperators
         }
     }
 
+    // Public API
     public static void MarchingCubes(BMesh mesh, BMesh grid, string occupancyAttr)
     {
         MarchingCubesOperator.Run(mesh, grid, occupancyAttr);
+    }
+
+    public static bool TestMarchingCubes()
+    {
+        return MarchingCubesOperator.Test();
     }
 }
