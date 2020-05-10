@@ -466,6 +466,14 @@ public class BMeshOperators
             CornerTop,
             DoubleCornerTop,
             InnerCornerTop,
+            Roof,
+            InnerCornerTopVar,
+            CorssedCorner,
+            TowerCorner,
+            WingCorner,
+            OppositeCorner,
+            WallTopVar,
+            TripleCorner
         }
 
         class Configuration
@@ -483,7 +491,7 @@ public class BMeshOperators
         static readonly Configuration[] LUT = new Configuration[]
         {
             #region
-            new Configuration(new Transform(""), Pattern.None),
+            new Configuration(new Transform(""), Pattern.TripleCorner),
             new Configuration(new Transform(""), Pattern.CornerTop),
             new Configuration(new Transform("zzz"), Pattern.CornerTop),
             new Configuration(new Transform(""), Pattern.WallTop),
@@ -864,7 +872,7 @@ public class BMeshOperators
                     hash += b << k;
                 }
 
-                var config = LUT[hash % 16];
+                var config = LUT[hash % 1];
 
                 switch (config.pattern)
                 {
@@ -886,34 +894,19 @@ public class BMeshOperators
                         }
                     case Pattern.DoubleCorner:
                         {
-                            int i = config.transform.FromCanonical(0);
-                            int j = config.transform.FromCanonical(3);
-                            var v0 = mesh.AddVertex(edges[j].Center());
-                            var v1 = mesh.AddVertex(edges[i].Center());
-                            var v0p = mesh.AddVertex(edges[j].Center() + Vector3.up);
-                            var v1p = mesh.AddVertex(edges[i].Center() + Vector3.up);
                             Debug.Log("Adding DoubleCorner faces...");
-                            mesh.AddFace(v0, v0p, v1p, v1);
+                            var indices = new int[] { 3,0,  7,4,  4,5,  0,1 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
 
-                            i = config.transform.FromCanonical(1);
-                            j = config.transform.FromCanonical(2);
-                            v0 = mesh.AddVertex(edges[j].Center());
-                            v1 = mesh.AddVertex(edges[i].Center());
-                            v0p = mesh.AddVertex(edges[j].Center() + Vector3.up);
-                            v1p = mesh.AddVertex(edges[i].Center() + Vector3.up);
-                            mesh.AddFace(v0, v0p, v1p, v1);
+                            indices = new int[] { 1,2,  5,6,  6,7,  2,3 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
                             break;
                         }
                     case Pattern.InnerCorner:
                         {
-                            int i = config.transform.FromCanonical(0);
-                            int j = config.transform.FromCanonical(3);
-                            var v0 = mesh.AddVertex(edges[j].Center());
-                            var v1 = mesh.AddVertex(edges[i].Center());
-                            var v0p = mesh.AddVertex(edges[j].Center() + Vector3.up);
-                            var v1p = mesh.AddVertex(edges[i].Center() + Vector3.up);
                             Debug.Log("Adding InnerCorner face...");
-                            mesh.AddFace(v0, v1, v1p, v0p);
+                            var indices = new int[] { 0,1,  4,5,  7,4,  3,0 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
                             break;
                         }
                     case Pattern.WallTop:
@@ -932,34 +925,107 @@ public class BMeshOperators
                         }
                     case Pattern.DoubleCornerTop:
                         {
-                            int i = config.transform.FromCanonical(0);
-                            int j = config.transform.FromCanonical(3);
-                            var v0 = mesh.AddVertex(edges[j].Center());
-                            var v1 = mesh.AddVertex(edges[i].Center());
-                            var v0p = mesh.AddVertex(edges[j].Center() + Vector3.up);
-                            var v1p = mesh.AddVertex(edges[i].Center() + Vector3.up);
-                            Debug.Log("Adding DoubleCorner faces...");
-                            mesh.AddFace(v0, v0p, v1p, v1);
-
-                            i = config.transform.FromCanonical(1);
-                            j = config.transform.FromCanonical(2);
-                            v0 = mesh.AddVertex(edges[j].Center());
-                            v1 = mesh.AddVertex(edges[i].Center());
-                            v0p = mesh.AddVertex(edges[j].Center() + Vector3.up);
-                            v1p = mesh.AddVertex(edges[i].Center() + Vector3.up);
-                            mesh.AddFace(v0, v0p, v1p, v1);
+                            Debug.Log("Adding DoubleCornerTop faces...");
+                            var indices = new int[] { 3,0,  0,4,  0,1 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            indices = new int[] { 1,2,  2,6,  2,3 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
                             break;
                         }
                     case Pattern.InnerCornerTop:
                         {
-                            int i = config.transform.FromCanonical(0);
-                            int j = config.transform.FromCanonical(3);
-                            var v0 = mesh.AddVertex(edges[j].Center());
-                            var v1 = mesh.AddVertex(edges[i].Center());
-                            var v0p = mesh.AddVertex(edges[j].Center() + Vector3.up);
-                            var v1p = mesh.AddVertex(edges[i].Center() + Vector3.up);
-                            Debug.Log("Adding InnerCorner face...");
-                            mesh.AddFace(v0, v1, v1p, v0p);
+                            Debug.Log("Adding InnerCornerTop faces...");
+                            var indices = new int[] { 3,0,  0,1,  2,6 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            indices = new int[] { 0,1,  1,5,  2,6 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            indices = new int[] { 3,0,  2,6,  3,7 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            break;
+                        }
+                    case Pattern.Roof:
+                        {
+                            Debug.Log("Adding Roof face...");
+                            var indices = new int[] { 0,4,  1,5,  2,6,  3,7 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            break;
+                        }
+                    case Pattern.InnerCornerTopVar:
+                        {
+                            Debug.Log("Adding InnerCornerTopVar face...");
+                            var indices = new int[] { 3,0,  0,1,  2,6 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            indices = new int[] { 0,1,  1,5,  2,6 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            indices = new int[] { 3,0,  2,6,  3,7 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            indices = new int[] { 4,5,  0,4,  7,4 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            break;
+                        }
+                    case Pattern.CorssedCorner:
+                        {
+                            Debug.Log("Adding CorssedCorner face...");
+                            var indices = new int[] { 3,0,  0,4,  0,1 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            indices = new int[] { 1,2,  2,6,  2,3 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            indices = new int[] { 4,5,  5,6,  1,5 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            indices = new int[] { 6,7,  7,4,  3,7 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            break;
+                        }
+                    case Pattern.TowerCorner:
+                        {
+                            Debug.Log("Adding TowerCorner face...");
+                            var indices = new int[] { 0,1,  1,5,  3,7,  3,0 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            indices = new int[] { 3,7,  1,5,  5,6,  6,7 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            break;
+                        }
+                    case Pattern.WingCorner:
+                        {
+                            Debug.Log("Adding WingCorner face...");
+                            var indices = new int[] { 1,5,  2,6,  0,1 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            indices = new int[] { 0,1,  2,6,  3,0 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            indices = new int[] { 3,0,  2,6,  6,7 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            indices = new int[] { 3,0,  6,7,  7,4 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            break;
+                        }
+                    case Pattern.OppositeCorner:
+                        {
+                            Debug.Log("Adding OppositeCorner face...");
+                            var indices = new int[] { 3,0,  0,4,  0,1 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            indices = new int[] { 5,6,  6,7,  2,6 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            break;
+                        }
+                    case Pattern.WallTopVar:
+                        {
+                            Debug.Log("Adding WallTopVar face...");
+                            var indices = new int[] { 3,0,  0,4,  1,5,  1,2 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            indices = new int[] { 5,6,  6,7,  2,6 };
+                            //indices = new int[] { 6,7,  7,4,  3,7 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            break;
+                        }
+                    case Pattern.TripleCorner:
+                        {
+                            Debug.Log("Adding TripleCorner face...");
+                            var indices = new int[] { 3,0,  0,4,  0,1 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            indices = new int[] { 1,2,  2,6,  2,3 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            indices = new int[] { 4,5,  5,6,  1,5 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
                             break;
                         }
                 }

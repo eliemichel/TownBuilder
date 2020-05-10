@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 using static BMesh;
 
@@ -83,6 +84,16 @@ public class BMeshUnity
             Vertex nother = nl.edge.ContainsVertex(vert) ? nl.edge.OtherVertex(vert) : nl.edge.OtherVertex(other);
             Vector3 no = vert.point + (other.point - vert.point) * 0.1f;
             Gizmos.DrawRay(no, (nother.point - no) * 0.1f);
+        }
+
+        int i = 0;
+        foreach (Vertex v in mesh.vertices)
+        {
+#if UNITY_EDITOR
+            //var uv = v.attributes["uv"] as BMesh.FloatAttributeValue;
+            Handles.Label(v.point, "" + i);
+            ++i;
+#endif // UNITY_EDITOR
         }
     }
 }

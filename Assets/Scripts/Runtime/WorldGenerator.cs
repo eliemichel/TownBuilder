@@ -175,15 +175,26 @@ public class WorldGenerator : MonoBehaviour
         var occupancy = bmesh.vertices[pointcount / 2].attributes["occupancy"] as BMesh.FloatAttributeValue;
         occupancy.data[0] = 1;
         occupancy.data[1] = 1;
+
+        occupancy = bmesh.vertices[pointcount / 2 + 2].attributes["occupancy"] as BMesh.FloatAttributeValue;
+        occupancy.data[0] = 1;
     }
 
     public void GenerateTile(TileAxialCoordinate tileCo = null)
     {
+        Random.InitState(3615);
         if (tileCo == null) tileCo = NextTileCoordinate();
         GenerateSubdividedHex(tileCo);
         RemoveEdges();
         Subdivide();
         for (int i = 0; i < 3; ++i) SquarifyQuads();
+
+        // DEBUG
+        var occupancy = bmesh.vertices[13].attributes["occupancy"] as BMesh.FloatAttributeValue;
+        occupancy.data[0] = 1;
+        occupancy = bmesh.vertices[26].attributes["occupancy"] as BMesh.FloatAttributeValue;
+        occupancy.data[0] = 1;
+        occupancy.data[1] = 1;
     }
 
     public void GenerateTileAtCursor()
@@ -198,10 +209,7 @@ public class WorldGenerator : MonoBehaviour
             else ValidateTile();
         }
         Debug.Log("Generating tile at " + tileCo + "...");
-        GenerateSubdividedHex(tileCo);
-        RemoveEdges();
-        Subdivide();
-        for (int i = 0; i < 3; ++i) SquarifyQuads();
+        GenerateTile(tileCo);
     }
 
     // Coord of the large tile
@@ -402,11 +410,6 @@ public class WorldGenerator : MonoBehaviour
             Vector3 restpos = (v.attributes["restpos"] as BMesh.FloatAttributeValue).AsVector3();
             Gizmos.color = Color.red;
             Gizmos.DrawSphere(restpos, glued.data[0] * 0.15f);
-
-#if UNITY_EDITOR
-            //var uv = v.attributes["uv"] as BMesh.FloatAttributeValue;
-            //Handles.Label(v.point, "(" + uv.data[0] + "," + uv.data[1] + ")");
-#endif // UNITY_EDITOR
         }
 
         if (bmesh.HasVertexAttribute("occupancy"))
