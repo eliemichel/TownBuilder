@@ -426,15 +426,46 @@ public class BMeshOperators
             {
                 return permutation[index];
             }
+
+            public Vector3 EdgeCenter(int i, int j, Vertex[] verts, Edge[] edges)
+            {
+                i = FromCanonical(i);
+                j = FromCanonical(j);
+                if (i / 4 == j / 4)
+                {
+                    if ((i + 1) % 4 == j % 4)
+                    {
+                        return edges[i % 4].Center() + Vector3.up * (i / 4);
+                    }
+                    if ((j + 1) % 4 == i % 4)
+                    {
+                        return edges[j % 4].Center() + Vector3.up * (j / 4);
+                    }
+                }
+                else if (j == i + 4)
+                {
+                    return verts[i].point + Vector3.up * 0.5f;
+                }
+                else if (i == j + 4)
+                {
+                    return verts[j].point + Vector3.up * 0.5f;
+                }
+                Debug.Assert(false);
+                return Vector3.zero;
+            }
         }
 
         enum Pattern
         {
+            None,
             Wall,
             Corner,
             DoubleCorner,
             InnerCorner,
-            None
+            WallTop,
+            CornerTop,
+            DoubleCornerTop,
+            InnerCornerTop,
         }
 
         class Configuration
@@ -452,47 +483,47 @@ public class BMeshOperators
         static readonly Configuration[] LUT = new Configuration[]
         {
             #region
-            new Configuration(new Transform(0), Pattern.None),
-            new Configuration(new Transform(0), Pattern.Corner),
-            new Configuration(new Transform(1), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.Wall),
+            new Configuration(new Transform(""), Pattern.None),
+            new Configuration(new Transform(""), Pattern.CornerTop),
+            new Configuration(new Transform("zzz"), Pattern.CornerTop),
+            new Configuration(new Transform(""), Pattern.WallTop),
 
-            new Configuration(new Transform(2), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.DoubleCorner),
-            new Configuration(new Transform(1), Pattern.Wall),
-            new Configuration(new Transform(3), Pattern.InnerCorner),
+            new Configuration(new Transform("zz"), Pattern.CornerTop),
+            new Configuration(new Transform(""), Pattern.DoubleCornerTop),
+            new Configuration(new Transform("zzz"), Pattern.WallTop),
+            new Configuration(new Transform("z"), Pattern.InnerCornerTop),
 
-            new Configuration(new Transform(3), Pattern.Corner),
-            new Configuration(new Transform(3), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.DoubleCorner),
-            new Configuration(new Transform(2), Pattern.InnerCorner),
+            new Configuration(new Transform("z"), Pattern.CornerTop),
+            new Configuration(new Transform("z"), Pattern.WallTop),
+            new Configuration(new Transform("zzz"), Pattern.DoubleCornerTop),
+            new Configuration(new Transform("zz"), Pattern.InnerCornerTop),
 
-            new Configuration(new Transform(2), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform("zz"), Pattern.WallTop),
+            new Configuration(new Transform("zzz"), Pattern.InnerCornerTop),
+            new Configuration(new Transform(""), Pattern.InnerCornerTop),
+            new Configuration(new Transform(""), Pattern.None),
             #endregion
             // --------------------------------------------------------- //
             #region
-            new Configuration(new Transform(0), Pattern.None),
-            new Configuration(new Transform(0), Pattern.Corner),
-            new Configuration(new Transform(1), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.Wall),
+            new Configuration(new Transform(""), Pattern.None),
+            new Configuration(new Transform(""), Pattern.Corner),
+            new Configuration(new Transform("zzz"), Pattern.Corner),
+            new Configuration(new Transform(""), Pattern.Wall),
 
-            new Configuration(new Transform(2), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.DoubleCorner),
-            new Configuration(new Transform(1), Pattern.Wall),
-            new Configuration(new Transform(3), Pattern.InnerCorner),
+            new Configuration(new Transform("zz"), Pattern.Corner),
+            new Configuration(new Transform(""), Pattern.DoubleCorner),
+            new Configuration(new Transform("zzz"), Pattern.Wall),
+            new Configuration(new Transform("z"), Pattern.InnerCorner),
 
-            new Configuration(new Transform(3), Pattern.Corner),
-            new Configuration(new Transform(3), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.DoubleCorner),
-            new Configuration(new Transform(2), Pattern.InnerCorner),
+            new Configuration(new Transform("z"), Pattern.Corner),
+            new Configuration(new Transform("z"), Pattern.Wall),
+            new Configuration(new Transform("zzz"), Pattern.DoubleCorner),
+            new Configuration(new Transform("zz"), Pattern.InnerCorner),
 
-            new Configuration(new Transform(2), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform("zz"), Pattern.Wall),
+            new Configuration(new Transform("zzz"), Pattern.InnerCorner),
+            new Configuration(new Transform(""), Pattern.InnerCorner),
+            new Configuration(new Transform(""), Pattern.None),
             #endregion
             // --------------------------------------------------------- //
             #region
@@ -805,14 +836,25 @@ public class BMeshOperators
             // --------------------------------------------------------- //
         };
 
+        static void JoinEdgeCenters(BMesh mesh, int[] indices, Vertex[] verts, Edge[] edges, Transform transform)
+        {
+            var newVerts = new Vertex[indices.Length/2];
+            for (int i = 0; i < indices.Length/2; ++i)
+            {
+                newVerts[i] = mesh.AddVertex(transform.EdgeCenter(indices[2 * i + 0], indices[2 * i + 1], verts, edges));
+            }
+            mesh.AddFace(newVerts);
+        }
+
         public static void Run(BMesh mesh, BMesh grid, string occupancyAttr)
         {
             foreach (var f in grid.faces)
             {
                 Debug.Assert(f.vertcount == 4);
-                var verts = f.NeighborVertices();
-                var edges = f.NeighborEdges();
-                var occupancies = verts.ConvertAll(v => (v.attributes[occupancyAttr] as FloatAttributeValue).data);
+                var vertList = f.NeighborVertices();
+                var verts = vertList.ToArray();
+                var edges = f.NeighborEdges().ToArray();
+                var occupancies = vertList.ConvertAll(v => (v.attributes[occupancyAttr] as FloatAttributeValue).data);
 
                 int hash = 0;
                 for (int k = 0; k < 4; ++k)
@@ -822,32 +864,24 @@ public class BMeshOperators
                     hash += b << k;
                 }
 
-                var config = LUT[hash];
+                var config = LUT[hash % 16];
 
                 switch (config.pattern)
                 {
+                    case Pattern.None:
+                        break;
                     case Pattern.Wall:
                         {
-                            int i = config.transform.FromCanonical(1);
-                            int j = config.transform.FromCanonical(3);
-                            var v0 = mesh.AddVertex(edges[j].Center());
-                            var v1 = mesh.AddVertex(edges[i].Center());
-                            var v0p = mesh.AddVertex(edges[j].Center() + Vector3.up);
-                            var v1p = mesh.AddVertex(edges[i].Center() + Vector3.up);
                             Debug.Log("Adding Wall face...");
-                            mesh.AddFace(v0, v0p, v1p, v1);
+                            var indices = new int[] { 3,0,  7,4,  5,6,  1,2 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
                             break;
                         }
                     case Pattern.Corner:
                         {
-                            int i = config.transform.FromCanonical(0);
-                            int j = config.transform.FromCanonical(3);
-                            var v0 = mesh.AddVertex(edges[j].Center());
-                            var v1 = mesh.AddVertex(edges[i].Center());
-                            var v0p = mesh.AddVertex(edges[j].Center() + Vector3.up);
-                            var v1p = mesh.AddVertex(edges[i].Center() + Vector3.up);
                             Debug.Log("Adding Corner face...");
-                            mesh.AddFace(v0, v0p, v1p, v1);
+                            var indices = new int[] { 3,0,  7,4,  4,5,  0,1 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
                             break;
                         }
                     case Pattern.DoubleCorner:
@@ -882,8 +916,52 @@ public class BMeshOperators
                             mesh.AddFace(v0, v1, v1p, v0p);
                             break;
                         }
-                    case Pattern.None:
-                        break;
+                    case Pattern.WallTop:
+                        {
+                            Debug.Log("Adding WallTop face...");
+                            var indices = new int[] { 3,0,  0,4,  1,5,  1,2 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            break;
+                        }
+                    case Pattern.CornerTop:
+                        {
+                            Debug.Log("Adding CornerTop face...");
+                            var indices = new int[] { 3,0,  0,4,  0,1 };
+                            JoinEdgeCenters(mesh, indices, verts, edges, config.transform);
+                            break;
+                        }
+                    case Pattern.DoubleCornerTop:
+                        {
+                            int i = config.transform.FromCanonical(0);
+                            int j = config.transform.FromCanonical(3);
+                            var v0 = mesh.AddVertex(edges[j].Center());
+                            var v1 = mesh.AddVertex(edges[i].Center());
+                            var v0p = mesh.AddVertex(edges[j].Center() + Vector3.up);
+                            var v1p = mesh.AddVertex(edges[i].Center() + Vector3.up);
+                            Debug.Log("Adding DoubleCorner faces...");
+                            mesh.AddFace(v0, v0p, v1p, v1);
+
+                            i = config.transform.FromCanonical(1);
+                            j = config.transform.FromCanonical(2);
+                            v0 = mesh.AddVertex(edges[j].Center());
+                            v1 = mesh.AddVertex(edges[i].Center());
+                            v0p = mesh.AddVertex(edges[j].Center() + Vector3.up);
+                            v1p = mesh.AddVertex(edges[i].Center() + Vector3.up);
+                            mesh.AddFace(v0, v0p, v1p, v1);
+                            break;
+                        }
+                    case Pattern.InnerCornerTop:
+                        {
+                            int i = config.transform.FromCanonical(0);
+                            int j = config.transform.FromCanonical(3);
+                            var v0 = mesh.AddVertex(edges[j].Center());
+                            var v1 = mesh.AddVertex(edges[i].Center());
+                            var v0p = mesh.AddVertex(edges[j].Center() + Vector3.up);
+                            var v1p = mesh.AddVertex(edges[i].Center() + Vector3.up);
+                            Debug.Log("Adding InnerCorner face...");
+                            mesh.AddFace(v0, v1, v1p, v0p);
+                            break;
+                        }
                 }
             }
         }
