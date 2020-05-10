@@ -374,6 +374,9 @@ public class BMeshOperators
                         case 's':
                             MirrorX();
                             break;
+                        case 'f':
+                            Flip();
+                            break;
                         default:
                             Debug.Assert(false);
                             break;
@@ -443,6 +446,11 @@ public class BMeshOperators
                     permutation[7],
                     permutation[6]
                 };
+                flipped = !flipped;
+            }
+
+            void Flip()
+            {
                 flipped = !flipped;
             }
 
@@ -581,26 +589,26 @@ public class BMeshOperators
             new Configuration(new Transform("zzz"), Pattern.TowerRoof),
             #endregion
             // --------------------------------------------------------- //
-            #region top = [1 1 0 0]
-            new Configuration(new Transform(0), Pattern.None),
-            new Configuration(new Transform(0), Pattern.Corner),
-            new Configuration(new Transform(1), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.Wall),
+            #region top = [1 1 0 0] OK
+            new Configuration(new Transform("yy"), Pattern.WallTop),
+            new Configuration(new Transform("xxxzz"), Pattern.InnerCornerTop),
+            new Configuration(new Transform("xxxz"), Pattern.InnerCornerTop),
+            new Configuration(new Transform("xxx"), Pattern.Roof),
 
-            new Configuration(new Transform(2), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.DoubleCorner),
-            new Configuration(new Transform(1), Pattern.Wall),
-            new Configuration(new Transform(3), Pattern.InnerCorner),
+            new Configuration(new Transform("xxx"), Pattern.WallTopVar),
+            new Configuration(new Transform("xxxzz"), Pattern.InnerCornerTopVar),
+            new Configuration(new Transform("xxxz"), Pattern.WingCorner),
+            new Configuration(new Transform("xxxzz"), Pattern.TowerRoof),
 
-            new Configuration(new Transform(3), Pattern.Corner),
-            new Configuration(new Transform(3), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.DoubleCorner),
-            new Configuration(new Transform(2), Pattern.InnerCorner),
+            new Configuration(new Transform("xxxs"), Pattern.WallTopVar),
+            new Configuration(new Transform("yzzs"), Pattern.WingCorner),
+            new Configuration(new Transform("xxxz"), Pattern.InnerCornerTopVar),
+            new Configuration(new Transform("xxxz"), Pattern.TowerRoof),
 
-            new Configuration(new Transform(2), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform("y"), Pattern.DoubleCorner),
+            new Configuration(new Transform("xxf"), Pattern.WallTopVar),
+            new Configuration(new Transform("xxsf"), Pattern.WallTopVar),
+            new Configuration(new Transform("xxf"), Pattern.WallTop),
             #endregion
 
             // --------------------------------------------------------- //
@@ -648,26 +656,26 @@ public class BMeshOperators
             new Configuration(new Transform(0), Pattern.None),
             #endregion
             // --------------------------------------------------------- //
-            #region top = [0 1 1 0]
-            new Configuration(new Transform(0), Pattern.None),
-            new Configuration(new Transform(0), Pattern.Corner),
-            new Configuration(new Transform(1), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.Wall),
+            #region top = [0 1 1 0] OK
+            new Configuration(new Transform("zzzyy"), Pattern.WallTop),
+            new Configuration(new Transform("zzzxxxs"), Pattern.WallTopVar),
+            new Configuration(new Transform("zzzxxxzz"), Pattern.InnerCornerTop),
+            new Configuration(new Transform("zzzyzzs"), Pattern.WingCorner),
 
-            new Configuration(new Transform(2), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.DoubleCorner),
-            new Configuration(new Transform(1), Pattern.Wall),
-            new Configuration(new Transform(3), Pattern.InnerCorner),
+            new Configuration(new Transform("zzzxxxz"), Pattern.InnerCornerTop),
+            new Configuration(new Transform("zzzxxxz"), Pattern.InnerCornerTopVar),
+            new Configuration(new Transform("zzzxxx"), Pattern.Roof),
+            new Configuration(new Transform("zzzxxxz"), Pattern.TowerRoof),
 
-            new Configuration(new Transform(3), Pattern.Corner),
-            new Configuration(new Transform(3), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.DoubleCorner),
-            new Configuration(new Transform(2), Pattern.InnerCorner),
+            new Configuration(new Transform("zzzxxx"), Pattern.WallTopVar),
+            new Configuration(new Transform("zzzy"), Pattern.DoubleCorner),
+            new Configuration(new Transform("zzzxxxzz"), Pattern.InnerCornerTopVar),
+            new Configuration(new Transform("zzzxxf"), Pattern.WallTopVar),
 
-            new Configuration(new Transform(2), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform("zzzxxxz"), Pattern.WingCorner),
+            new Configuration(new Transform("zzzxxsf"), Pattern.WallTopVar),
+            new Configuration(new Transform("zzzxxxzz"), Pattern.TowerRoof),
+            new Configuration(new Transform("zzzxxf"), Pattern.WallTop),
             #endregion
             // --------------------------------------------------------- //
             #region top = [1 1 1 0]
@@ -715,26 +723,26 @@ public class BMeshOperators
             new Configuration(new Transform("z"), Pattern.TowerRoof),
             #endregion
             // --------------------------------------------------------- //
-            #region top = [1 0 0 1]
-            new Configuration(new Transform(0), Pattern.None),
-            new Configuration(new Transform(0), Pattern.Corner),
-            new Configuration(new Transform(1), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.Wall),
+            #region top = [1 0 0 1] OK
+            new Configuration(new Transform("zyy"), Pattern.WallTop),
+            new Configuration(new Transform("zxxxz"), Pattern.InnerCornerTop),
+            new Configuration(new Transform("zxxx"), Pattern.WallTopVar),
+            new Configuration(new Transform("zxxxz"), Pattern.WingCorner),
 
-            new Configuration(new Transform(2), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.DoubleCorner),
-            new Configuration(new Transform(1), Pattern.Wall),
-            new Configuration(new Transform(3), Pattern.InnerCorner),
+            new Configuration(new Transform("zxxxs"), Pattern.WallTopVar),
+            new Configuration(new Transform("zxxxz"), Pattern.InnerCornerTopVar),
+            new Configuration(new Transform("zy"), Pattern.DoubleCorner),
+            new Configuration(new Transform("zxxsf"), Pattern.WallTopVar),
 
-            new Configuration(new Transform(3), Pattern.Corner),
-            new Configuration(new Transform(3), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.DoubleCorner),
-            new Configuration(new Transform(2), Pattern.InnerCorner),
+            new Configuration(new Transform("zxxxzz"), Pattern.InnerCornerTop),
+            new Configuration(new Transform("zxxx"), Pattern.Roof),
+            new Configuration(new Transform("zxxxzz"), Pattern.InnerCornerTopVar),
+            new Configuration(new Transform("zxxxzz"), Pattern.TowerRoof),
 
-            new Configuration(new Transform(2), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform("zyzzs"), Pattern.WingCorner),
+            new Configuration(new Transform("zxxxz"), Pattern.TowerRoof),
+            new Configuration(new Transform("zxxf"), Pattern.WallTopVar),
+            new Configuration(new Transform("zxxf"), Pattern.WallTop),
             #endregion
             // --------------------------------------------------------- //
             #region top = [0 1 0 1]
@@ -782,26 +790,26 @@ public class BMeshOperators
             #endregion
 
             // --------------------------------------------------------- //
-            #region top = [0 0 1 1]
-            new Configuration(new Transform(0), Pattern.None),
-            new Configuration(new Transform(0), Pattern.Corner),
-            new Configuration(new Transform(1), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.Wall),
+            #region top = [0 0 1 1] OK
+            new Configuration(new Transform("zzyy"), Pattern.WallTop),
+            new Configuration(new Transform("zzxxx"), Pattern.WallTopVar),
+            new Configuration(new Transform("zzxxxs"), Pattern.WallTopVar),
+            new Configuration(new Transform("zzy"), Pattern.DoubleCorner),
 
-            new Configuration(new Transform(2), Pattern.Corner),
-            new Configuration(new Transform(0), Pattern.DoubleCorner),
-            new Configuration(new Transform(1), Pattern.Wall),
-            new Configuration(new Transform(3), Pattern.InnerCorner),
+            new Configuration(new Transform("zzxxxzz"), Pattern.InnerCornerTop),
+            new Configuration(new Transform("zzxxxzz"), Pattern.InnerCornerTopVar),
+            new Configuration(new Transform("zzyzzs"), Pattern.WingCorner),
+            new Configuration(new Transform("zzxxf"), Pattern.WallTopVar),
 
-            new Configuration(new Transform(3), Pattern.Corner),
-            new Configuration(new Transform(3), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.DoubleCorner),
-            new Configuration(new Transform(2), Pattern.InnerCorner),
+            new Configuration(new Transform("zzxxxz"), Pattern.InnerCornerTop),
+            new Configuration(new Transform("zzxxxz"), Pattern.WingCorner),
+            new Configuration(new Transform("zzxxxz"), Pattern.InnerCornerTopVar),
+            new Configuration(new Transform("zzxxsf"), Pattern.WallTopVar),
 
-            new Configuration(new Transform(2), Pattern.Wall),
-            new Configuration(new Transform(1), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.InnerCorner),
-            new Configuration(new Transform(0), Pattern.None),
+            new Configuration(new Transform("zzxxx"), Pattern.Roof),
+            new Configuration(new Transform("zzxxxzz"), Pattern.TowerRoof),
+            new Configuration(new Transform("zzxxxz"), Pattern.TowerRoof),
+            new Configuration(new Transform("zzxxf"), Pattern.WallTop),
             #endregion
             // --------------------------------------------------------- //
             #region top = [1 0 1 1]

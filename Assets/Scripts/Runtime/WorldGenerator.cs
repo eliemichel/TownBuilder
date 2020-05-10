@@ -195,8 +195,10 @@ public class WorldGenerator : MonoBehaviour
         occupancy = bmesh.vertices[26].attributes["occupancy"] as BMesh.FloatAttributeValue;
         occupancy.data[0] = 1;
         occupancy.data[1] = 1;
-        (bmesh.vertices[126].attributes["occupancy"] as BMesh.FloatAttributeValue).data[1] = 0;
-        (bmesh.vertices[121].attributes["occupancy"] as BMesh.FloatAttributeValue).data[1] = 0;
+        (bmesh.vertices[126].attributes["occupancy"] as BMesh.FloatAttributeValue).data[0] = 0;
+        (bmesh.vertices[121].attributes["occupancy"] as BMesh.FloatAttributeValue).data[0] = 0;
+        (bmesh.vertices[18].attributes["occupancy"] as BMesh.FloatAttributeValue).data[0] = 0;
+        (bmesh.vertices[66].attributes["occupancy"] as BMesh.FloatAttributeValue).data[1] = 0;
         (bmesh.vertices[18].attributes["occupancy"] as BMesh.FloatAttributeValue).data[1] = 0;
     }
 
