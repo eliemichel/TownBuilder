@@ -21,7 +21,7 @@ public class CameraController : MonoBehaviour
 
     void UpdateCameraMove()
     {
-        if (Input.GetMouseButtonDown(1))
+        if (Input.GetMouseButtonDown(2))
         {
             Ray ray = cam.ScreenPointToRay(Input.mousePosition);
             draggedPoint = ray.origin - ray.direction * (ray.origin.y / ray.direction.y);
@@ -34,7 +34,7 @@ public class CameraController : MonoBehaviour
             transform.position = draggedPoint + ray.direction * (transform.position.y / ray.direction.y);
         }
 
-        if (Input.GetMouseButtonUp(1))
+        if (Input.GetMouseButtonUp(2))
         {
             dragging = false;
         }
@@ -75,5 +75,14 @@ public class CameraController : MonoBehaviour
     {
         UpdateCameraMove();
         UpdateCursor();
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            worldGenerator.AddVoxelAtCursor();
+        }
+        if (Input.GetMouseButtonDown(1))
+        {
+            worldGenerator.RemoveVoxelAtCursor();
+        }
     }
 }

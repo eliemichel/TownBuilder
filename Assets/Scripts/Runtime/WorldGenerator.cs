@@ -35,9 +35,8 @@ public class WorldGenerator : MonoBehaviour
         public BMesh skin; // visible mesh
     }
 
-    BMesh bmesh;
-    BMesh skinmesh;
     TileAxialCoordinate currentTileCo;
+    Tile currentTile;
     Dictionary<AxialCoordinate, Tile> tileSet;
 
     // Mouse
@@ -97,7 +96,7 @@ public class WorldGenerator : MonoBehaviour
 
     public void GenerateQuad()
     {
-        bmesh = new BMesh();
+        var bmesh = new BMesh();
         bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("restpos", BMesh.AttributeBaseType.Float, 3));
         bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("weight", BMesh.AttributeBaseType.Float, 1));
 
@@ -116,6 +115,7 @@ public class WorldGenerator : MonoBehaviour
         v3.attributes["restpos"] = new BMesh.FloatAttributeValue(v3.point);
         v3.attributes["weight"] = new BMesh.FloatAttributeValue(0);
 
+        currentTile.mesh = bmesh;
         ShowMesh();
     }
 
@@ -126,7 +126,7 @@ public class WorldGenerator : MonoBehaviour
         int pointcount = (2 * n + 1) * (2 * n + 1) - n * (n + 1);
         Vector2 offset = tileCo.Center(size);
 
-        bmesh = new BMesh();
+        var bmesh = new BMesh();
         bmesh.AddVertexAttribute("uv", BMesh.AttributeBaseType.Float, 2);
         bmesh.AddVertexAttribute("restpos", BMesh.AttributeBaseType.Float, 3);
         bmesh.AddVertexAttribute("weight", BMesh.AttributeBaseType.Float, 1);
@@ -185,13 +185,7 @@ public class WorldGenerator : MonoBehaviour
         currentTileCo = tileCo;
         ShowMesh();
 
-        // DEBUG
-        var occupancy = bmesh.vertices[pointcount / 2].attributes["occupancy"] as BMesh.FloatAttributeValue;
-        occupancy.data[0] = 1;
-        occupancy.data[1] = 1;
-
-        occupancy = bmesh.vertices[pointcount / 2 + 2].attributes["occupancy"] as BMesh.FloatAttributeValue;
-        occupancy.data[0] = 1;
+        currentTile.mesh = bmesh;
     }
 
     public void GenerateTile(TileAxialCoordinate tileCo = null)
@@ -199,21 +193,9 @@ public class WorldGenerator : MonoBehaviour
         Random.InitState(3615);
         if (tileCo == null) tileCo = NextTileCoordinate();
         GenerateSubdividedHex(tileCo);
-        RemoveEdges();
-        Subdivide();
+        while (RemoveRandomEdge()) { }
+        BMeshOperators.Subdivide(currentTile.mesh);
         for (int i = 0; i < 3; ++i) SquarifyQuads();
-
-        // DEBUG
-        var occupancy = bmesh.vertices[13].attributes["occupancy"] as BMesh.FloatAttributeValue;
-        occupancy.data[0] = 1;
-        occupancy = bmesh.vertices[26].attributes["occupancy"] as BMesh.FloatAttributeValue;
-        occupancy.data[0] = 1;
-        occupancy.data[1] = 1;
-        (bmesh.vertices[126].attributes["occupancy"] as BMesh.FloatAttributeValue).data[0] = 0;
-        (bmesh.vertices[121].attributes["occupancy"] as BMesh.FloatAttributeValue).data[0] = 0;
-        (bmesh.vertices[18].attributes["occupancy"] as BMesh.FloatAttributeValue).data[0] = 0;
-        (bmesh.vertices[66].attributes["occupancy"] as BMesh.FloatAttributeValue).data[1] = 0;
-        (bmesh.vertices[18].attributes["occupancy"] as BMesh.FloatAttributeValue).data[1] = 0;
     }
 
     public void GenerateTileAtCursor()
@@ -239,11 +221,9 @@ public class WorldGenerator : MonoBehaviour
 
     public void ValidateTile()
     {
-        if (currentTileCo == null || bmesh == null) return;
-        if (tileSet == null) tileSet = new Dictionary<AxialCoordinate, Tile>();
-        tileSet[currentTileCo] = new Tile { mesh = bmesh, skin = skinmesh };
-        bmesh = null;
-        skinmesh = null;
+        if (currentTileCo == null || currentTile.mesh == null) return;
+        tileSet[currentTileCo] = currentTile;
+        currentTile = null;
         currentTileCo = null;
     }
 
@@ -262,15 +242,14 @@ public class WorldGenerator : MonoBehaviour
                 }
             }
         }
-        if (bmesh != null) BMeshOperators.Merge(acc, bmesh);
-        if (skinmesh != null) BMeshOperators.Merge(acc, skinmesh);
+        if (currentTile.mesh != null) BMeshOperators.Merge(acc, currentTile.mesh);
+        if (currentTile.skin != null) BMeshOperators.Merge(acc, currentTile.skin);
         BMeshUnity.SetInMeshFilter(acc, GetComponent<MeshFilter>());
     }
 
     public void Clear()
     {
-        bmesh = null;
-        skinmesh = null;
+        currentTile = null;
         tileSet = null;
         currentTileCo = null;
         ShowMesh();
@@ -305,17 +284,17 @@ public class WorldGenerator : MonoBehaviour
         }
         Debug.Assert(vertices[0] != null && vertices[1] != null && vertices[2] != null && vertices[3] != null);
 
-        bmesh.RemoveEdge(e);
-        bmesh.AddFace(vertices);
+        currentTile.mesh.RemoveEdge(e);
+        currentTile.mesh.AddFace(vertices);
         return true;
     }
 
     public bool RemoveRandomEdge()
     {
-        if (bmesh == null) return false;
+        if (currentTile.mesh == null) return false;
 
         var candidates = new List<BMesh.Edge>();
-        foreach (var e in bmesh.edges)
+        foreach (var e in currentTile.mesh.edges)
         {
             if (CanFuse(e))
             {
@@ -330,26 +309,12 @@ public class WorldGenerator : MonoBehaviour
         return true;
     }
 
-    public void RemoveEdges()
-    {
-        if (bmesh == null) return;
-        while (RemoveRandomEdge()) { }
-        ShowMesh();
-    }
-
-    public void Subdivide()
-    {
-        if (bmesh == null) return;
-        BMeshOperators.Subdivide(bmesh);
-        ShowMesh();
-    }
-
     public void SquarifyQuads()
     {
-        if (bmesh == null) return;
+        if (currentTile.mesh == null) return;
 
         // pre process weight attribute
-        foreach (var v in bmesh.vertices)
+        foreach (var v in currentTile.mesh.vertices)
         {
             var weight = v.attributes["weight"] as BMesh.FloatAttributeValue;
             var restpos = v.attributes["restpos"] as BMesh.FloatAttributeValue;
@@ -380,16 +345,16 @@ public class WorldGenerator : MonoBehaviour
 
         for (int i = 0; i < squarifyQuadsIterations; ++i)
         {
-            BMeshOperators.SquarifyQuads(bmesh, squarifyQuadsRate, squarifyQuadsUniform);
+            BMeshOperators.SquarifyQuads(currentTile.mesh, squarifyQuadsRate, squarifyQuadsUniform);
         }
         ShowMesh();
     }
 
-    public void ComputeSkin()
+    void ComputeSkin(Tile tile)
     {
-        if (bmesh == null) return;
-        skinmesh = new BMesh();
-        BMeshOperators.MarchingCubes(skinmesh, bmesh, "occupancy");
+        if (tile == null) return;
+        tile.skin = new BMesh();
+        BMeshOperators.MarchingCubes(tile.skin, tile.mesh, "occupancy");
         ShowMesh();
     }
 
@@ -413,15 +378,15 @@ public class WorldGenerator : MonoBehaviour
 
     public void ComputeRaycastMesh()
     {
-        if (bmesh == null) return;
+        if (currentTile.mesh == null) return;
         var raycastMesh = new BMesh();
         var uvAttr = raycastMesh.AddVertexAttribute("uv", BMesh.AttributeBaseType.Float, 2); // for vertex index
         raycastMesh.AddVertexAttribute("uv2", BMesh.AttributeBaseType.Float, 2) // for tile index
         .defaultValue = new BMesh.FloatAttributeValue(currentTileCo.q, currentTileCo.r);
 
-        { int i = 0; foreach (BMesh.Vertex v in bmesh.vertices) { v.id = i++; } } // reset vertex ids
+        { int i = 0; foreach (BMesh.Vertex v in currentTile.mesh.vertices) { v.id = i++; } } // reset vertex ids
 
-        foreach (BMesh.Vertex v in bmesh.vertices)
+        foreach (BMesh.Vertex v in currentTile.mesh.vertices)
         {
             uvAttr.defaultValue = new BMesh.FloatAttributeValue(v.id, 1);
             AddDualNgon(raycastMesh, v);
@@ -430,23 +395,53 @@ public class WorldGenerator : MonoBehaviour
     }
     #endregion
 
+    #region [UI Actions]
+    public void RemoveEdges()
+    {
+        if (currentTile.mesh == null) return;
+        while (RemoveRandomEdge()) { }
+        ShowMesh();
+    }
+
+    public void Subdivide()
+    {
+        if (currentTile.mesh == null) return;
+        BMeshOperators.Subdivide(currentTile.mesh);
+        ShowMesh();
+    }
+
+    public void ComputeSkin()
+    {
+        if (currentTile.mesh == null) return;
+        ComputeSkin(currentTile);
+    }
+    #endregion
+
     #region [World Controller]
+    Tile GetTile(TileAxialCoordinate tileCo)
+    {
+        if (tileCo == null) return null;
+        if (tileCo.Equals(currentTileCo))
+        {
+            return currentTile;
+        }
+        else if (tileSet != null && tileSet.ContainsKey(tileCo))
+        {
+            return tileSet[tileCo];
+        }
+        else
+        {
+            return null;
+        }
+    }
     public void SetCursorAtVertex(int vertexId, TileAxialCoordinate tileCo)
     {
         if (mouseVertexId == vertexId && mouseTileCo == tileCo) return;
         mouseVertexId = vertexId;
         mouseTileCo = tileCo;
-        BMesh gridMesh = null;
-        if (tileCo.Equals(currentTileCo))
-        {
-            gridMesh = bmesh;
-        }
-        else
-        {
-            Debug.Assert(tileSet != null && tileSet.ContainsKey(tileCo));
-            gridMesh = tileSet[tileCo].mesh;
-        }
-        BMesh.Vertex v = gridMesh.vertices[vertexId];
+        Tile tile = GetTile(tileCo);
+        Debug.Assert(tile != null);
+        BMesh.Vertex v = tile.mesh.vertices[vertexId];
         var cursormesh = new BMesh();
         AddDualNgon(cursormesh, v);
         BMeshUnity.SetInMeshFilter(cursormesh, cursorMeshFilter);
@@ -458,10 +453,47 @@ public class WorldGenerator : MonoBehaviour
         mouseVertexId = -1;
         BMeshUnity.SetInMeshFilter(new BMesh(), cursorMeshFilter);
     }
-        #endregion
 
-        #region [MonoBehavior]
-        void Update()
+    public void AddVoxelAtCursor()
+    {
+        Tile tile = GetTile(mouseTileCo);
+        if (mouseVertexId == -1 || tile == null) return;
+        var occupancy = tile.mesh.vertices[mouseVertexId].attributes["occupancy"] as BMesh.FloatAttributeValue;
+        for (int i = 0; i < occupancy.data.Length; ++i)
+        {
+            if (occupancy.data[i] == 0)
+            {
+                occupancy.data[i] = 1;
+                break;
+            }
+        }
+        ComputeSkin(tile);
+    }
+
+    public void RemoveVoxelAtCursor()
+    {
+        Tile tile = GetTile(mouseTileCo);
+        if (mouseVertexId == -1 || tile == null) return;
+        var occupancy = tile.mesh.vertices[mouseVertexId].attributes["occupancy"] as BMesh.FloatAttributeValue;
+        for (int i = occupancy.data.Length - 1; i >= 0; --i)
+        {
+            if (occupancy.data[i] == 1)
+            {
+                occupancy.data[i] = 0;
+                break;
+            }
+        }
+        ComputeSkin(tile);
+    }
+    #endregion
+
+    #region [MonoBehavior]
+    private void OnEnable()
+    {
+        currentTile = new Tile();
+        tileSet = new Dictionary<AxialCoordinate, Tile>();
+    }
+    void Update()
     {
         if (run)
         {
@@ -472,7 +504,8 @@ public class WorldGenerator : MonoBehaviour
 
     void OnDrawGizmos()
     {
-        if (bmesh == null) return;
+        if (currentTile == null || currentTile.mesh == null) return;
+        var bmesh = currentTile.mesh;
         Gizmos.matrix = transform.localToWorldMatrix;
         BMeshUnity.DrawGizmos(bmesh);
         //if (skinmesh != null) BMeshUnity.DrawGizmos(skinmesh);

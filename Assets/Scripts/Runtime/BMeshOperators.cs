@@ -973,7 +973,7 @@ public class BMeshOperators
                 var occupancies = vertList.ConvertAll(v => (v.attributes[occupancyAttr] as FloatAttributeValue).data);
 
                 bool reachedTop = false;
-                for (int floor = 0; !reachedTop && floor < 99; ++floor)
+                for (int floor = 0; !reachedTop && floor < 10; ++floor)
                 {
                     reachedTop = true;
                     int hash = 0;
@@ -981,10 +981,11 @@ public class BMeshOperators
                     {
                         float[] o = occupancies[k % 4];
                         int fl = floor + (k / 4);
-                        if (o.Length > fl) reachedTop = false;
+                        //if (o.Length > fl) reachedTop = false;
                         int b = o.Length > fl && o[fl] > 0 ? 1 : 0;
                         hash += b << k;
                     }
+                    reachedTop = false;
 
                     var config = LUT[hash];
 
