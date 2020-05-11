@@ -36,11 +36,26 @@ public class BMesh
         public int id; // [attribute]
         public Vector3 point; // [attribute]
         public Dictionary<string, AttributeValue> attributes; // [attribute] (extra attributes)
-        public Edge edge; // one of the edges using this vertex as origin, navogates other using edge.next1/next2
+        public Edge edge; // one of the edges using this vertex as origin, navigates other using edge.next1/next2
 
         public Vertex(Vector3 _point)
         {
             point = _point;
+        }
+
+        public List<Face> NeighborFaces()
+        {
+            var faces = new List<Face>();
+            if (edge != null)
+            {
+                Edge it = edge;
+                do
+                {
+                    faces.AddRange(it.NeighborFaces());
+                    it = it.Next(this);
+                } while (it != edge);
+            }
+            return faces;
         }
     }
 
@@ -608,20 +623,21 @@ public class BMesh
         return HasVertexAttribute(attrib.name);
     }
 
-    public void AddVertexAttribute(AttributeDefinition attrib)
+    public AttributeDefinition AddVertexAttribute(AttributeDefinition attrib)
     {
-        if (HasVertexAttribute(attrib)) return;
+        if (HasVertexAttribute(attrib)) return attrib; // !!
         vertexAttributes.Add(attrib);
         foreach (Vertex v in vertices)
         {
             if (v.attributes == null) v.attributes = new Dictionary<string, AttributeValue>(); // move in Vertex ctor?
             v.attributes[attrib.name] = AttributeValue.Copy(attrib.defaultValue);
         }
+        return attrib;
     }
 
-    public void AddVertexAttribute(string name, AttributeBaseType baseType, int dimensions)
+    public AttributeDefinition AddVertexAttribute(string name, AttributeBaseType baseType, int dimensions)
     {
-        AddVertexAttribute(new AttributeDefinition(name, baseType, dimensions));
+        return AddVertexAttribute(new AttributeDefinition(name, baseType, dimensions));
     }
 
 

@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 [ExecuteInEditMode]
 [RequireComponent(typeof(MeshFilter))]
@@ -17,6 +18,7 @@ public class WorldGenerator : MonoBehaviour
     public float squarifyQuadsBorderWeight = 1.0f;
     public int maxHeight = 5;
     public Transform cursor;
+    public MeshFilter raycastMeshFilter;
 
     public int nextTileQ = 0;
     public int nextTileR = 0;
@@ -382,6 +384,38 @@ public class WorldGenerator : MonoBehaviour
     public void Generate()
     {
         GenerateSubdividedHex(NextTileCoordinate());
+    }
+
+    public void ComputeRaycastMesh()
+    {
+        if (bmesh == null) return;
+        var raycastMesh = new BMesh();
+        raycastMesh.AddVertexAttribute("uv", BMesh.AttributeBaseType.Float, 2); // for vertex index
+        raycastMesh.AddVertexAttribute("uv2", BMesh.AttributeBaseType.Float, 2) // for tile index
+        .defaultValue = new BMesh.FloatAttributeValue(currentTileCo.q, currentTileCo.r);
+
+        { int i = 0; foreach (BMesh.Vertex v in bmesh.vertices) { v.id = i++; } } // reset vertex ids
+
+        foreach (BMesh.Vertex v in bmesh.vertices)
+        {
+            BMesh.Vertex nv = raycastMesh.AddVertex(v.point);
+            (nv.attributes["uv"] as BMesh.FloatAttributeValue).data[0] = v.id;
+            var faces = v.NeighborFaces();
+            var verts = new List<BMesh.Vertex>();
+            foreach (BMesh.Face f in faces)
+            {
+                BMesh.Vertex u = raycastMesh.AddVertex(f.Center());
+                (u.attributes["uv"] as BMesh.FloatAttributeValue).data[0] = v.id;
+                verts.Add(u);
+            }
+            int prev_i = verts.Count - 1;
+            for (int i = 0; i < verts.Count; ++i)
+            {
+                raycastMesh.AddFace(verts[prev_i], nv, verts[i]);
+                prev_i = i;
+            }
+        }
+        if (raycastMeshFilter != null) BMeshUnity.SetInMeshFilter(raycastMesh, raycastMeshFilter);
     }
 
     void Update()
