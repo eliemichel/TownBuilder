@@ -3,13 +3,16 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
+/**
+ * World generator and also world runtime controller
+ */
 [ExecuteInEditMode]
 [RequireComponent(typeof(MeshFilter))]
 public class WorldGenerator : MonoBehaviour
 {
+    #region [Public parameters]
     public float size = 1;
     public int divisions = 5;
-    public bool generate = true;
     public bool run = true;
     public int limitStep = 10;
     public float squarifyQuadsRate = 1.0f;
@@ -19,10 +22,13 @@ public class WorldGenerator : MonoBehaviour
     public int maxHeight = 5;
     public Transform cursor;
     public MeshFilter raycastMeshFilter;
+    public MeshFilter cursorMeshFilter;
 
     public int nextTileQ = 0;
     public int nextTileR = 0;
+    #endregion
 
+    #region [Private attributes]
     class Tile
     {
         public BMesh mesh; // control mesh
@@ -34,6 +40,12 @@ public class WorldGenerator : MonoBehaviour
     TileAxialCoordinate currentTileCo;
     Dictionary<AxialCoordinate, Tile> tileSet;
 
+    // Mouse
+    int mouseVertexId = -1;
+    TileAxialCoordinate mouseTileCo;
+    #endregion
+
+    #region [World Generator]
     void GenerateSimpleHex()
     {
         Vector3[] vertices = new Vector3[7];
@@ -381,16 +393,29 @@ public class WorldGenerator : MonoBehaviour
         ShowMesh();
     }
 
-    public void Generate()
+    void AddDualNgon(BMesh mesh, BMesh.Vertex v)
     {
-        GenerateSubdividedHex(NextTileCoordinate());
+        BMesh.Vertex nv = mesh.AddVertex(v.point);
+        var faces = v.NeighborFaces();
+        var verts = new List<BMesh.Vertex>();
+        foreach (BMesh.Face f in faces)
+        {
+            BMesh.Vertex u = mesh.AddVertex(f.Center());
+            verts.Add(u);
+        }
+        int prev_i = verts.Count - 1;
+        for (int i = 0; i < verts.Count; ++i)
+        {
+            mesh.AddFace(verts[prev_i], nv, verts[i]);
+            prev_i = i;
+        }
     }
 
     public void ComputeRaycastMesh()
     {
         if (bmesh == null) return;
         var raycastMesh = new BMesh();
-        raycastMesh.AddVertexAttribute("uv", BMesh.AttributeBaseType.Float, 2); // for vertex index
+        var uvAttr = raycastMesh.AddVertexAttribute("uv", BMesh.AttributeBaseType.Float, 2); // for vertex index
         raycastMesh.AddVertexAttribute("uv2", BMesh.AttributeBaseType.Float, 2) // for tile index
         .defaultValue = new BMesh.FloatAttributeValue(currentTileCo.q, currentTileCo.r);
 
@@ -398,37 +423,50 @@ public class WorldGenerator : MonoBehaviour
 
         foreach (BMesh.Vertex v in bmesh.vertices)
         {
-            BMesh.Vertex nv = raycastMesh.AddVertex(v.point);
-            (nv.attributes["uv"] as BMesh.FloatAttributeValue).data[0] = v.id;
-            var faces = v.NeighborFaces();
-            var verts = new List<BMesh.Vertex>();
-            foreach (BMesh.Face f in faces)
-            {
-                BMesh.Vertex u = raycastMesh.AddVertex(f.Center());
-                (u.attributes["uv"] as BMesh.FloatAttributeValue).data[0] = v.id;
-                verts.Add(u);
-            }
-            int prev_i = verts.Count - 1;
-            for (int i = 0; i < verts.Count; ++i)
-            {
-                raycastMesh.AddFace(verts[prev_i], nv, verts[i]);
-                prev_i = i;
-            }
+            uvAttr.defaultValue = new BMesh.FloatAttributeValue(v.id, 1);
+            AddDualNgon(raycastMesh, v);
         }
         if (raycastMeshFilter != null) BMeshUnity.SetInMeshFilter(raycastMesh, raycastMeshFilter);
     }
+    #endregion
 
-    void Update()
+    #region [World Controller]
+    public void SetCursorAtVertex(int vertexId, TileAxialCoordinate tileCo)
     {
-        if (generate)
+        if (mouseVertexId == vertexId && mouseTileCo == tileCo) return;
+        mouseVertexId = vertexId;
+        mouseTileCo = tileCo;
+        BMesh gridMesh = null;
+        if (tileCo.Equals(currentTileCo))
         {
-            Generate();
-            generate = false;
+            gridMesh = bmesh;
         }
+        else
+        {
+            Debug.Assert(tileSet != null && tileSet.ContainsKey(tileCo));
+            gridMesh = tileSet[tileCo].mesh;
+        }
+        BMesh.Vertex v = gridMesh.vertices[vertexId];
+        var cursormesh = new BMesh();
+        AddDualNgon(cursormesh, v);
+        BMeshUnity.SetInMeshFilter(cursormesh, cursorMeshFilter);
+    }
 
+    public void HideCursor()
+    {
+        if (mouseVertexId == -1) return;
+        mouseVertexId = -1;
+        BMeshUnity.SetInMeshFilter(new BMesh(), cursorMeshFilter);
+    }
+        #endregion
+
+        #region [MonoBehavior]
+        void Update()
+    {
         if (run)
         {
             GenerateTileAtCursor();
+            ComputeRaycastMesh();
         }
     }
 
@@ -465,4 +503,5 @@ public class WorldGenerator : MonoBehaviour
             }
         }
     }
+    #endregion
 }

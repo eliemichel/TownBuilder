@@ -4,37 +4,28 @@ using UnityEngine;
 
 public class CameraController : MonoBehaviour
 {
-    public Transform debug;
+    public WorldGenerator worldGenerator;
     public float zoomSensitivity = 1;
+    public RenderTexture raycastRt;
 
     Camera cam;
     Vector3 draggedPoint;
     bool dragging = false;
+    Texture2D raycastTexture;
 
     void Start()
     {
         cam = GetComponent<Camera>();
+        raycastTexture = new Texture2D(1, 1, TextureFormat.RGBAHalf, false);
     }
 
-    Ray ScreenPointToRay(Vector2 screenPos)
-    {
-        Vector2 clipPos = new Vector2(
-            1 - (screenPos.x + 0.5f) / Screen.width * 2,
-            1 - (screenPos.y + 0.5f) / Screen.height * 2
-        );
-        var m = (cam.projectionMatrix * cam.transform.worldToLocalMatrix).inverse;
-        var direction = (m * new Vector4(clipPos.x, clipPos.y, 1, 1)).normalized;
-        return new Ray(cam.transform.position, direction);
-    }
-
-    void Update()
+    void UpdateCameraMove()
     {
         if (Input.GetMouseButtonDown(1))
         {
-            Ray ray = ScreenPointToRay(Input.mousePosition);
+            Ray ray = cam.ScreenPointToRay(Input.mousePosition);
             draggedPoint = ray.origin - ray.direction * (ray.origin.y / ray.direction.y);
             dragging = true;
-            debug.position = draggedPoint;
         }
 
         if (dragging)
@@ -49,5 +40,40 @@ public class CameraController : MonoBehaviour
         }
 
         transform.position = transform.position + transform.forward * Input.mouseScrollDelta.y * zoomSensitivity;
+    }
+
+    void UpdateCursor()
+    {
+        // Query pixel in rendering of a control mesh dedicated to mouse ray casting
+        RenderTexture.active = raycastRt;
+        float x = Input.mousePosition.x / (float)Screen.width;
+        float y = 1 - Input.mousePosition.y / (float)Screen.height;
+        if (x < 0 || x >= 1 || y < 0 || y >= 1)
+        {
+            worldGenerator.HideCursor();
+        }
+        else
+        {
+            raycastTexture.ReadPixels(new Rect(raycastRt.width * x, raycastRt.height * y, 1, 1), 0, 0);
+            raycastTexture.Apply();
+            Color c = raycastTexture.GetPixel(0, 0);
+            if (c.g > 0)
+            {
+                int vertId = (int)c.r;
+                int q = (int)c.b;
+                int r = (int)c.a;
+                worldGenerator.SetCursorAtVertex(vertId, new TileAxialCoordinate(q, r, worldGenerator.divisions));
+            }
+            else
+            {
+                worldGenerator.HideCursor();
+            }
+        }
+    }
+
+    void Update()
+    {
+        UpdateCameraMove();
+        UpdateCursor();
     }
 }

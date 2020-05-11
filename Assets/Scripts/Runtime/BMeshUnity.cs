@@ -11,10 +11,15 @@ public class BMeshUnity
     {
         // Points
         Vector2[] uvs = null;
+        Vector2[] uvs2 = null;
         Vector3[] points = new Vector3[mesh.vertices.Count];
         if (mesh.HasVertexAttribute("uv"))
         {
             uvs = new Vector2[mesh.vertices.Count];
+        }
+        if (mesh.HasVertexAttribute("uv2"))
+        {
+            uvs2 = new Vector2[mesh.vertices.Count];
         }
         int i = 0;
         foreach (var vert in mesh.vertices)
@@ -25,6 +30,11 @@ public class BMeshUnity
             {
                 var uv = vert.attributes["uv"] as FloatAttributeValue;
                 uvs[i] = new Vector2(uv.data[0], uv.data[1]);
+            }
+            if (uvs2 != null)
+            {
+                var uv2 = vert.attributes["uv2"] as FloatAttributeValue;
+                uvs2[i] = new Vector2(uv2.data[0], uv2.data[1]);
             }
             ++i;
         }
@@ -63,6 +73,7 @@ public class BMeshUnity
         mf.mesh = unityMesh;
         unityMesh.vertices = points;
         if (uvs != null) unityMesh.uv = uvs;
+        if (uvs2 != null) unityMesh.uv2 = uvs2;
         unityMesh.triangles = triangles;
         unityMesh.RecalculateNormals();
     }
