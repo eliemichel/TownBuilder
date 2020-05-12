@@ -559,15 +559,37 @@ public class WorldGenerator : MonoBehaviour
     {
         Tile tile = GetTile(cursor.tileCo);
         if (cursor.vertexId == -1 || tile == null) return;
-        var occupancy = tile.mesh.vertices[cursor.vertexId].attributes["occupancy"].asFloat();
-        for (int i = 0; i < occupancy.data.Length; ++i)
+
+        int floor = cursor.floor;
+        BMesh.Vertex v = tile.mesh.vertices[cursor.vertexId];
+        BMesh.Vertex nv = v;
+        if (cursor.edgeIndex == -2)
         {
-            if (occupancy.data[i] == 0)
-            {
-                occupancy.data[i] = 1;
-                break;
-            }
+            --floor;
         }
+        else if (cursor.edgeIndex == -1)
+        {
+        }
+        else
+        {
+            BMesh.Edge it = v.edge;
+            for (int i = 0; i < cursor.edgeIndex; ++i)
+            {
+                it = it.Next(v);
+            }
+            nv = it.OtherVertex(v);
+        }
+
+        var occupancy = nv.attributes["occupancy"].asFloat().data;
+
+        if (floor < 0 || floor >= occupancy.Length) return;
+        if (occupancy[floor] > 0)
+        {
+            // The cursor is supposed to always be an edge from occupied to unoccupied
+            Debug.LogWarning("Invalid cursor: floor #" + floor + " is already occupied");
+            return;
+        }
+        occupancy[floor] = 1;
         ComputeSkin(tile);
     }
 
@@ -575,15 +597,24 @@ public class WorldGenerator : MonoBehaviour
     {
         Tile tile = GetTile(cursor.tileCo);
         if (cursor.vertexId == -1 || tile == null) return;
-        var occupancy = tile.mesh.vertices[cursor.vertexId].attributes["occupancy"].asFloat();
-        for (int i = occupancy.data.Length - 1; i >= 0; --i)
+        int floor = cursor.floor;
+        BMesh.Vertex v = tile.mesh.vertices[cursor.vertexId];
+        var occupancy = v.attributes["occupancy"].asFloat().data;
+
+        if (cursor.edgeIndex == -1)
         {
-            if (occupancy.data[i] == 1)
-            {
-                occupancy.data[i] = 0;
-                break;
-            }
+            --floor;
         }
+
+        if (floor < 0 || floor >= occupancy.Length) return;
+        if (occupancy[floor] == 0)
+        {
+            // The cursor is supposed to always be an edge from occupied to unoccupied
+            Debug.LogWarning("Invalid cursor: floor #" + cursor.floor + " is not occupied");
+            return;
+        }
+
+        occupancy[floor] = 0;
         ComputeSkin(tile);
     }
     #endregion
