@@ -505,6 +505,16 @@ public class BMesh
             }
             return float.PositiveInfinity;
         }
+
+        public FloatAttributeValue asFloat()
+        {
+            return this as FloatAttributeValue;
+        }
+
+        public IntAttributeValue asInt()
+        {
+            return this as IntAttributeValue;
+        }
     }
     public class IntAttributeValue : AttributeValue
     {

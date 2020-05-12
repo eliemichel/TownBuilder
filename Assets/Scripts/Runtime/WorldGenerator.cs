@@ -19,8 +19,8 @@ public class WorldGenerator : MonoBehaviour
     public bool squarifyQuadsUniform = false;
     public int squarifyQuadsIterations = 10;
     public float squarifyQuadsBorderWeight = 1.0f;
-    public int maxHeight = 5;
-    public Transform cursor;
+    public int maxHeight = 5; // must not change because encoding of DualNgon (for raycast mesh) relies on it
+    public Transform generatorCursor;
     public MeshFilter raycastMeshFilter;
     public MeshFilter cursorMeshFilter;
 
@@ -35,13 +35,19 @@ public class WorldGenerator : MonoBehaviour
         public BMesh skin; // visible mesh
     }
 
+    class Cursor
+    {
+        public int vertexId;
+        public TileAxialCoordinate tileCo;
+        public int edgeIndex; // -2: bellow, -1: above, 0+: side
+        public int floor;
+    }
+
     TileAxialCoordinate currentTileCo;
     Tile currentTile;
     Dictionary<AxialCoordinate, Tile> tileSet;
+    Cursor cursor;
 
-    // Mouse
-    int mouseVertexId = -1;
-    TileAxialCoordinate mouseTileCo;
     #endregion
 
     #region [World Generator]
@@ -200,8 +206,8 @@ public class WorldGenerator : MonoBehaviour
 
     public void GenerateTileAtCursor()
     {
-        if (cursor == null) return;
-        Vector2 p = new Vector2(cursor.position.x, cursor.position.z);
+        if (generatorCursor == null) return;
+        Vector2 p = new Vector2(generatorCursor.position.x, generatorCursor.position.z);
         var tileCo = TileAxialCoordinate.AtPosition(p, size, divisions);
         if (tileSet != null && tileSet.ContainsKey(tileCo)) return;
         if (currentTileCo != null)
@@ -357,22 +363,94 @@ public class WorldGenerator : MonoBehaviour
         BMeshOperators.MarchingCubes(tile.skin, tile.mesh, "occupancy");
         ShowMesh();
     }
+    #endregion
 
-    void AddDualNgon(BMesh mesh, BMesh.Vertex v)
+    #region [Raycast Mesh]
+    // For DualNgon functions only
+    Vector3 FloorOffset(int floor)
     {
-        BMesh.Vertex nv = mesh.AddVertex(v.point);
+        return Vector3.up * Mathf.Max(floor - 0.5f, 0);
+    }
+
+    void AddDualNgon(BMesh mesh, BMesh.Vertex v, int floor, bool flipped = false) // @flipped anyway face orientation is messy (todo)
+    {
+        BMesh.Vertex nv = mesh.AddVertex(v.point + FloorOffset(floor));
         var faces = v.NeighborFaces();
         var verts = new List<BMesh.Vertex>();
         foreach (BMesh.Face f in faces)
         {
-            BMesh.Vertex u = mesh.AddVertex(f.Center());
+            BMesh.Vertex u = mesh.AddVertex(f.Center() + FloorOffset(floor));
             verts.Add(u);
         }
         int prev_i = verts.Count - 1;
         for (int i = 0; i < verts.Count; ++i)
         {
-            mesh.AddFace(verts[prev_i], nv, verts[i]);
+            mesh.AddFace(verts[flipped ? i : prev_i], nv, verts[flipped ? prev_i : i]);
             prev_i = i;
+        }
+    }
+
+    void AddDualNgonWall(BMesh mesh, BMesh.Edge e, int floor)
+    {
+        var faces = e.NeighborFaces();
+        var verts = new List<BMesh.Vertex>();
+        foreach (BMesh.Face f in faces)
+        {
+            BMesh.Vertex u0 = mesh.AddVertex(f.Center() + FloorOffset(floor));
+            BMesh.Vertex u1 = mesh.AddVertex(f.Center() + FloorOffset(floor + 1));
+            verts.Add(u0);
+            verts.Add(u1);
+        }
+        int prev_i = verts.Count / 2 - 1;
+        for (int i = 0; i < verts.Count / 2; ++i)
+        {
+            mesh.AddFace(verts[2 * prev_i + 0], verts[2 * i + 0], verts[2 * i + 1], verts[2 * prev_i + 1]);
+            prev_i = i;
+        }
+    }
+
+    // Assume that vertex as consistent id
+    void AddDualNgonColumn(BMesh mesh, BMesh.Vertex v, BMesh.AttributeDefinition uvAttr)
+    {
+        Debug.Assert(v.edge != null);
+        var occupancy = v.attributes["occupancy"].asFloat().data;
+
+        bool occ, prev_occ = true;
+        for (int floor = 0; floor < occupancy.Length; ++floor, prev_occ = occ)
+        {
+            occ = occupancy[floor] > 0;
+
+            if (occ && !prev_occ)
+            {
+                int dualNgonId = floor + maxHeight * 1;
+                uvAttr.defaultValue = new BMesh.FloatAttributeValue(v.id, dualNgonId);
+                AddDualNgon(mesh, v, floor, true /* flipped */);
+            }
+            if (!occ && prev_occ)
+            {
+                int dualNgonId = floor + maxHeight * 2;
+                uvAttr.defaultValue = new BMesh.FloatAttributeValue(v.id, dualNgonId);
+                AddDualNgon(mesh, v, floor, false /* flipped */);
+            }
+            // If cell is occupied, add wall arounds at interfaces with empty cells
+            if (occ)
+            {
+                int edgeIndex = 0; // will be written in UVs to find it back at mouse ray casting
+                BMesh.Edge it = v.edge;
+                do
+                {
+                    BMesh.Vertex neighbor = it.OtherVertex(v);
+                    float nocc = neighbor.attributes["occupancy"].asFloat().data[floor];
+                    if (nocc == 0)
+                    {
+                        int dualNgonId = floor + maxHeight * (edgeIndex + 3);
+                        uvAttr.defaultValue = new BMesh.FloatAttributeValue(v.id, dualNgonId);
+                        AddDualNgonWall(mesh, it, floor);
+                    }
+                    it = it.Next(v);
+                    ++edgeIndex;
+                } while (it != v.edge);
+            }
         }
     }
 
@@ -388,8 +466,7 @@ public class WorldGenerator : MonoBehaviour
 
         foreach (BMesh.Vertex v in currentTile.mesh.vertices)
         {
-            uvAttr.defaultValue = new BMesh.FloatAttributeValue(v.id, 1);
-            AddDualNgon(raycastMesh, v);
+            AddDualNgonColumn(raycastMesh, v, uvAttr);
         }
         if (raycastMeshFilter != null) BMeshUnity.SetInMeshFilter(raycastMesh, raycastMeshFilter);
     }
@@ -434,31 +511,55 @@ public class WorldGenerator : MonoBehaviour
             return null;
         }
     }
-    public void SetCursorAtVertex(int vertexId, TileAxialCoordinate tileCo)
+
+    void BuildCursorMesh()
     {
-        if (mouseVertexId == vertexId && mouseTileCo == tileCo) return;
-        mouseVertexId = vertexId;
-        mouseTileCo = tileCo;
-        Tile tile = GetTile(tileCo);
+        Tile tile = GetTile(cursor.tileCo);
         Debug.Assert(tile != null);
-        BMesh.Vertex v = tile.mesh.vertices[vertexId];
+        BMesh.Vertex v = tile.mesh.vertices[cursor.vertexId];
         var cursormesh = new BMesh();
-        AddDualNgon(cursormesh, v);
+        if (cursor.edgeIndex == -2)
+        {
+            AddDualNgon(cursormesh, v, cursor.floor, true /* flipped */);
+        }
+        else if (cursor.edgeIndex == -1)
+        {
+            AddDualNgon(cursormesh, v, cursor.floor, false /* flipped */);
+        }
+        else
+        {
+            BMesh.Edge it = v.edge;
+            for (int i = 0; i < cursor.edgeIndex; ++i)
+            {
+                it = it.Next(v);
+            }
+            AddDualNgonWall(cursormesh, it, cursor.floor);
+        }
         BMeshUnity.SetInMeshFilter(cursormesh, cursorMeshFilter);
+    }
+
+    public void SetCursorAtVertex(int vertexId, int dualNgonId, TileAxialCoordinate tileCo)
+    {
+        if (cursor.vertexId == vertexId && cursor.tileCo == tileCo) return;
+        cursor.vertexId = vertexId;
+        cursor.tileCo = tileCo;
+        cursor.floor = dualNgonId % maxHeight;
+        cursor.edgeIndex = dualNgonId / maxHeight - 3;
+        BuildCursorMesh();
     }
 
     public void HideCursor()
     {
-        if (mouseVertexId == -1) return;
-        mouseVertexId = -1;
+        if (cursor.vertexId == -1) return;
+        cursor.vertexId = -1;
         BMeshUnity.SetInMeshFilter(new BMesh(), cursorMeshFilter);
     }
 
     public void AddVoxelAtCursor()
     {
-        Tile tile = GetTile(mouseTileCo);
-        if (mouseVertexId == -1 || tile == null) return;
-        var occupancy = tile.mesh.vertices[mouseVertexId].attributes["occupancy"] as BMesh.FloatAttributeValue;
+        Tile tile = GetTile(cursor.tileCo);
+        if (cursor.vertexId == -1 || tile == null) return;
+        var occupancy = tile.mesh.vertices[cursor.vertexId].attributes["occupancy"].asFloat();
         for (int i = 0; i < occupancy.data.Length; ++i)
         {
             if (occupancy.data[i] == 0)
@@ -472,9 +573,9 @@ public class WorldGenerator : MonoBehaviour
 
     public void RemoveVoxelAtCursor()
     {
-        Tile tile = GetTile(mouseTileCo);
-        if (mouseVertexId == -1 || tile == null) return;
-        var occupancy = tile.mesh.vertices[mouseVertexId].attributes["occupancy"] as BMesh.FloatAttributeValue;
+        Tile tile = GetTile(cursor.tileCo);
+        if (cursor.vertexId == -1 || tile == null) return;
+        var occupancy = tile.mesh.vertices[cursor.vertexId].attributes["occupancy"].asFloat();
         for (int i = occupancy.data.Length - 1; i >= 0; --i)
         {
             if (occupancy.data[i] == 1)
@@ -492,6 +593,7 @@ public class WorldGenerator : MonoBehaviour
     {
         currentTile = new Tile();
         tileSet = new Dictionary<AxialCoordinate, Tile>();
+        cursor = new Cursor();
     }
     void Update()
     {

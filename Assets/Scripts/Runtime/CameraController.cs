@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityScript.Steps;
 
 public class CameraController : MonoBehaviour
 {
@@ -60,9 +61,10 @@ public class CameraController : MonoBehaviour
             if (c.g > 0)
             {
                 int vertId = (int)c.r;
+                int dualNgonId = (int)c.g;
                 int q = (int)c.b;
                 int r = (int)c.a;
-                worldGenerator.SetCursorAtVertex(vertId, new TileAxialCoordinate(q, r, worldGenerator.divisions));
+                worldGenerator.SetCursorAtVertex(vertId, dualNgonId, new TileAxialCoordinate(q, r, worldGenerator.divisions));
             }
             else
             {
