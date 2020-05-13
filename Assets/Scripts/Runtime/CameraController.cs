@@ -73,12 +73,82 @@ public class CameraController : MonoBehaviour
         }
     }
 
+    bool isRotating = false;
+    Vector3 rotationStartPixel;
+    Vector3 rotationPivot;
+    float rotationDistance;
+    float rotationTheta;
+    float rotationPhi;
+
+    void StartRotation()
+    {
+        if (isRotating) return;
+        isRotating = true;
+        rotationStartPixel = Input.mousePosition;
+
+        // Rotate around plane point seen at camera center
+        Ray ray = cam.ScreenPointToRay(new Vector2(Screen.width, Screen.height) / 2);
+        rotationPivot = ray.origin - ray.direction * (ray.origin.y / ray.direction.y);
+        Vector3 fromPivot = transform.position - rotationPivot;
+        rotationDistance = fromPivot.magnitude;
+        Vector3 d = fromPivot / rotationDistance;
+        rotationTheta = Mathf.Acos(d.y);
+        float sinTheta = Mathf.Sqrt(1 - d.y * d.y);
+        rotationPhi = Mathf.Atan2(d.z / sinTheta, d.x / sinTheta);
+
+        Debug.Assert(Mathf.Abs(d.x - Mathf.Cos(rotationPhi) * Mathf.Sin(rotationTheta)) < 1e-6);
+        Debug.Assert(Mathf.Abs(d.y - Mathf.Cos(rotationTheta)) < 1e-6);
+        Debug.Assert(Mathf.Abs(d.z - Mathf.Sin(rotationPhi) * Mathf.Sin(rotationTheta)) < 1e-6);
+        Debug.Assert(Vector3.Distance(transform.position, rotationPivot + fromPivot) < 1e-6);
+        Debug.Assert(Vector3.Distance(fromPivot, d * rotationDistance) < 1e-6);
+    }
+
+    void UpdateRotation()
+    {
+        if (!isRotating) return;
+        // Update angles
+        Vector2 delta = Input.mousePosition - rotationStartPixel;
+        float phi = rotationPhi - delta.x * 0.01f;
+        float theta = Mathf.Max(0.01f, rotationTheta + delta.y * 0.01f);
+
+        // Update position
+        float sinTheta = Mathf.Sin(theta);
+        Vector3 fromPivot = new Vector3(
+            Mathf.Cos(phi) * sinTheta,
+            Mathf.Cos(theta),
+            Mathf.Sin(phi) * sinTheta
+        ) * rotationDistance;
+        transform.position = rotationPivot + fromPivot;
+
+        transform.LookAt(rotationPivot);
+    }
+
+    void StopRotation()
+    {
+        if (!isRotating) return;
+        isRotating = false;
+    }
+
+    void UpdateCameraRotation()
+    {
+        if (Input.GetMouseButtonDown(0) && Input.GetKey(KeyCode.LeftAlt))
+        {
+            StartRotation();
+        }
+        UpdateRotation();
+        if (Input.GetMouseButtonUp(0))
+        {
+            StopRotation();
+        }
+    }
+
     void Update()
     {
         UpdateCameraMove();
+        UpdateCameraRotation();
         UpdateCursor();
 
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown(0) && !Input.GetKey(KeyCode.LeftAlt))
         {
             worldGenerator.AddVoxelAtCursor();
         }

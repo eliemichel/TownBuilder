@@ -393,6 +393,7 @@ public class WorldGenerator : MonoBehaviour
     void AddDualNgonWall(BMesh mesh, BMesh.Edge e, int floor)
     {
         var faces = e.NeighborFaces();
+        Debug.Assert(faces.Count >= 2);
         var verts = new List<BMesh.Vertex>();
         foreach (BMesh.Face f in faces)
         {
