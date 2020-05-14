@@ -8,13 +8,47 @@ public class DemoSmvcDeform : MonoBehaviour
     public Transform[] orginalHandles;
     public Transform[] deformedHandles;
     public Transform debug;
+    public bool run = false;
+    public float timeBudget = 8; // in ms
 
-    public void Deform()
+    public Mesh originalMesh;
+    Vector3[] originalVertices;
+    Vector3[] vertices;
+
+    private void Start()
+    {
+        originalMesh = deformedMesh.sharedMesh;
+        var clonedMesh = new Mesh(); //2
+
+        clonedMesh.name = "clone";
+        clonedMesh.vertices = originalMesh.vertices;
+        clonedMesh.triangles = originalMesh.triangles;
+        clonedMesh.normals = originalMesh.normals;
+        clonedMesh.uv = originalMesh.uv;
+        deformedMesh.mesh = clonedMesh;  //3
+
+        vertices = clonedMesh.vertices; //4
+        originalVertices = originalMesh.vertices;
+
+        if (run) StartCoroutine(ContinuousDeform());
+    }
+
+    IEnumerator ContinuousDeform()
+    {
+        for (; ;)
+        {
+            for (var it = DeformCoroutine(); it.MoveNext();) {
+                yield return null;
+            }
+        }
+    }
+
+    IEnumerator DeformCoroutine()
     {
         Debug.Assert(orginalHandles.Length == deformedHandles.Length);
         Debug.Assert(orginalHandles.Length == 12);
         Vector3[] cageVertices = new Vector3[12];
-        for (int i = 0; i<12; ++i)
+        for (int i = 0; i < 12; ++i)
         {
             cageVertices[i] = orginalHandles[i].position;
         }
@@ -37,14 +71,13 @@ public class DemoSmvcDeform : MonoBehaviour
             new int[]{ 4, 8, 11 }
         };
 
-        Mesh mesh = deformedMesh.mesh;
-        Vector3[] vertices = mesh.vertices;
-
         float[] weights = new float[12];
+
+        float startTime = Time.realtimeSinceStartup;
 
         for (var i = 0; i < vertices.Length; i++)
         {
-            Vector3 pos = deformedMesh.transform.localToWorldMatrix * vertices[i];
+            Vector3 pos = deformedMesh.transform.localToWorldMatrix * originalVertices[i];
             SmvcDeform.ComputeCoordinates(pos, cageFaces, cageVertices, weights);
             Debug.Assert(weights.Length == cageVertices.Length);
 
@@ -54,8 +87,22 @@ public class DemoSmvcDeform : MonoBehaviour
                 newPos += weights[j] * deformedHandles[j].position;
             }
             vertices[i] = deformedMesh.transform.worldToLocalMatrix * newPos;
+
+            if (Time.realtimeSinceStartup - startTime > timeBudget * 1e-3)
+            {
+                //Debug.Log("i = " + i + "/" + vertices.Length);
+                deformedMesh.mesh.vertices = vertices;
+                yield return null;
+                startTime = Time.realtimeSinceStartup;
+            }
         }
-        mesh.vertices = vertices;
+        deformedMesh.mesh.vertices = vertices;
+        deformedMesh.mesh.RecalculateNormals();
+    }
+
+    public void Deform()
+    {
+        for (var it = DeformCoroutine(); it.MoveNext();) { }
     }
 
     public void DeformDebug()

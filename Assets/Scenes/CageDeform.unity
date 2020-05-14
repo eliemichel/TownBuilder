@@ -1724,6 +1724,9 @@ MonoBehaviour:
   - {fileID: 565295223}
   - {fileID: 1620871526}
   debug: {fileID: 144767176}
+  run: 1
+  timeBudget: 50
+  originalMesh: {fileID: 0}
 --- !u!65 &1016918261
 BoxCollider:
   m_ObjectHideFlags: 0
