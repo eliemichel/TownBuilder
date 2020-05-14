@@ -360,7 +360,7 @@ public class WorldGenerator : MonoBehaviour
     {
         if (tile == null) return;
         tile.skin = new BMesh();
-        BMeshOperators.MarchingCubes(tile.skin, tile.mesh, "occupancy");
+        ModuleBasedMarchingCubes.Run(tile.skin, tile.mesh, "occupancy");
         ShowMesh();
     }
     #endregion
