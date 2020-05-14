@@ -11,7 +11,7 @@ public class MarchingModuleManager : MonoBehaviour
     public class TransformedModule
     {
         public MarchingModule baseModule;
-        public int zRotations = 0;
+        public ModuleBasedMarchingCubes.Transform transform = new ModuleBasedMarchingCubes.Transform(0);
     }
 
     HashSet<TransformedModule>[] moduleSets; // at build time
@@ -19,8 +19,16 @@ public class MarchingModuleManager : MonoBehaviour
 
     void RegisterModule(MarchingModule module)
     {
-        if (moduleSets[module.hash] == null) moduleSets[module.hash] = new HashSet<TransformedModule>();
         moduleSets[module.hash].Add(new TransformedModule { baseModule = module });
+
+        if (module.allowRotationAroundVerticalAxis)
+        {
+            for (int i = 1; i < 4; ++i)
+            {
+                var transform = new ModuleBasedMarchingCubes.Transform(i);
+                moduleSets[transform.TransformHash(module.hash)].Add(new TransformedModule { baseModule = module, transform = transform });
+            }
+        }
     }
 
     public void Prepare()
@@ -28,7 +36,7 @@ public class MarchingModuleManager : MonoBehaviour
         moduleLut = new TransformedModule[256][];
         for (int i = 0; i < 256; ++i)
         {
-            if (moduleSets[i] == null) continue;
+            if (moduleSets[i] == null || moduleSets[i].Count == 0) continue;
             moduleLut[i] = new TransformedModule[moduleSets[i].Count];
             int j = 0;
             foreach (var m in moduleSets[i])
@@ -54,6 +62,10 @@ public class MarchingModuleManager : MonoBehaviour
     void Start()
     {
         moduleSets = new HashSet<TransformedModule>[256];
+        for (int i = 0; i < 256; ++i)
+        {
+            moduleSets[i] = new HashSet<TransformedModule>();
+        }
         foreach (var module in GetComponentsInChildren<MarchingModule>())
         {
             RegisterModule(module);

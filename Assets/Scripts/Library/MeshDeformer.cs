@@ -13,20 +13,20 @@ public class MeshDeformer
     readonly Vector3[] deformedVertices;
 
     static readonly Vector3[] cageVertices = new Vector3[] {
-        new Vector3(0.5f, -0.5f, 0),
-        new Vector3(0, -0.5f, 0.5f),
-        new Vector3(-0.5f, -0.5f, 0),
-        new Vector3(0, -0.5f, -0.5f),
+        new Vector3(0.5f, -0.5f, 0) * 2 + Vector3.up,
+        new Vector3(0, -0.5f, 0.5f) * 2 + Vector3.up,
+        new Vector3(-0.5f, -0.5f, 0) * 2 + Vector3.up,
+        new Vector3(0, -0.5f, -0.5f) * 2 + Vector3.up,
 
-        new Vector3(0.5f, 0, -0.5f),
-        new Vector3(0.5f, 0, 0.5f),
-        new Vector3(-0.5f, 0, 0.5f),
-        new Vector3(-0.5f, 0, -0.5f),
+        new Vector3(0.5f, 0, -0.5f) * 2 + Vector3.up,
+        new Vector3(0.5f, 0, 0.5f) * 2 + Vector3.up,
+        new Vector3(-0.5f, 0, 0.5f) * 2 + Vector3.up,
+        new Vector3(-0.5f, 0, -0.5f) * 2 + Vector3.up,
 
-        new Vector3(0.5f, 0.5f, 0),
-        new Vector3(0, 0.5f, 0.5f),
-        new Vector3(-0.5f, 0.5f, 0),
-        new Vector3(0, 0.5f, -0.5f)
+        new Vector3(0.5f, 0.5f, 0) * 2 + Vector3.up,
+        new Vector3(0, 0.5f, 0.5f) * 2 + Vector3.up,
+        new Vector3(-0.5f, 0.5f, 0) * 2 + Vector3.up,
+        new Vector3(0, 0.5f, -0.5f) * 2 + Vector3.up
     };
 
     static readonly int[][] cageFaces = new int[][] {
@@ -60,6 +60,10 @@ public class MeshDeformer
         {
             p = premultiplyMatrix * p;
         }
+
+        float tmp = p.x;
+        p.x = p.z;
+        p.z = tmp;
 
         SmvcDeform.ComputeCoordinates(p, cageFaces, cageVertices, weights);
 

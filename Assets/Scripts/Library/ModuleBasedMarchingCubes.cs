@@ -5,10 +5,10 @@
 using UnityEngine;
 using static BMesh;
 
-class ModuleBasedMarchingCubes
+public class ModuleBasedMarchingCubes
 {
     // Permutation of points to put them in canonial form
-    class Transform
+    public class Transform
     {
         public int[] permutation; // permutation from canonical to config
         public bool flipped = false;
@@ -123,6 +123,20 @@ class ModuleBasedMarchingCubes
         public int FromCanonical(int index)
         {
             return permutation[index];
+        }
+
+        // Transform a LUT index such that
+        public int TransformHash(int hash)
+        {
+            int newHash = 0;
+            for (int pow = 0; pow < permutation.Length; ++pow)
+            {
+                int mask = 1 << pow;
+                int newMask = 1 << permutation[pow];
+                bool b = (hash & mask) != 0;
+                newHash += b ? newMask : 0;
+            }
+            return newHash;
         }
 
         public static Vector3 DefaultEdgeCenter(int i, int j, Vertex[] verts, Edge[] edges)
@@ -813,18 +827,18 @@ class ModuleBasedMarchingCubes
         var mf = m.baseModule.meshFilter;
         Vector3 floorOffset = floor * Vector3.up;
         var controlPoints = new Vector3[] {
-            Transform.DefaultEdgeCenter(0, 1, verts, edges) + floorOffset,
-            Transform.DefaultEdgeCenter(1, 2, verts, edges) + floorOffset,
-            Transform.DefaultEdgeCenter(2, 3, verts, edges) + floorOffset,
-            Transform.DefaultEdgeCenter(3, 0, verts, edges) + floorOffset,
-            Transform.DefaultEdgeCenter(0, 4, verts, edges) + floorOffset,
-            Transform.DefaultEdgeCenter(1, 5, verts, edges) + floorOffset,
-            Transform.DefaultEdgeCenter(2, 6, verts, edges) + floorOffset,
-            Transform.DefaultEdgeCenter(3, 7, verts, edges) + floorOffset,
-            Transform.DefaultEdgeCenter(4, 5, verts, edges) + floorOffset,
-            Transform.DefaultEdgeCenter(5, 6, verts, edges) + floorOffset,
-            Transform.DefaultEdgeCenter(6, 7, verts, edges) + floorOffset,
-            Transform.DefaultEdgeCenter(7, 4, verts, edges) + floorOffset
+            m.transform.EdgeCenter(0, 1, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(1, 2, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(2, 3, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(3, 0, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(0, 4, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(1, 5, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(2, 6, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(3, 7, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(4, 5, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(5, 6, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(6, 7, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(7, 4, verts, edges) + floorOffset
         };
         BMeshUnity.Merge(mesh, mf.sharedMesh, new MeshDeformer(mf.transform, controlPoints));
 

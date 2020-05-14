@@ -18,13 +18,14 @@ public class DemoSmvcDeform : MonoBehaviour
     private void Start()
     {
         originalMesh = deformedMesh.sharedMesh;
-        var clonedMesh = new Mesh(); //2
-
-        clonedMesh.name = "clone";
-        clonedMesh.vertices = originalMesh.vertices;
-        clonedMesh.triangles = originalMesh.triangles;
-        clonedMesh.normals = originalMesh.normals;
-        clonedMesh.uv = originalMesh.uv;
+        var clonedMesh = new Mesh
+        {
+            name = "clone",
+            vertices = originalMesh.vertices,
+            triangles = originalMesh.triangles,
+            normals = originalMesh.normals,
+            uv = originalMesh.uv
+        };
         deformedMesh.mesh = clonedMesh;  //3
 
         vertices = clonedMesh.vertices; //4
@@ -40,6 +41,7 @@ public class DemoSmvcDeform : MonoBehaviour
             for (var it = DeformCoroutine(); it.MoveNext();) {
                 yield return null;
             }
+            yield return null;
         }
     }
 
@@ -75,18 +77,20 @@ public class DemoSmvcDeform : MonoBehaviour
 
         float startTime = Time.realtimeSinceStartup;
 
-        for (var i = 0; i < vertices.Length; i++)
+        for (var vid = 0; vid < vertices.Length; vid++)
         {
-            Vector3 pos = deformedMesh.transform.localToWorldMatrix * originalVertices[i];
+            Vector3 pos = deformedMesh.transform.localToWorldMatrix * originalVertices[vid];
             SmvcDeform.ComputeCoordinates(pos, cageFaces, cageVertices, weights);
             Debug.Assert(weights.Length == cageVertices.Length);
 
             Vector3 newPos = Vector3.zero;
             for (int j = 0; j < weights.Length; ++j)
             {
+                //Debug.Assert(!float.IsNaN(weights[j]), "weight #" + j + " is NaN at vertex #" + vid);
+                if (float.IsNaN(weights[j])) Debug.LogWarning("weight #" + j + " is NaN at vertex #" + vid);
                 newPos += weights[j] * deformedHandles[j].position;
             }
-            vertices[i] = deformedMesh.transform.worldToLocalMatrix * newPos;
+            vertices[vid] = deformedMesh.transform.worldToLocalMatrix * newPos;
 
             if (Time.realtimeSinceStartup - startTime > timeBudget * 1e-3)
             {

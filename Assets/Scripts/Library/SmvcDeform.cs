@@ -6,13 +6,15 @@ using System;
 // from https://github.com/superboubek/QMVC/blob/master/coordinates/smvc/smvc.h
 public class SmvcDeform
 {
-    static float GetAngleBetweenUnitVectors(Vector3 u1 , Vector3 u2) {
+    static float GetAngleBetweenUnitVectors(Vector3 u1, Vector3 u2)
+    {
         return 2.0f * Mathf.Asin((u1 - u2).magnitude / 2.0f);
     }
 
-    static float GetTangentOfHalfAngleBetweenUnitVectors(Vector3 u1 , Vector3 u2 ) {
+    static float GetTangentOfHalfAngleBetweenUnitVectors(Vector3 u1, Vector3 u2)
+    {
         float factor = (u1 - u2).magnitude / 2.0f;
-        return factor / Mathf.Sqrt(Mathf.Max(1 - factor * factor, 0.0f) );
+        return factor / Mathf.Sqrt(Mathf.Max(1 - factor * factor, 0.0f));
     }
 
     public static float[] ComputeCoordinates(
@@ -38,7 +40,7 @@ public class SmvcDeform
 
         Vector3[] u = new Vector3[n_vertices];
 
-        for(int v = 0; v < n_vertices; ++v)
+        for (int v = 0; v < n_vertices; ++v)
         {
             d[v] = (eta - cage_vertices[v]).magnitude;
             if (d[v] < epsilon)
@@ -49,29 +51,47 @@ public class SmvcDeform
             u[v] = (cage_vertices[v] - eta) / (float)d[v];
         }
 
-        for(int f = 0; f < n_faces ; ++f )
+        for (int f = 0; f < n_faces; ++f)
         {
             // the Norm is CCW :
-            Vector3 faceMeanVector = Vector3.zero;
             int faceVertCount = cage_faces[f].Length;
-            for (int i = 0; i< faceVertCount; ++i ) {
+
+            var ns = new Vector3[faceVertCount];
+            var angles = new float[faceVertCount];
+
+            for (int i = 0; i < faceVertCount; ++i)
+            {
                 int v0 = cage_faces[f][i];
                 int v1 = cage_faces[f][(i + 1) % faceVertCount];
 
                 Vector3 u0 = u[v0];
                 Vector3 u1 = u[v1];
 
-                float angle = GetAngleBetweenUnitVectors(u0, u1);
-                Vector3 n = Vector3.Cross(u0, u1).normalized;
+                angles[i] = GetAngleBetweenUnitVectors(u0, u1);
+                Vector3 n = Vector3.Cross(u0, u1);
+                ns[i] = n.magnitude < epsilon ? Vector3.zero : n.normalized;
+            }
 
-                faceMeanVector += (angle / 2.0f) * n;
+            Vector3 roughFaceMeanVector = Vector3.zero;
+            for (int i = 0; i < faceVertCount; ++i)
+            {
+                roughFaceMeanVector += ns[i];
+            }
+
+            Vector3 faceMeanVector = Vector3.zero;
+            for (int i = 0; i < faceVertCount; ++i)
+            {
+                Vector3 n = ns[i];
+                //if (Vector3.Dot(n, roughFaceMeanVector) < 0) n = -n;
+                faceMeanVector += (angles[i] / 2.0f) * n;
             }
 
             float denominator = 0;
             float[] lambdas = new float[faceVertCount];
             for (int i = 0; i < lambdas.Length; ++i) lambdas[i] = 0;
 
-        for (int i = 0; i< faceVertCount; ++i ) {
+            for (int i = 0; i < faceVertCount; ++i)
+            {
                 int vi = cage_faces[f][i];
                 int viplus1 = cage_faces[f][(i + 1) % faceVertCount];
                 int viminus1 = cage_faces[f][(i + faceVertCount - 1) % faceVertCount];
@@ -82,7 +102,8 @@ public class SmvcDeform
 
                 float faceMeanVectorSqrNorm = faceMeanVector.sqrMagnitude;
                 float vfnormDividedBysinthetai = faceMeanVectorSqrNorm;
-                if(faceMeanVectorSqrNorm > epsilon) {
+                if (faceMeanVectorSqrNorm > epsilon)
+                {
                     vfnormDividedBysinthetai /= Vector3.Cross(faceMeanVector, ui).magnitude;
                 }
 
@@ -101,26 +122,30 @@ public class SmvcDeform
 
                 lambdas[i] = vfnormDividedBysinthetai * tangents / d[vi];
 
-                denominator += tangents* Vector3.Dot(faceMeanVector, ui) / Vector3.Cross(faceMeanVector, ui).magnitude;
+                denominator += tangents * Vector3.Dot(faceMeanVector, ui) / Vector3.Cross(faceMeanVector, ui).magnitude;
             }
 
-            if(Mathf.Abs(denominator) < epsilon) {
+            if (Mathf.Abs(denominator) < epsilon)
+            {
                 // then we are on the face, and we output the unnormalized weights of the face, as they dominate in the final sum:
                 sumWeights = 0;
-                for(int i = 0; i<faceVertCount ; ++i ) {
+                for (int i = 0; i < faceVertCount; ++i)
+                {
                     int vi = cage_faces[f][i];
                     float lambdai = lambdas[i];
                     weights[vi] = lambdai;
                     sumWeights += lambdai;
                 }
-                for(int i = 0; i< faceVertCount; ++i ) {
+                for (int i = 0; i < faceVertCount; ++i)
+                {
                     int vi = cage_faces[f][i];
                     weights[vi] /= sumWeights;
                 }
                 return weights;
             }
 
-            for(int i = 0; i< faceVertCount; ++i ) {
+            for (int i = 0; i < faceVertCount; ++i)
+            {
                 int vi = cage_faces[f][i];
                 float lambdai = lambdas[i] / denominator;
                 w_weights[vi] += lambdai;
@@ -129,8 +154,8 @@ public class SmvcDeform
 
         }
 
-        for(int v = 0; v<n_vertices ; ++v )
-            weights[v]  = w_weights[v] / sumWeights;
+        for (int v = 0; v < n_vertices; ++v)
+            weights[v] = w_weights[v] / sumWeights;
 
         return weights;
     }
