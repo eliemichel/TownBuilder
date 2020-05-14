@@ -19,6 +19,7 @@ public class MarchingModuleManager : MonoBehaviour
 
     void RegisterModule(MarchingModule module)
     {
+        if (moduleSets[module.hash] == null) moduleSets[module.hash] = new HashSet<TransformedModule>();
         moduleSets[module.hash].Add(new TransformedModule { baseModule = module });
     }
 
@@ -27,6 +28,7 @@ public class MarchingModuleManager : MonoBehaviour
         moduleLut = new TransformedModule[256][];
         for (int i = 0; i < 256; ++i)
         {
+            if (moduleSets[i] == null) continue;
             moduleLut[i] = new TransformedModule[moduleSets[i].Count];
             int j = 0;
             foreach (var m in moduleSets[i])
@@ -41,7 +43,7 @@ public class MarchingModuleManager : MonoBehaviour
      * Picks randomly a module valid for a given hash.
      * Requires Prepare() to be called before
      */
-    public TransformedModule sampleModule(int hash)
+    public TransformedModule SampleModule(int hash)
     {
         Debug.Assert(hash >= 0 && hash < 256);
         if (moduleLut[hash] == null || moduleLut[hash].Length == 0) return null;

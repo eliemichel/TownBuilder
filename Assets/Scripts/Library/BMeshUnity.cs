@@ -78,6 +78,28 @@ public class BMeshUnity
         unityMesh.RecalculateNormals();
     }
 
+    public static void Merge(BMesh mesh, Mesh unityMesh, MeshDeformer deformer = null)
+    {
+        Vector3[] unityVertices = unityMesh.vertices;
+        int[] unityTriangles = unityMesh.triangles;
+        var verts = new Vertex[unityVertices.Length];
+        
+        for (int i = 0; i < unityVertices.Length; ++i)
+        {
+            Vector3 p = unityVertices[i];
+            if (deformer != null) p = deformer.Deform(p);
+            verts[i] = mesh.AddVertex(p);
+        }
+        for (int i = 0; i < unityTriangles.Length / 3; ++i)
+        {
+            mesh.AddFace(
+                verts[unityTriangles[3 * i + 0]],
+                verts[unityTriangles[3 * i + 1]],
+                verts[unityTriangles[3 * i + 2]]
+            );
+        }
+    }
+
     public static void DrawGizmos(BMesh mesh)
     {
         Gizmos.color = Color.yellow;

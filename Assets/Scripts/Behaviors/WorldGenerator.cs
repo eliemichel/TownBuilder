@@ -23,6 +23,7 @@ public class WorldGenerator : MonoBehaviour
     public Transform generatorCursor;
     public MeshFilter raycastMeshFilter;
     public MeshFilter cursorMeshFilter;
+    public MarchingModuleManager moduleManager;
 
     public int nextTileQ = 0;
     public int nextTileR = 0;
@@ -360,7 +361,7 @@ public class WorldGenerator : MonoBehaviour
     {
         if (tile == null) return;
         tile.skin = new BMesh();
-        ModuleBasedMarchingCubes.Run(tile.skin, tile.mesh, "occupancy");
+        ModuleBasedMarchingCubes.Run(tile.skin, tile.mesh, "occupancy", moduleManager);
         ShowMesh();
     }
     #endregion

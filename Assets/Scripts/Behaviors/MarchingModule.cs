@@ -11,6 +11,6 @@ using UnityEngine;
 public class MarchingModule : MonoBehaviour
 {
     public int hash; // index in the LUT, edited bit by bit in the editor
-    public MeshFilter mesh;
+    public MeshFilter meshFilter;
     public bool allowRotationAroundVerticalAxis = true;
 }
