@@ -13,4 +13,11 @@ public class MarchingModule : MonoBehaviour
     public int hash; // index in the LUT, edited bit by bit in the editor
     public MeshFilter meshFilter;
     public bool allowRotationAroundVerticalAxis = true;
+    public MeshDeformer deformer;
+
+    public void Init()
+    {
+        deformer = new MeshDeformer(meshFilter.transform);
+        deformer.Precompute(meshFilter.sharedMesh);
+    }
 }

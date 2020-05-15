@@ -840,7 +840,8 @@ public class ModuleBasedMarchingCubes
             m.transform.EdgeCenter(6, 7, verts, edges) + floorOffset,
             m.transform.EdgeCenter(7, 4, verts, edges) + floorOffset
         };
-        BMeshUnity.Merge(mesh, mf.sharedMesh, new MeshDeformer(mf.transform, controlPoints));
+        m.baseModule.deformer.controlPoints = controlPoints;
+        BMeshUnity.Merge(mesh, mf.sharedMesh, m.baseModule.deformer);
 
         return true;
     }

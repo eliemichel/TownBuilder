@@ -86,8 +86,7 @@ public class BMeshUnity
         
         for (int i = 0; i < unityVertices.Length; ++i)
         {
-            Vector3 p = unityVertices[i];
-            if (deformer != null) p = deformer.Deform(p);
+            Vector3 p = deformer != null ? deformer.GetVertex(i) : unityVertices[i];
             verts[i] = mesh.AddVertex(p);
         }
         for (int i = 0; i < unityTriangles.Length / 3; ++i)

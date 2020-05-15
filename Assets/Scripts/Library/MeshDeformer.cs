@@ -8,9 +8,10 @@ using UnityEngine;
  */
 public class MeshDeformer
 {
+    public Vector3[] controlPoints;
+
     readonly Matrix4x4 premultiplyMatrix;
-    readonly float[] weights = new float[12];
-    readonly Vector3[] deformedVertices;
+    float[][] weights;
 
     static readonly Vector3[] cageVertices = new Vector3[] {
         new Vector3(0.5f, -0.5f, 0) * 2 + Vector3.up,
@@ -48,31 +49,51 @@ public class MeshDeformer
         new int[]{ 4, 8, 11 }
     };
 
-    public MeshDeformer(Transform transform, Vector3[] deformedVertices)
+    public MeshDeformer(Transform transform)
     {
         premultiplyMatrix = transform.localToWorldMatrix;
-        this.deformedVertices = deformedVertices;
     }
 
-    public Vector3 Deform(Vector3 p)
+    public void Precompute(Mesh mesh)
     {
-        if (premultiplyMatrix != null)
+        Vector3[] vertices = mesh.vertices;
+        Debug.Assert(cageVertices.Length == 12);
+
+        weights = new float[vertices.Length][];
+
+        float startTime = Time.realtimeSinceStartup;
+
+        for (var vid = 0; vid < vertices.Length; vid++)
         {
-            p = premultiplyMatrix * p;
+            weights[vid] = new float[12];
+
+            Vector3 p = vertices[vid];
+            if (premultiplyMatrix != null) p = premultiplyMatrix * p;
+            float tmp = p.x;
+            p.x = p.z;
+            p.z = tmp;
+
+            SmvcDeform.ComputeCoordinates(p, cageFaces, cageVertices, weights[vid]);
+            Debug.Assert(weights[vid].Length == cageVertices.Length);
+
+            for (int j = 0; j < weights[vid].Length; ++j)
+            {
+                Debug.Assert(!float.IsNaN(weights[vid][j]), "weight #" + j + " is NaN at vertex #" + vid);
+                //if (float.IsNaN(weights[vid][j])) Debug.LogWarning("weight #" + j + " is NaN at vertex #" + vid + " " + pos);
+            }
         }
+    }
 
-        float tmp = p.x;
-        p.x = p.z;
-        p.z = tmp;
+    public Vector3 GetVertex(int vid)
+    {
+        Debug.Assert(vid < weights.Length);
+        Debug.Assert(weights[0].Length == 12);
 
-        SmvcDeform.ComputeCoordinates(p, cageFaces, cageVertices, weights);
-
-        p = Vector3.zero;
-        for (int j = 0; j < weights.Length; ++j)
+        Vector3 p = Vector3.zero;
+        for (int j = 0; j < 12; ++j)
         {
-            p += weights[j] * deformedVertices[j];
+            p += weights[vid][j] * controlPoints[j];
         }
-
         return p;
     }
 }

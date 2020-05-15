@@ -19,6 +19,7 @@ public class MarchingModuleManager : MonoBehaviour
 
     void RegisterModule(MarchingModule module)
     {
+        module.Init();
         moduleSets[module.hash].Add(new TransformedModule { baseModule = module });
 
         if (module.allowRotationAroundVerticalAxis)
