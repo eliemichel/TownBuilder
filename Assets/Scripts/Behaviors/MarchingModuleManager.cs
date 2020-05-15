@@ -22,20 +22,18 @@ public class MarchingModuleManager : MonoBehaviour
         module.Init();
         moduleSets[module.hash].Add(new TransformedModule { baseModule = module });
 
-        if (module.allowRotationAroundVerticalAxis)
+        int rotations = module.allowRotationAroundVerticalAxis ? 4 : 1;
+        for (int i = 0; i < rotations; ++i)
         {
-            for (int i = 1; i < 4; ++i)
             {
-                {
-                    var transform = new ModuleBasedMarchingCubes.Transform(i);
-                    moduleSets[transform.TransformHash(module.hash)].Add(new TransformedModule { baseModule = module, transform = transform });
-                }
-                if (module.allowFlipAlongX)
-                {
-                    var transform = new ModuleBasedMarchingCubes.Transform(i, true);
-                    Debug.Assert(transform.flipped);
-                    moduleSets[transform.TransformHash(module.hash)].Add(new TransformedModule { baseModule = module, transform = transform });
-                }
+                var transform = new ModuleBasedMarchingCubes.Transform(i);
+                moduleSets[transform.TransformHash(module.hash)].Add(new TransformedModule { baseModule = module, transform = transform });
+            }
+            if (module.allowFlipAlongX)
+            {
+                var transform = new ModuleBasedMarchingCubes.Transform(i, true);
+                Debug.Assert(transform.flipped);
+                moduleSets[transform.TransformHash(module.hash)].Add(new TransformedModule { baseModule = module, transform = transform });
             }
         }
     }

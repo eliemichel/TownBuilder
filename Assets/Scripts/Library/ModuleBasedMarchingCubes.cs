@@ -824,7 +824,6 @@ public class ModuleBasedMarchingCubes
         var m = moduleManager.SampleModule(hash);
         if (m == null) return false;
 
-        Debug.Log("Using module " + m.baseModule.meshFilter);
         var mf = m.baseModule.meshFilter;
         Vector3 floorOffset = floor * Vector3.up;
         var controlPoints = new Vector3[] {
@@ -871,8 +870,9 @@ public class ModuleBasedMarchingCubes
                     hash += b << k;
                 }
 
-                if (!AddModule(moduleManager, hash, mesh, verts, edges, floor))
+                if (!AddModule(moduleManager, hash, mesh, verts, edges, floor) && hash % 255 != 0)
                 {
+                    Debug.Log("No module found for hash " + hash + ", falling back to regular marching cubes");
                     AddLegacyBlock(hash, mesh, verts, edges, floor);
                 }
             }

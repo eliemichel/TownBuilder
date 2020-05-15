@@ -230,7 +230,7 @@ public class WorldGenerator : MonoBehaviour
     {
         if (currentTileCo == null || currentTile.mesh == null) return;
         tileSet[currentTileCo] = currentTile;
-        currentTile = null;
+        currentTile = new Tile();
         currentTileCo = null;
     }
 
@@ -249,14 +249,17 @@ public class WorldGenerator : MonoBehaviour
                 }
             }
         }
-        if (currentTile.mesh != null) BMeshOperators.Merge(acc, currentTile.mesh);
-        if (currentTile.skin != null) BMeshOperators.Merge(acc, currentTile.skin);
+        if (currentTile != null)
+        {
+            if (currentTile.mesh != null) BMeshOperators.Merge(acc, currentTile.mesh);
+            if (currentTile.skin != null) BMeshOperators.Merge(acc, currentTile.skin);
+        }
         BMeshUnity.SetInMeshFilter(acc, GetComponent<MeshFilter>());
     }
 
     public void Clear()
     {
-        currentTile = null;
+        currentTile = new Tile();
         tileSet = null;
         currentTileCo = null;
         ShowMesh();
