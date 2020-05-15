@@ -65,6 +65,19 @@ public class SmvcDeform
                 Vector3 u0 = u[v0];
                 Vector3 u1 = u[v1];
 
+                if (Vector3.Cross(u0, u1).magnitude < epsilon)
+                {
+                    // then we are on an edge
+                    float eLambda = Vector3.Dot(eta - cage_vertices[v0], cage_vertices[v1] - cage_vertices[v0]) /
+                                (cage_vertices[v1] - cage_vertices[v0]).sqrMagnitude;
+                    if (eLambda >= 0 && eLambda <= 1)
+                    {
+                        weights[v0] = 1 - eLambda;
+                        weights[v1] = eLambda;
+                        return weights;
+                    }
+                }
+
                 float angle = GetAngleBetweenUnitVectors(u0, u1);
                 Vector3 n = Vector3.Cross(u0, u1);
                 n = n.magnitude < epsilon ? Vector3.zero : n.normalized;
@@ -113,28 +126,35 @@ public class SmvcDeform
             if (Mathf.Abs(denominator) < epsilon && faceMeanVector.magnitude > epsilon)
             {
                 // then we are on the face, and we output the unnormalized weights of the face, as they dominate in the final sum:
-                sumWeights = 0;
+                float sumWeightsFace = 0;
                 for (int i = 0; i < faceVertCount; ++i)
                 {
                     int vi = cage_faces[f][i];
                     float lambdai = lambdas[i];
                     weights[vi] = lambdai;
-                    sumWeights += lambdai;
+                    sumWeightsFace += lambdai;
                 }
-                for (int i = 0; i < faceVertCount; ++i)
+                if (sumWeightsFace > epsilon)
                 {
-                    int vi = cage_faces[f][i];
-                    weights[vi] /= sumWeights;
+                    for (int i = 0; i < faceVertCount; ++i)
+                    {
+                        int vi = cage_faces[f][i];
+                        weights[vi] /= sumWeightsFace;
+                    }
+                    return weights;
                 }
-                return weights;
             }
 
-            if (Mathf.Abs(denominator) > epsilon)
+            if (Mathf.Abs(denominator) > epsilon && !float.IsInfinity(denominator))
             {
                 for (int i = 0; i < faceVertCount; ++i)
                 {
                     int vi = cage_faces[f][i];
                     float lambdai = lambdas[i] / denominator;
+                    if (float.IsNaN(lambdai))
+                    {
+                        lambdai = 0;
+                    }
                     w_weights[vi] += lambdai;
                     sumWeights += lambdai;
                 }
@@ -143,7 +163,14 @@ public class SmvcDeform
         }
 
         for (int v = 0; v < n_vertices; ++v)
+        {
             weights[v] = w_weights[v] / sumWeights;
+            if (float.IsNaN(weights[v]))
+            {
+                weights[v] = 0;
+            }
+        }
+
 
         return weights;
     }

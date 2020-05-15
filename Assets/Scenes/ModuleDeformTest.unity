@@ -1115,12 +1115,6 @@ Transform:
   m_Father: {fileID: 1016918264}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &664280609 stripped
-MeshFilter:
-  m_CorrespondingSourceObject: {fileID: 9093635254179511205, guid: 7613e7369998cb14aabec6039360e4d7,
-    type: 3}
-  m_PrefabInstance: {fileID: 1045302660}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &673223525
 GameObject:
   m_ObjectHideFlags: 0
@@ -1307,6 +1301,12 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 701893999}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!33 &724511185 stripped
+MeshFilter:
+  m_CorrespondingSourceObject: {fileID: 9180360471358689205, guid: 7613e7369998cb14aabec6039360e4d7,
+    type: 3}
+  m_PrefabInstance: {fileID: 1045302660}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &727364105
 GameObject:
   m_ObjectHideFlags: 0
@@ -1701,7 +1701,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 09c695d7c5b6bf04b84b6713818d4d5b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  deformedMesh: {fileID: 664280609}
+  deformedMesh: {fileID: 724511185}
   orginalHandles:
   - {fileID: 1148997431}
   - {fileID: 1349302407}
@@ -1873,7 +1873,7 @@ PrefabInstance:
     - target: {fileID: -1154225393767749661, guid: 7613e7369998cb14aabec6039360e4d7,
         type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -927199367670048503, guid: 7613e7369998cb14aabec6039360e4d7,
         type: 3}
@@ -1888,7 +1888,7 @@ PrefabInstance:
     - target: {fileID: 3090958971594768190, guid: 7613e7369998cb14aabec6039360e4d7,
         type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3174795464066778943, guid: 7613e7369998cb14aabec6039360e4d7,
         type: 3}
