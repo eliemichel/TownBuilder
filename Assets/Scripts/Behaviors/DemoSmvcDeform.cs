@@ -14,38 +14,9 @@ public class DemoSmvcDeform : MonoBehaviour
     public Mesh originalMesh;
     Vector3[] originalVertices;
     Vector3[] vertices;
+    float[][] weights;
 
-    private void Start()
-    {
-        originalMesh = deformedMesh.sharedMesh;
-        var clonedMesh = new Mesh
-        {
-            name = "clone",
-            vertices = originalMesh.vertices,
-            triangles = originalMesh.triangles,
-            normals = originalMesh.normals,
-            uv = originalMesh.uv
-        };
-        deformedMesh.mesh = clonedMesh;  //3
-
-        vertices = clonedMesh.vertices; //4
-        originalVertices = originalMesh.vertices;
-
-        if (run) StartCoroutine(ContinuousDeform());
-    }
-
-    IEnumerator ContinuousDeform()
-    {
-        for (; ;)
-        {
-            for (var it = DeformCoroutine(); it.MoveNext();) {
-                yield return null;
-            }
-            yield return null;
-        }
-    }
-
-    IEnumerator DeformCoroutine()
+    IEnumerator PrecomputeWeightsCoroutine()
     {
         Debug.Assert(orginalHandles.Length == deformedHandles.Length);
         Debug.Assert(orginalHandles.Length == 12);
@@ -73,22 +44,79 @@ public class DemoSmvcDeform : MonoBehaviour
             new int[]{ 4, 8, 11 }
         };
 
-        float[] weights = new float[12];
+        weights = new float[vertices.Length][];
 
         float startTime = Time.realtimeSinceStartup;
 
         for (var vid = 0; vid < vertices.Length; vid++)
         {
-            Vector3 pos = deformedMesh.transform.localToWorldMatrix * originalVertices[vid];
-            SmvcDeform.ComputeCoordinates(pos, cageFaces, cageVertices, weights);
-            Debug.Assert(weights.Length == cageVertices.Length);
+            weights[vid] = new float[12];
 
-            Vector3 newPos = Vector3.zero;
-            for (int j = 0; j < weights.Length; ++j)
+            Vector3 pos = deformedMesh.transform.localToWorldMatrix * originalVertices[vid];
+            SmvcDeform.ComputeCoordinates(pos, cageFaces, cageVertices, weights[vid]);
+            Debug.Assert(weights[vid].Length == cageVertices.Length);
+
+            for (int j = 0; j < weights[vid].Length; ++j)
             {
                 //Debug.Assert(!float.IsNaN(weights[j]), "weight #" + j + " is NaN at vertex #" + vid);
-                if (float.IsNaN(weights[j])) Debug.LogWarning("weight #" + j + " is NaN at vertex #" + vid);
-                newPos += weights[j] * deformedHandles[j].position;
+                if (float.IsNaN(weights[vid][j])) Debug.LogWarning("weight #" + j + " is NaN at vertex #" + vid + " " + pos);
+            }
+
+            if (Time.realtimeSinceStartup - startTime > timeBudget * 1e-3)
+            {
+                yield return null;
+                startTime = Time.realtimeSinceStartup;
+            }
+        }
+    }
+
+    private void Start()
+    {
+        originalMesh = deformedMesh.sharedMesh;
+        var clonedMesh = new Mesh
+        {
+            name = "clone",
+            vertices = originalMesh.vertices,
+            triangles = originalMesh.triangles,
+            normals = originalMesh.normals,
+            uv = originalMesh.uv
+        };
+        deformedMesh.mesh = clonedMesh;  //3
+
+        vertices = clonedMesh.vertices; //4
+        originalVertices = originalMesh.vertices;
+
+        if (run) StartCoroutine(ContinuousDeform());
+    }
+
+    IEnumerator ContinuousDeform()
+    {
+        for (var it = PrecomputeWeightsCoroutine(); it.MoveNext();)
+        {
+            yield return null;
+        }
+        for (; ;)
+        {
+            for (var it = DeformCoroutine(); it.MoveNext();) {
+                yield return null;
+            }
+            yield return null;
+        }
+    }
+
+    IEnumerator DeformCoroutine()
+    {
+        Debug.Assert(orginalHandles.Length == deformedHandles.Length);
+        Debug.Assert(orginalHandles.Length == 12);
+        
+        float startTime = Time.realtimeSinceStartup;
+
+        for (var vid = 0; vid < vertices.Length; vid++)
+        {
+            Vector3 newPos = Vector3.zero;
+            for (int j = 0; j < weights[vid].Length; ++j)
+            {
+                newPos += weights[vid][j] * deformedHandles[j].position;
             }
             vertices[vid] = deformedMesh.transform.worldToLocalMatrix * newPos;
 
