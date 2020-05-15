@@ -96,11 +96,11 @@ public class CameraController : MonoBehaviour
         float sinTheta = Mathf.Sqrt(1 - d.y * d.y);
         rotationPhi = Mathf.Atan2(d.z / sinTheta, d.x / sinTheta);
 
-        Debug.Assert(Mathf.Abs(d.x - Mathf.Cos(rotationPhi) * Mathf.Sin(rotationTheta)) < 1e-6);
-        Debug.Assert(Mathf.Abs(d.y - Mathf.Cos(rotationTheta)) < 1e-6);
-        Debug.Assert(Mathf.Abs(d.z - Mathf.Sin(rotationPhi) * Mathf.Sin(rotationTheta)) < 1e-6);
-        Debug.Assert(Vector3.Distance(transform.position, rotationPivot + fromPivot) < 1e-6);
-        Debug.Assert(Vector3.Distance(fromPivot, d * rotationDistance) < 1e-6);
+        Debug.Assert(Mathf.Abs(d.x - Mathf.Cos(rotationPhi) * Mathf.Sin(rotationTheta)) < 1e-4, "error: " + d.x + " != " + (Mathf.Cos(rotationPhi) * Mathf.Sin(rotationTheta)));
+        Debug.Assert(Mathf.Abs(d.y - Mathf.Cos(rotationTheta)) < 1e-4, "error: " + d.y + " != " + Mathf.Cos(rotationTheta));
+        Debug.Assert(Mathf.Abs(d.z - Mathf.Sin(rotationPhi) * Mathf.Sin(rotationTheta)) < 1e-4, "error: " + d.z + " != " + (Mathf.Sin(rotationPhi) * Mathf.Sin(rotationTheta)));
+        Debug.Assert(Vector3.Distance(transform.position, rotationPivot + fromPivot) < 1e-4);
+        Debug.Assert(Vector3.Distance(fromPivot, d * rotationDistance) < 1e-4);
     }
 
     void UpdateRotation()

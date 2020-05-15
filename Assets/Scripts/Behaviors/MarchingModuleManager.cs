@@ -26,8 +26,16 @@ public class MarchingModuleManager : MonoBehaviour
         {
             for (int i = 1; i < 4; ++i)
             {
-                var transform = new ModuleBasedMarchingCubes.Transform(i);
-                moduleSets[transform.TransformHash(module.hash)].Add(new TransformedModule { baseModule = module, transform = transform });
+                {
+                    var transform = new ModuleBasedMarchingCubes.Transform(i);
+                    moduleSets[transform.TransformHash(module.hash)].Add(new TransformedModule { baseModule = module, transform = transform });
+                }
+                if (module.allowFlipAlongX)
+                {
+                    var transform = new ModuleBasedMarchingCubes.Transform(i, true);
+                    Debug.Assert(transform.flipped);
+                    moduleSets[transform.TransformHash(module.hash)].Add(new TransformedModule { baseModule = module, transform = transform });
+                }
             }
         }
     }

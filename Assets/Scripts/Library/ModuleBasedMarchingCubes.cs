@@ -14,10 +14,11 @@ public class ModuleBasedMarchingCubes
         public bool flipped = false;
         public bool insideout = false;
 
-        public Transform(int offset)
+        public Transform(int offset, bool mirrorX = false)
         {
             permutation = new int[] { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
             for (int i = 0; i < (4 - offset); ++i) RotateZ();
+            if (mirrorX) MirrorX();
         }
 
         public Transform(string encoded)
@@ -841,7 +842,7 @@ public class ModuleBasedMarchingCubes
             m.transform.EdgeCenter(7, 4, verts, edges) + floorOffset
         };
         m.baseModule.deformer.controlPoints = controlPoints;
-        BMeshUnity.Merge(mesh, mf.sharedMesh, m.baseModule.deformer);
+        BMeshUnity.Merge(mesh, mf.sharedMesh, m.baseModule.deformer, m.transform.flipped);
 
         return true;
     }

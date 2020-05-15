@@ -78,7 +78,7 @@ public class BMeshUnity
         unityMesh.RecalculateNormals();
     }
 
-    public static void Merge(BMesh mesh, Mesh unityMesh, MeshDeformer deformer = null)
+    public static void Merge(BMesh mesh, Mesh unityMesh, MeshDeformer deformer = null, bool flipFaces = false)
     {
         Vector3[] unityVertices = unityMesh.vertices;
         int[] unityTriangles = unityMesh.triangles;
@@ -92,8 +92,8 @@ public class BMeshUnity
         for (int i = 0; i < unityTriangles.Length / 3; ++i)
         {
             mesh.AddFace(
-                verts[unityTriangles[3 * i + 0]],
-                verts[unityTriangles[3 * i + 1]],
+                verts[unityTriangles[3 * i + (flipFaces ? 1 : 0)]],
+                verts[unityTriangles[3 * i + (flipFaces ? 0 : 1)]],
                 verts[unityTriangles[3 * i + 2]]
             );
         }

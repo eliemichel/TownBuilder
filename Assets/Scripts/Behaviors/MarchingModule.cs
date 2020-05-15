@@ -12,12 +12,55 @@ public class MarchingModule : MonoBehaviour
 {
     public int hash; // index in the LUT, edited bit by bit in the editor
     public MeshFilter meshFilter;
-    public bool allowRotationAroundVerticalAxis = true;
+    public bool allowRotationAroundVerticalAxis = true; // there is almost no reason not to tick this
+    public bool allowFlipAlongX = true;
     public MeshDeformer deformer;
 
     public void Init()
     {
         deformer = new MeshDeformer(meshFilter.transform);
         deformer.Precompute(meshFilter.sharedMesh);
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (meshFilter != null && meshFilter.sharedMesh != null)
+        {
+            Gizmos.color = Color.white;
+            Matrix4x4 m = meshFilter.transform.localToWorldMatrix;
+            Vector4 z = m.GetColumn(1);
+            m.SetColumn(1, -m.GetColumn(0));
+            m.SetColumn(0, -z);
+            m.SetColumn(3, new Vector4(0, 0, 0, 1));
+            Gizmos.matrix = transform.localToWorldMatrix * m;
+            Gizmos.DrawWireMesh(meshFilter.sharedMesh);
+        }
+
+        Gizmos.matrix = transform.localToWorldMatrix;
+        Vector3[] points = new Vector3[] {
+            new Vector3(1, 0, -1),
+            new Vector3(1, 0, 1),
+            new Vector3(-1, 0, 1),
+            new Vector3(-1, 0, -1),
+
+            new Vector3(1, 2, -1),
+            new Vector3(1, 2, 1),
+            new Vector3(-1, 2, 1),
+            new Vector3(-1, 2, -1)
+        };
+
+        for (int i = 0; i < points.Length; ++i)
+        {
+            if ((hash & (1 << i)) != 0)
+            {
+                Gizmos.color = Color.blue;
+                Gizmos.DrawCube(points[i], Vector3.one * 0.1f);
+            }
+            else
+            {
+                Gizmos.color = Color.white;
+                Gizmos.DrawWireCube(points[i], Vector3.one * 0.1f);
+            }
+        }
     }
 }
