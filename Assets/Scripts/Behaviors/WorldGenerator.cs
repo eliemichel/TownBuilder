@@ -184,6 +184,7 @@ public class WorldGenerator : MonoBehaviour
             if (currentTile.mesh != null) BMeshOperators.Merge(acc, currentTile.mesh);
             if (currentTile.skin != null) BMeshOperators.Merge(acc, currentTile.skin);
         }
+        if (wfcOutputMesh != null) BMeshOperators.Merge(acc, wfcOutputMesh);
         BMeshUnity.SetInMeshFilter(acc, GetComponent<MeshFilter>());
     }
 
@@ -402,37 +403,7 @@ public class WorldGenerator : MonoBehaviour
         vertex[vface.floor] = wfcGrid.vertices.Count; // index of the next vertex
 
         var v = wfcGrid.AddVertex(vface.face.Center() + Vector3.up * (vface.floor + 0.5f));
-
-        Vector3 d0 = Vector3.zero;
-        foreach (VFace nf in vface.NeighborVFaces())
-        {
-            if (nf.floor == vface.floor)
-            {
-                Vector3 nvp = nf.face.Center() + Vector3.up * (nf.floor + 0.5f);
-                d0 = (nvp - v.point).normalized;
-                break;
-            }
-        }
-        float prevAngle = 361;
-
-        Debug.Log("---");
-        int c = 0;
-        foreach (VFace nf in vface.NeighborVFaces())
-        {
-            if (nf.floor == vface.floor)
-            {
-                Vector3 nvp = nf.face.Center() + Vector3.up * (nf.floor + 0.5f);
-                Vector3 di = (nvp - v.point).normalized;
-                float angle = Vector3.SignedAngle(d0, di, Vector3.up);
-                if (angle <= 0) angle += 360;
-                Debug.Log("#" + c + ": angle = " + angle + ", di = " + di + " and d0 = " + d0);
-                Debug.Assert(angle < prevAngle, "error at vface #" + vface.face.id + ":" + vface.floor);
-                prevAngle = angle;
-                ++c;
-            }
-        }
-
-        prevAngle = 361;
+        v.attributes["dualvface"] = new BMesh.IntAttributeValue(vface.face.id, vface.floor);
 
         BMesh.Edge prevHorizontalEdge = null;
         foreach (VFace nf in vface.NeighborVFaces())
@@ -449,13 +420,6 @@ public class WorldGenerator : MonoBehaviour
 
                 if (type == 0)
                 {
-                    Vector3 di = (nv.point - v.point).normalized;
-                    float angle = Vector3.SignedAngle(d0, di, Vector3.up);
-                    if (angle <= 0) angle += 360;
-                    Debug.Log("angle = " + angle);
-                    Debug.Assert(angle < prevAngle, "error at vface #" + vface.face.id + ":" + vface.floor);
-                    prevAngle = angle;
-
                     if (prevHorizontalEdge != null)
                     {
                         EnsureAfter(prevHorizontalEdge, e, v);
@@ -474,11 +438,13 @@ public class WorldGenerator : MonoBehaviour
      * WFC grid is the volumetric dual of the original virtual grid of base
      * baseGrid, meaning that a vertex in WFC grid corresponds to a (cubic)
      * element of volume in the virtual grid.
+     * Reset face's id
      */
     void ComputeWfcGrid(BMesh baseGrid, BMesh.Face face = null)
     {
         wfcGrid = new BMesh();
         wfcGrid.AddEdgeAttribute("type", BMesh.AttributeBaseType.Int, 1); // 0: horizontal, 1: vertical
+        wfcGrid.AddVertexAttribute("dualvface", BMesh.AttributeBaseType.Int, 2); // index of the corresponding face in gridMesh, and floor
         if (!baseGrid.HasFaceAttribute("visited"))
         {
             // These attributes are vectors because they are per vface
@@ -495,6 +461,10 @@ public class WorldGenerator : MonoBehaviour
                 f.attributes["vertex"] = new BMesh.IntAttributeValue(0);
             }
         }
+
+        // Ensure face ids
+        { int i = 0; foreach (var f in baseGrid.faces) f.id = i++; }
+
         int floor = 0;
         if (face == null)
         {
@@ -519,40 +489,119 @@ public class WorldGenerator : MonoBehaviour
     #endregion
 
     #region [Wave Function Collapse System]
-    void ComputeExclusionClasses(BMesh wfcTopology)
+    void ComputeExclusionClasses(BMesh wfcTopology, BMesh baseGrid)
     {
         // exclusion class for XWFC
         wfcTopology.AddVertexAttribute("class", BMesh.AttributeBaseType.Int, 1);
 
         { int i = 0; foreach (var v in wfcTopology.vertices) v.id = i++; }
 
-        // Check that edge ordering is consistent
-        // TODO: move to a proper test file
         foreach (var v in wfcTopology.vertices)
         {
-            var edges = v.NeighborEdges();
-            if (edges.Count == 0) continue;
-            Vector3 d0 = (edges[0].OtherVertex(v).point - v.point).normalized;
-            float prevAngle = 361;
-            int i = 0;
-            foreach (var e in edges)
-            {
-                int type = e.attributes["type"].asInt().data[0];
-                if (type != 0) continue; // only look at horizontal edges
+            int[] dualVFace = v.attributes["dualvface"].asInt().data;
+            int dualFaceId = dualVFace[0];
+            int floor = dualVFace[1];
+            var dualFace = baseGrid.faces[dualFaceId];
 
-                Vector3 di = (e.OtherVertex(v).point - v.point).normalized;
-                float angle = Vector3.SignedAngle(d0, di, Vector3.up);
-                if (angle <= 0) angle += 360;
-                if (edges.Count == 4)
+            var corners = dualFace.NeighborVertices().ToArray();
+            Debug.Assert(corners.Length == 4);
+            int hash = 0;
+            for (int k = 0; k < 2; ++k)
+            {
+                for (int i = 0; i < 4; ++i)
                 {
-                    Debug.Log("Angle edge #" + i + " out of vertex #" + v.id + ": " + angle);
-                    Debug.Log("   (di = " + di + ")");
+                    var occ = corners[i].attributes["occupancy"].asFloat().data;
+                    if (occ.Length > floor + k && occ[floor + k] > 0)
+                        hash += 1 << (i + k * 4);
                 }
-                Debug.Assert(edges.Count != 4 || angle < prevAngle);
-                prevAngle = angle;
-                ++i;
+            }
+
+            v.attributes["class"] = new BMesh.IntAttributeValue(hash);
+        }
+    }
+
+    public void RunXwfc()
+    {
+        var rules = new LilyXwfc.ConnectionStateEntanglementRules(null, new int[] { 0, 1 });
+        var system = new LilyXwfc.WaveFunctionSystem(wfcGrid, rules, 8, "class");
+        var xwfc = new LilyXwfc.WaveFunctionCollapse(system);
+        xwfc.Collapse();
+    }
+
+    BMesh wfcOutputMesh;
+    public void ShowWfcOutputMesh()
+    {
+        BMesh.AttributeDefinition vfaceAttr = null;
+        if (wfcOutputMesh == null)
+        {
+            wfcOutputMesh = new BMesh();
+            vfaceAttr = wfcOutputMesh.AddVertexAttribute("dualvface", BMesh.AttributeBaseType.Int, 2);
+        }
+        else
+        {
+            // vfaceAttr = debugMesh.GetVertexAttribute("dualvface");
+            foreach (var attr in wfcOutputMesh.vertexAttributes)
+            {
+                if (attr.name == "dualvface")
+                {
+                    vfaceAttr = attr;
+                    break;
+                }
             }
         }
+
+        // Clear all modules that are associated to faces that are part of the
+        // current wfcGrid but keep the other modules unchanged
+        var oldVertices = wfcOutputMesh.vertices.ToArray();
+        foreach (var v in oldVertices)
+        {
+            int[] dualVFace = v.attributes["dualvface"].asInt().data;
+            int dualFaceId = dualVFace[0];
+            int floor = dualVFace[1];
+            var dualFace = currentTile.mesh.faces[dualFaceId];
+
+            var visited = dualFace.attributes["visited"].asInt().data;
+            if (visited.Length > floor && visited[floor] > 0)
+            {
+                wfcOutputMesh.RemoveVertex(v);
+            }
+        }
+
+        foreach (var v in wfcGrid.vertices)
+        {
+            int[] dualVFace = v.attributes["dualvface"].asInt().data;
+            int dualFaceId = dualVFace[0];
+            int floor = dualVFace[1];
+            var dualFace = currentTile.mesh.faces[dualFaceId];
+
+            int hash = v.attributes["class"].asInt().data[0];
+            var m = moduleManager.SampleModule(hash);
+            if (m == null) continue;
+
+            var verts = dualFace.NeighborVertices().ToArray();
+            var edges = dualFace.NeighborEdges().ToArray();
+
+            var mf = m.baseModule.meshFilter;
+            Vector3 floorOffset = floor * Vector3.up;
+            var controlPoints = new Vector3[] {
+            m.transform.EdgeCenter(0, 1, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(1, 2, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(2, 3, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(3, 0, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(0, 4, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(1, 5, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(2, 6, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(3, 7, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(4, 5, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(5, 6, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(6, 7, verts, edges) + floorOffset,
+            m.transform.EdgeCenter(7, 4, verts, edges) + floorOffset
+        };
+            m.baseModule.deformer.controlPoints = controlPoints;
+            vfaceAttr.defaultValue = v.attributes["dualvface"];
+            BMeshUnityExtra.Merge(wfcOutputMesh, mf.sharedMesh, m.baseModule.deformer, m.transform.flipped);
+        }
+        ShowMesh();
     }
     #endregion
 
@@ -592,8 +641,8 @@ public class WorldGenerator : MonoBehaviour
 
     public void ComputeExclusionClasses()
     {
-        if (wfcGrid == null) return;
-        ComputeExclusionClasses(wfcGrid);
+        if (wfcGrid == null || currentTile.mesh == null) return;
+        ComputeExclusionClasses(wfcGrid, currentTile.mesh);
     }
     #endregion
 
