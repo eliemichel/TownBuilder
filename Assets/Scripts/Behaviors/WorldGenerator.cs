@@ -312,7 +312,7 @@ public class WorldGenerator : MonoBehaviour
          */
         public bool IsEmpty()
         {
-            if (floor == 0) return false; // for debug
+            //if (floor == 0) return false; // for debug
             foreach (var corner in face.NeighborVertices())
             {
                 var occ = corner.attributes["occupancy"].asFloat().data;
@@ -425,12 +425,14 @@ public class WorldGenerator : MonoBehaviour
         vertex[vface.floor] = wfcGrid.vertices.Count; // index of the next vertex
 
         var v = wfcGrid.AddVertex(vface.face.Center() + Vector3.up * (vface.floor + 0.5f));
-        v.attributes["dualvface"] = new BMesh.IntAttributeValue(vface.face.id, vface.floor);
+        var dualvface = v.attributes["dualvface"].asInt().data;
+        dualvface[0] = vface.face.id;
+        dualvface[1] = vface.floor;
 
         BMesh.Edge prevHorizontalEdge = null;
         foreach (VFace nf in vface.NeighborVFaces())
         {
-            if (nf.IsEmpty()) continue;
+            if (nf.IsEmpty() && nf.floor != vface.floor - 1) continue;
             var nv = ComputeWfcGrid_Aux(baseGrid, nf);
             if (nv != null)
             {
