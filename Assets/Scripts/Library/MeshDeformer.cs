@@ -8,7 +8,7 @@ using UnityEngine;
  */
 public class MeshDeformer
 {
-    public Vector3[] controlPoints;
+    public Vector3[] controlPoints = new Vector3[12];
 
     readonly Matrix4x4 premultiplyMatrix;
     float[][] weights;

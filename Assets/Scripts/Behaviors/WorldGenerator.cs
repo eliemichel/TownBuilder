@@ -1,9 +1,6 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 /**
  * World generator and also world runtime controller
@@ -244,6 +241,25 @@ public class WorldGenerator : MonoBehaviour
         ModuleBasedMarchingCubes.Run(tile.skin, tile.mesh, "occupancy", moduleManager);
         ShowMesh();
     }
+
+    /**
+     * @param vface face of the change since last update
+     */
+    void UpdateSkin(Tile tile, VVert vvert)
+    {
+        if (tile == null) return;
+
+        UnityEngine.Profiling.Profiler.BeginSample("ComputeWfcGrid");
+        BMesh wfcTopology = ComputeWfcGrid(tile.mesh, vvert);
+        UnityEngine.Profiling.Profiler.EndSample();
+        UnityEngine.Profiling.Profiler.BeginSample("ComputeExclusionClasses");
+        ComputeExclusionClasses(wfcTopology, tile.mesh);
+        UnityEngine.Profiling.Profiler.EndSample();
+        tile.skin = UpdateWfcOutputMesh(tile.skin, tile.mesh);
+        ShowMesh();
+
+        wfcGrid = wfcTopology; // for debug
+    }
     #endregion
 
     #region [Raycast Mesh]
@@ -296,7 +312,7 @@ public class WorldGenerator : MonoBehaviour
          */
         public bool IsEmpty()
         {
-            //if (floor == 0) return false; // for debug
+            if (floor == 0) return false; // for debug
             foreach (var corner in face.NeighborVertices())
             {
                 var occ = corner.attributes["occupancy"].asFloat().data;
@@ -305,6 +321,12 @@ public class WorldGenerator : MonoBehaviour
             }
             return true;
         }
+    }
+
+    class VVert
+    {
+        public BMesh.Vertex vert;
+        public int floor;
     }
 
     // Low level operation ensuring that e2 is right after e1 in the chained
@@ -440,7 +462,7 @@ public class WorldGenerator : MonoBehaviour
      * element of volume in the virtual grid.
      * Reset face's id
      */
-    void ComputeWfcGrid(BMesh baseGrid, BMesh.Face face = null)
+    BMesh ComputeWfcGrid(BMesh baseGrid, VVert vvert = null)
     {
         wfcGrid = new BMesh();
         wfcGrid.AddEdgeAttribute("type", BMesh.AttributeBaseType.Int, 1); // 0: horizontal, 1: vertical
@@ -466,8 +488,9 @@ public class WorldGenerator : MonoBehaviour
         { int i = 0; foreach (var f in baseGrid.faces) f.id = i++; }
 
         int floor = 0;
-        if (face == null)
+        if (vvert == null)
         {
+            BMesh.Vertex vert = null;
             // Find a non empty vface
             foreach (var v in baseGrid.vertices)
             {
@@ -477,14 +500,21 @@ public class WorldGenerator : MonoBehaviour
                     if (occ[i] > 0)
                     {
                         floor = i;
-                        face = v.NeighborFaces()[0];
+                        vert = v;
                         break;
                     }
                 }
-                if (face != null) break;
+                if (vert != null) break;
             }
+            vvert = new VVert { vert = vert, floor = floor };
         }
-        ComputeWfcGrid_Aux(baseGrid, new VFace { face = face, floor = floor });
+
+        foreach (var f in vvert.vert.NeighborFaces())
+        {
+            ComputeWfcGrid_Aux(baseGrid, new VFace { face = f, floor = vvert.floor });
+        }
+
+        return wfcGrid;
     }
     #endregion
 
@@ -531,77 +561,97 @@ public class WorldGenerator : MonoBehaviour
     BMesh wfcOutputMesh;
     public void ShowWfcOutputMesh()
     {
-        BMesh.AttributeDefinition vfaceAttr = null;
-        if (wfcOutputMesh == null)
-        {
-            wfcOutputMesh = new BMesh();
-            vfaceAttr = wfcOutputMesh.AddVertexAttribute("dualvface", BMesh.AttributeBaseType.Int, 2);
-        }
-        else
-        {
-            // vfaceAttr = debugMesh.GetVertexAttribute("dualvface");
-            foreach (var attr in wfcOutputMesh.vertexAttributes)
-            {
-                if (attr.name == "dualvface")
-                {
-                    vfaceAttr = attr;
-                    break;
-                }
-            }
-        }
+        wfcOutputMesh = UpdateWfcOutputMesh(wfcOutputMesh, currentTile.mesh);
+        ShowMesh();
+    }
 
+    void ClearUpdatedParts(BMesh skinMesh, BMesh baseGrid)
+    {
         // Clear all modules that are associated to faces that are part of the
         // current wfcGrid but keep the other modules unchanged
-        var oldVertices = wfcOutputMesh.vertices.ToArray();
+        var oldVertices = skinMesh.vertices.ToArray();
         foreach (var v in oldVertices)
         {
             int[] dualVFace = v.attributes["dualvface"].asInt().data;
             int dualFaceId = dualVFace[0];
             int floor = dualVFace[1];
-            var dualFace = currentTile.mesh.faces[dualFaceId];
+            var dualFace = baseGrid.faces[dualFaceId];
 
             var visited = dualFace.attributes["visited"].asInt().data;
             if (visited.Length > floor && visited[floor] > 0)
             {
-                wfcOutputMesh.RemoveVertex(v);
+                skinMesh.RemoveVertex(v);
             }
         }
+    }
+
+    BMesh.AttributeDefinition EnsureVFaceAttribute(BMesh skinMesh)
+    {
+        if (!skinMesh.HasVertexAttribute("dualvface"))
+        {
+            return skinMesh.AddVertexAttribute("dualvface", BMesh.AttributeBaseType.Int, 2);
+        }
+        else
+        {
+            // vfaceAttr = debugMesh.GetVertexAttribute("dualvface");
+            foreach (var attr in skinMesh.vertexAttributes)
+            {
+                if (attr.name == "dualvface")
+                {
+                    return attr;
+                }
+            }
+        }
+        return null;
+    }
+
+    public BMesh UpdateWfcOutputMesh(BMesh skinMesh, BMesh baseGrid)
+    {
+        //if (skinMesh == null) skinMesh = new BMesh();
+        skinMesh = new BMesh();
+
+        BMesh.AttributeDefinition vfaceAttr = EnsureVFaceAttribute(skinMesh);
+
+        // Don't do that, it's too slow:
+        //UnityEngine.Profiling.Profiler.BeginSample("UpdateWfcOutputMesh - ClearUpdatedParts");
+        //ClearUpdatedParts(skinMesh, baseGrid);
+        //UnityEngine.Profiling.Profiler.EndSample();
 
         foreach (var v in wfcGrid.vertices)
         {
             int[] dualVFace = v.attributes["dualvface"].asInt().data;
             int dualFaceId = dualVFace[0];
             int floor = dualVFace[1];
-            var dualFace = currentTile.mesh.faces[dualFaceId];
+            var dualFace = baseGrid.faces[dualFaceId];
 
             int hash = v.attributes["class"].asInt().data[0];
             var m = moduleManager.SampleModule(hash);
             if (m == null) continue;
-
+            
             var verts = dualFace.NeighborVertices().ToArray();
             var edges = dualFace.NeighborEdges().ToArray();
 
             var mf = m.baseModule.meshFilter;
             Vector3 floorOffset = floor * Vector3.up;
-            var controlPoints = new Vector3[] {
-            m.transform.EdgeCenter(0, 1, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(1, 2, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(2, 3, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(3, 0, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(0, 4, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(1, 5, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(2, 6, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(3, 7, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(4, 5, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(5, 6, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(6, 7, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(7, 4, verts, edges) + floorOffset
-        };
-            m.baseModule.deformer.controlPoints = controlPoints;
+            var controlPoints = m.baseModule.deformer.controlPoints;
+            int k = 0;
+            controlPoints[k++] = m.transform.EdgeCenter(0, 1, verts, edges) + floorOffset;
+            controlPoints[k++] = m.transform.EdgeCenter(1, 2, verts, edges) + floorOffset;
+            controlPoints[k++] = m.transform.EdgeCenter(2, 3, verts, edges) + floorOffset;
+            controlPoints[k++] = m.transform.EdgeCenter(3, 0, verts, edges) + floorOffset;
+            controlPoints[k++] = m.transform.EdgeCenter(0, 4, verts, edges) + floorOffset;
+            controlPoints[k++] = m.transform.EdgeCenter(1, 5, verts, edges) + floorOffset;
+            controlPoints[k++] = m.transform.EdgeCenter(2, 6, verts, edges) + floorOffset;
+            controlPoints[k++] = m.transform.EdgeCenter(3, 7, verts, edges) + floorOffset;
+            controlPoints[k++] = m.transform.EdgeCenter(4, 5, verts, edges) + floorOffset;
+            controlPoints[k++] = m.transform.EdgeCenter(5, 6, verts, edges) + floorOffset;
+            controlPoints[k++] = m.transform.EdgeCenter(6, 7, verts, edges) + floorOffset;
+            controlPoints[k++] = m.transform.EdgeCenter(7, 4, verts, edges) + floorOffset;
             vfaceAttr.defaultValue = v.attributes["dualvface"];
-            BMeshUnityExtra.Merge(wfcOutputMesh, mf.sharedMesh, m.baseModule.deformer, m.transform.flipped);
+            BMeshUnityExtra.Merge(skinMesh, mf.sharedMesh, m.baseModule.deformer, m.transform.flipped);
         }
-        ShowMesh();
+
+        return skinMesh;
     }
     #endregion
 
@@ -742,7 +792,9 @@ public class WorldGenerator : MonoBehaviour
             return;
         }
         occupancy[floor] = 1;
-        ComputeSkin(tile);
+
+        UpdateSkin(tile, new VVert { vert = v, floor = floor });
+        //ComputeSkin(tile);
     }
 
     public void RemoveVoxelAtCursor()
@@ -767,7 +819,9 @@ public class WorldGenerator : MonoBehaviour
         }
 
         occupancy[floor] = 0;
-        ComputeSkin(tile);
+
+        UpdateSkin(tile, new VVert { vert = v, floor = floor });
+        //ComputeSkin(tile);
     }
     #endregion
 
