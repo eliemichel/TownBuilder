@@ -31,6 +31,13 @@
          * into "vert is on the left of other"
          */
         int DualConnection(int c);
+
+        /**
+         * The number of dimensions within a given class may be inferior to the
+         * maximum number of dimensions provided to the system (this is used by
+         * EquiprobableInClass for instance). Return -1 to mean maximum.
+         */
+        int DimensionInExclusionClass(int exclusionClass);
     }
 
     /**
@@ -43,12 +50,11 @@
 
         public virtual SuperposedState AllowedStates(SuperposedState x, int connectionType)
         {
-            SuperposedState y = SuperposedState.None(x.Dimension);
+            SuperposedState y = SuperposedState.None(x);
             foreach (PureState xc in x.Components())
             {
-                for (int k = 0; k < x.Dimension; ++k)
+                foreach (PureState yc in x.NonExcludedPureStates())
                 {
-                    var yc = new PureState(k);
                     if (Allows(xc, connectionType, yc))
                     {
                         y.Add(yc);
@@ -56,6 +62,11 @@
                 }
             }
             return y;
+        }
+
+        public virtual int DimensionInExclusionClass(int exclusionClass)
+        {
+            return -1;
         }
     }
 }

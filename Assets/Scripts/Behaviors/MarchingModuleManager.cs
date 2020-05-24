@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.Tracing;
 using UnityEngine;
 
 /**
@@ -8,12 +9,18 @@ using UnityEngine;
  */
 public class MarchingModuleManager : MonoBehaviour
 {
+    /**
+     * Maximum number of modules in the same moduleset
+     */
+    public int MaxModuleCount { get { return maxModuleCount; } }
+
     public class TransformedModule
     {
         public MarchingModule baseModule;
         public ModuleBasedMarchingCubes.Transform transform = new ModuleBasedMarchingCubes.Transform(0);
     }
 
+    int maxModuleCount;
     HashSet<TransformedModule>[] moduleSets; // at build time
     TransformedModule[][] moduleLut; // at sample time
 
@@ -40,11 +47,14 @@ public class MarchingModuleManager : MonoBehaviour
 
     public void Prepare()
     {
+        maxModuleCount = 0;
         moduleLut = new TransformedModule[256][];
         for (int i = 0; i < 256; ++i)
         {
             if (moduleSets[i] == null || moduleSets[i].Count == 0) continue;
-            moduleLut[i] = new TransformedModule[moduleSets[i].Count];
+            int n = moduleSets[i].Count;
+            moduleLut[i] = new TransformedModule[n];
+            maxModuleCount = Mathf.Max(maxModuleCount, n);
             int j = 0;
             foreach (var m in moduleSets[i])
             {
@@ -64,6 +74,27 @@ public class MarchingModuleManager : MonoBehaviour
         if (moduleLut[hash] == null || moduleLut[hash].Length == 0) return null;
         int i = Random.Range(0, moduleLut[hash].Length);
         return moduleLut[hash][i];
+    }
+
+    /**
+     * Get a precise module from the pool
+     */
+    public TransformedModule GetModule(int hash, int subindex)
+    {
+        Debug.Assert(hash >= 0 && hash < 256);
+        if (subindex >= 0 && subindex < moduleLut[hash].Length)
+        {
+            return moduleLut[hash][subindex];
+        }
+        else
+        {
+            return null;
+        }
+    }
+
+    public int ModuleCount(int hash)
+    {
+        return moduleLut[hash].Length;
     }
 
     void Start()

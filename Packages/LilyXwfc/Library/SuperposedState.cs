@@ -22,12 +22,16 @@ namespace LilyXwfc
          * "can switch to an actual exclusion class when needed".
          * Other negative values force the state to remain empty.
          */
-        int _exclusionClass;
+        readonly int _exclusionClass;
 
         ulong _bitfield;
-        readonly int _dimension; // total number of pure states, i.e. number of bits actually in use in _bitfields
+        // number of states in the exclusion class, i.e. number of bits actually in use in _bitfields
+        readonly int _localDimension;
+        // max of all _localDimension among all exclusion classes, used for convertion to pure states
+        readonly int _globalDimension;
 
-        public int Dimension { get { return _dimension; } }
+        public int GlobalDimension { get { return _globalDimension; } }
+        public int DimensionInExclusionClass { get { return _localDimension; } }
 
         /**
          * Pure state's 'index' field is given absolute, while we store
@@ -35,40 +39,53 @@ namespace LilyXwfc
          * This returns the offset to apply to a relative state index to make
          * it an absolute one.
          */
-        int PureStateOffset {  get { return _exclusionClass * Dimension; } }
+        int PureStateOffset {  get { return _exclusionClass * GlobalDimension; } }
 
         /**
          * Superposed state of maximal entropy, i.e. in which all pure states are equiprobable.
          * It is used for initialization of the state vector.
          */
-        public static SuperposedState EquiprobableInClass(int dimension, int exclusionClass)
+        public static SuperposedState EquiprobableInClass(int globalDimension, int localDimension, int exclusionClass)
         {
-            return new SuperposedState(exclusionClass, ~0ul, dimension);
+            return new SuperposedState(exclusionClass, ~0ul, globalDimension, localDimension);
         }
 
         /**
          * The opposite of equiprobable, a superposition containing no state (entropy -Infinity)
-         * This is only used for initialization, it has no physical meaning
+         * This is only used for initialization, it has no physical meaning.
+         * Even a none state must have an exclusion class
          */
-        public static SuperposedState None(int dimension)
+        public static SuperposedState None(int globalDimension, int localDimension, int exclusionClass)
         {
-            return new SuperposedState(-1, 0ul, dimension);
+            return new SuperposedState(exclusionClass, 0ul, globalDimension, localDimension);
         }
 
-        SuperposedState(int exclusionClass, ulong bitfield, int dimension)
+        /**
+         * Create a none superposition with the same exclusion class
+         */
+        public static SuperposedState None(SuperposedState template)
         {
-            Debug.Assert(dimension < 64); // if dimension goes beyond 64, we'll have to use more advanced bitfields
+            return new SuperposedState(template._exclusionClass, 0ul, template._globalDimension, template._localDimension);
+        }
+
+        SuperposedState(int exclusionClass, ulong bitfield, int globalDimension, int localDimension)
+        {
+            if (localDimension < 0) localDimension = globalDimension;
+            Debug.Assert(globalDimension < 64); // if dimension goes beyond 64, we'll have to use more advanced bitfields
             _bitfield = bitfield;
-            _dimension = dimension;
+            _globalDimension = globalDimension;
+            _localDimension = localDimension;
             _exclusionClass = exclusionClass;
         }
 
         /**
          * Pure state index is given absolute
          */
-        public SuperposedState(int exclusionClass, int pureStateIndex, int dimension)
+        public SuperposedState(int exclusionClass, int pureStateIndex, int globalDimension, int localDimension)
         {
-            _dimension = dimension;
+            if (localDimension < 0) localDimension = globalDimension;
+            _globalDimension = globalDimension;
+            _localDimension = localDimension;
             _bitfield = 0ul;
             _exclusionClass = exclusionClass;
             Add(new PureState(pureStateIndex));
@@ -76,19 +93,19 @@ namespace LilyXwfc
 
         public bool Equals(SuperposedState other)
         {
-            ulong mask = (1ul << _dimension) - 1ul;
+            ulong mask = (1ul << DimensionInExclusionClass) - 1ul;
             return (other._bitfield & mask) == (_bitfield & mask) && _exclusionClass == other._exclusionClass;
         }
 
         public override string ToString()
         {
-            if (Equals(EquiprobableInClass(_dimension, _exclusionClass)))
+            if (Equals(EquiprobableInClass(_globalDimension, _localDimension, _exclusionClass)))
             {
-                return "SuperposedState(ALL in x" + _exclusionClass + ")";
+                return "SuperposedState(ALL " + DimensionInExclusionClass + " in x" + _exclusionClass + ")";
             }
             else
             {
-                ulong mask = (1ul << _dimension) - 1ul;
+                ulong mask = (1ul << DimensionInExclusionClass) - 1ul;
                 return "SuperposedState(" + System.Convert.ToString((long)(_bitfield & mask), 2) + " in x" + _exclusionClass + ")";
             }
         }
@@ -105,7 +122,7 @@ namespace LilyXwfc
         {
             int relativeStateIndex = stateIndex - PureStateOffset;
             return
-                relativeStateIndex >= 0 && relativeStateIndex < Dimension // check that we are in the same class of exclusion
+                relativeStateIndex >= 0 && relativeStateIndex < DimensionInExclusionClass // check that we are in the same class of exclusion
                 && (_bitfield & (1ul << relativeStateIndex)) != 0;
         }
 
@@ -115,11 +132,12 @@ namespace LilyXwfc
         public List<PureState> Components()
         {
             List<PureState> l = new List<PureState>();
-            for (int i = 0; i < _dimension; ++i)
+            for (int i = 0; i < DimensionInExclusionClass; ++i)
             {
-                if (Project(i))
+                var ps = new PureState(PureStateOffset + i);
+                if (Project(ps))
                 {
-                    l.Add(new PureState(PureStateOffset + i));
+                    l.Add(ps);
                 }
             }
             return l;
@@ -135,7 +153,7 @@ namespace LilyXwfc
             Debug.Assert(pureStates.Length >= 1);
             int compIndex = Random.Range(0, pureStates.Length);
             int relativeStateIndex = pureStates[compIndex].index - PureStateOffset;
-            Debug.Assert(relativeStateIndex >= 0 && relativeStateIndex < Dimension);
+            Debug.Assert(relativeStateIndex >= 0 && relativeStateIndex < DimensionInExclusionClass);
             _bitfield = 1ul << relativeStateIndex;
         }
 
@@ -145,24 +163,19 @@ namespace LilyXwfc
         public void Remove(PureState s)
         {
             int relativeStateIndex = s.index - PureStateOffset;
-            if (relativeStateIndex >= 0 && relativeStateIndex < Dimension)
+            if (relativeStateIndex >= 0 && relativeStateIndex < DimensionInExclusionClass)
             {
                 _bitfield &= (~(1ul << relativeStateIndex));
             }
         }
 
         /**
-         * Add a pure state to the superposition
+         * Add a pure state to the superposition.
          */
         public void Add(PureState s)
         {
-            if (_exclusionClass == -1)
-            {
-                _exclusionClass = s.index / Dimension;
-            }
-
             int relativeStateIndex = s.index - PureStateOffset;
-            if (relativeStateIndex >= 0 && relativeStateIndex < Dimension)
+            if (relativeStateIndex >= 0 && relativeStateIndex < DimensionInExclusionClass)
             {
                 _bitfield |= (1ul << relativeStateIndex);
             }
@@ -172,7 +185,7 @@ namespace LilyXwfc
                 // class of this superposed state, then the states collapses to
                 // empty state
                 _bitfield = 0ul;
-                _exclusionClass = -2; // freezes emptiness
+                Debug.Assert(false, "must not add a pure state from a different exclusion class");
             }
         }
 
@@ -181,17 +194,18 @@ namespace LilyXwfc
          */
         public SuperposedState MaskBy(SuperposedState mask)
         {
-            Debug.Assert(mask.Dimension == Dimension);
+            Debug.Assert(mask.GlobalDimension == GlobalDimension);
             if (mask._exclusionClass != _exclusionClass)
             {
-                return SuperposedState.None(Dimension);
+                return SuperposedState.None(this);
             }
             else
             {
                 return new SuperposedState(
                     _exclusionClass,
                     _bitfield & mask._bitfield,
-                    Dimension
+                    GlobalDimension,
+                    DimensionInExclusionClass
                 );
             }
         }
@@ -202,7 +216,7 @@ namespace LilyXwfc
         public float Entropy()
         {
             float ent = 0;
-            for (int i = 0; i < _dimension; ++i)
+            for (int i = 0; i < DimensionInExclusionClass; ++i)
             {
                 if (Project(i))
                 {
@@ -210,6 +224,17 @@ namespace LilyXwfc
                 }
             }
             return Mathf.Max(0, ent - 1);
+        }
+
+        /**
+         * Return the pure states contained in the same exclusion class
+         */
+        public IEnumerable<PureState> NonExcludedPureStates()
+        {
+            for (int i = 0; i < DimensionInExclusionClass; ++i)
+            {
+                yield return new PureState(i + PureStateOffset);
+            }
         }
     }
 

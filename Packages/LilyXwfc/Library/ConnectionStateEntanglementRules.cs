@@ -43,12 +43,12 @@ namespace LilyXwfc
 
         public override SuperposedState AllowedStates(SuperposedState x, int connectionType)
         {
-            SuperposedState y = SuperposedState.None(x.Dimension);
+            SuperposedState y = SuperposedState.None(x);
             int dualConnectionType = DualConnection(connectionType);
             var components = x.Components();
             if (components.Count == 0) return y;
 
-            ConnectionState[] cache = new ConnectionState[x.Dimension];
+            ConnectionState[] cache = new ConnectionState[x.DimensionInExclusionClass];
             for (int k = 0; k < cache.Length; ++k)
             {
                 cache[k] = GetConnectionState(new PureState(k), dualConnectionType);
@@ -58,12 +58,14 @@ namespace LilyXwfc
             {
                 ConnectionState s1 = registry.GetModule(xc).GetConnectionState(connectionType);
 
-                for (int k = 0; k < x.Dimension; ++k)
+                int k = 0;
+                foreach (var yc in x.NonExcludedPureStates())
                 {
                     if (s1.Equals(cache[k]))
                     {
-                        y.Add(new PureState(k));
+                        y.Add(yc);
                     }
+                    ++k;
                 }
             }
             return y;

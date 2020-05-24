@@ -252,9 +252,15 @@ public class WorldGenerator : MonoBehaviour
         UnityEngine.Profiling.Profiler.BeginSample("ComputeWfcGrid");
         BMesh wfcTopology = ComputeWfcGrid(tile.mesh, vvert);
         UnityEngine.Profiling.Profiler.EndSample();
+
         UnityEngine.Profiling.Profiler.BeginSample("ComputeExclusionClasses");
         ComputeExclusionClasses(wfcTopology, tile.mesh);
         UnityEngine.Profiling.Profiler.EndSample();
+
+        UnityEngine.Profiling.Profiler.BeginSample("RunXwfc");
+        RunXwfc();
+        UnityEngine.Profiling.Profiler.EndSample();
+
         tile.skin = UpdateWfcOutputMesh(tile.skin, tile.mesh);
         ShowMesh();
 
@@ -437,7 +443,7 @@ public class WorldGenerator : MonoBehaviour
             if (nv != null)
             {
                 var e = wfcGrid.AddEdge(v, nv);
-                int type = nf.floor == vface.floor ? 0 : 1;
+                int type = nf.floor == vface.floor ? 0 : (nf.floor == vface.floor + 1 ? 1 : 2); // see ModuleEntanglementRules.ConnectionType
                 e.attributes["type"].asInt().data[0] = type;
 
                 Debug.Assert(Vector3.Distance(nf.face.Center() + Vector3.up * (nf.floor + 0.5f), nv.point) < 1e-5);
@@ -552,10 +558,13 @@ public class WorldGenerator : MonoBehaviour
         }
     }
 
+    ModuleEntanglementRules rules;
+    LilyXwfc.WaveFunctionSystem system;
+
     public void RunXwfc()
     {
-        var rules = new LilyXwfc.ConnectionStateEntanglementRules(null, new int[] { 0, 1 });
-        var system = new LilyXwfc.WaveFunctionSystem(wfcGrid, rules, 8, "class");
+        if (rules == null) rules = new ModuleEntanglementRules(moduleManager);
+        system = new LilyXwfc.WaveFunctionSystem(wfcGrid, rules, 8, "class");
         var xwfc = new LilyXwfc.WaveFunctionCollapse(system);
         xwfc.Collapse();
     }
@@ -626,8 +635,26 @@ public class WorldGenerator : MonoBehaviour
             int floor = dualVFace[1];
             var dualFace = baseGrid.faces[dualFaceId];
 
-            int hash = v.attributes["class"].asInt().data[0];
-            var m = moduleManager.SampleModule(hash);
+            MarchingModuleManager.TransformedModule m = null;
+            if (system != null)
+            {
+                var state = system.GetWave(LilyXwfc.WaveVariable.FromRaw(v.id));
+                var comp = state.Components();
+                if (comp.Count > 0)
+                {
+                    LilyXwfc.PureState ps = comp[0];
+                    int hash = ps.index / system.dimension;
+                    int subindex = ps.index % system.dimension;
+                    m = moduleManager.GetModule(hash, subindex);
+                }
+                Debug.Log("state = " + state);
+            }
+            else
+            {
+                int hash = v.attributes["class"].asInt().data[0];
+                m = moduleManager.SampleModule(hash);
+            }
+            
             if (m == null) continue;
             
             var verts = dualFace.NeighborVertices().ToArray();

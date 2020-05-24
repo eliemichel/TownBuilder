@@ -16,6 +16,10 @@ public class MarchingModule : MonoBehaviour
     public bool allowFlipAlongX = true;
     public MeshDeformer deformer;
 
+    // For entanglement rules (a bit ad hoc for now)
+    public bool hasPillarAbove = false;
+    public bool hasPillarBellow = false;
+
     public void Init()
     {
         deformer = new MeshDeformer(meshFilter.transform);

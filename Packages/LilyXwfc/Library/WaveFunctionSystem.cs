@@ -49,7 +49,7 @@ namespace LilyXwfc
                     exclusionClassAttr != null
                     ? v.attributes[exclusionClassAttr].asInt().data[0]
                     : 0;
-                waves[i] = SuperposedState.EquiprobableInClass(dimension, exclusionClass);
+                waves[i] = SuperposedState.EquiprobableInClass(dimension, rules.DimensionInExclusionClass(exclusionClass), exclusionClass);
                 ++i;
             }
         }

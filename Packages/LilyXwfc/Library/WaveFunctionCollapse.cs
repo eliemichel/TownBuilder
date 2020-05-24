@@ -231,7 +231,8 @@ namespace LilyXwfc
 
         IEnumerator PropagateCoroutine(WaveVariable idx)
         {
-            Debug.Log("Propagate(" + idx + ") (state = " + system.GetWave(idx) + ") -->");
+            var wave = system.GetWave(idx);
+            Debug.Log("Propagate(" + idx + ") (state = " + wave + ") -->");
             // 1. build neighborhood
             var neighborhood = system.OutgoingConnections(idx);
 
@@ -247,8 +248,8 @@ namespace LilyXwfc
                 bool changed = false;
 
                 // Build a mask
-                SuperposedState allowed = SuperposedState.None(system.dimension);
-                foreach (PureState x in system.GetWave(idx).Components())
+                SuperposedState allowed = SuperposedState.None(wave);
+                foreach (PureState x in wave.Components())
                 {
                     for (int k = 0; k < system.dimension; ++k)
                     {
