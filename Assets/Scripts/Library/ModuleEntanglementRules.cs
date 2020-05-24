@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using LilyXwfc;
+using LilyWfc;
 
 /**
  * Entanglement rules based on the ModuleManager
@@ -32,7 +32,7 @@ public class ModuleEntanglementRules : AEntanglementRules
     {
         int hash = s.index / Dimension;
         int subindex = s.index % Dimension;
-        return moduleManager.GetModule(hash, subindex).baseModule;
+        return moduleManager.GetModule(hash, subindex)?.baseModule;
     }
 
     //public override SuperposedState AllowedStates(SuperposedState x, int connectionType);
@@ -67,8 +67,8 @@ public class ModuleEntanglementRules : AEntanglementRules
         return c;
     }
 
-    public override int DimensionInExclusionClass(int exclusionClass)
-    {
-        return Mathf.Max(1, moduleManager.ModuleCount(exclusionClass));
-    }
+    //public override int DimensionInExclusionClass(int exclusionClass)
+    //{
+    //    return Mathf.Max(1, moduleManager.ModuleCount(exclusionClass));
+    //}
 }

@@ -559,14 +559,14 @@ public class WorldGenerator : MonoBehaviour
     }
 
     ModuleEntanglementRules rules;
-    LilyXwfc.WaveFunctionSystem system;
+    LilyWfc.WaveFunctionSystem system;
 
     public void RunXwfc()
     {
         if (rules == null) rules = new ModuleEntanglementRules(moduleManager);
-        system = new LilyXwfc.WaveFunctionSystem(wfcGrid, rules, 8, "class");
-        var xwfc = new LilyXwfc.WaveFunctionCollapse(system);
-        xwfc.Collapse();
+        system = new LilyWfc.WaveFunctionSystem(wfcGrid, rules, moduleManager.MaxModuleCount);
+        var wfc = new LilyWfc.WaveFunctionCollapse(system);
+        wfc.Collapse();
     }
 
     BMesh wfcOutputMesh;
@@ -638,14 +638,13 @@ public class WorldGenerator : MonoBehaviour
             MarchingModuleManager.TransformedModule m = null;
             if (system != null)
             {
-                var state = system.GetWave(LilyXwfc.WaveVariable.FromRaw(v.id));
+                var state = system.GetWave(LilyWfc.WaveVariable.FromRaw(v.id));
                 var comp = state.Components();
                 if (comp.Count > 0)
                 {
-                    LilyXwfc.PureState ps = comp[0];
-                    int hash = ps.index / system.dimension;
-                    int subindex = ps.index % system.dimension;
-                    m = moduleManager.GetModule(hash, subindex);
+                    LilyWfc.PureState ps = comp[0];
+                    int hash = v.attributes["class"].asInt().data[0];
+                    m = moduleManager.GetModule(hash, ps.index);
                 }
                 Debug.Log("state = " + state);
             }
