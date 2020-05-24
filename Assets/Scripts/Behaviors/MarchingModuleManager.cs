@@ -94,7 +94,8 @@ public class MarchingModuleManager : MonoBehaviour
 
     public int ModuleCount(int hash)
     {
-        return moduleLut[hash].Length;
+        if (moduleLut[hash] != null) return moduleLut[hash].Length;
+        return 0;
     }
 
     void Start()

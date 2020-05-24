@@ -14,16 +14,10 @@
         bool Allows(PureState x, int connectionType, PureState y);
 
         /**
-         * Return a superposition of all states that are possible for Y if X is
-         * in superposed state x and X and Y are bound by a connection of type
-         * #connectionType.
-         * 
-         * Implementing this is optional, a default implementation is provided
-         * if you derive from AEntanglementRules defined bellow, but you can
-         * choose to override it essentially for optimization. The behavior
-         * must not change.
+         * Contrary to regular WFC, the superposition must depend on y because
+         * a single SuperposedState object cannot hold all the allowed neighbors
          */
-        SuperposedState AllowedStates(SuperposedState x, int connectionType);
+        SuperposedState AllowedStates(SuperposedState x, int connectionType, SuperposedState y);
 
         /**
          * If edge is stored going from other vertex to this, we use the dual connection type
@@ -48,20 +42,20 @@
         public abstract bool Allows(PureState x, int connectionType, PureState y);
         public abstract int DualConnection(int c);
 
-        public virtual SuperposedState AllowedStates(SuperposedState x, int connectionType)
+        public virtual SuperposedState AllowedStates(SuperposedState x, int connectionType, SuperposedState y)
         {
-            SuperposedState y = SuperposedState.None(x);
+            SuperposedState z = SuperposedState.None(y);
             foreach (PureState xc in x.Components())
             {
-                foreach (PureState yc in x.NonExcludedPureStates())
+                foreach (PureState zc in z.NonExcludedPureStates())
                 {
-                    if (Allows(xc, connectionType, yc))
+                    if (Allows(xc, connectionType, zc))
                     {
-                        y.Add(yc);
+                        z.Add(zc);
                     }
                 }
             }
-            return y;
+            return z;
         }
 
         public virtual int DimensionInExclusionClass(int exclusionClass)

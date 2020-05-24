@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using LilyWfc;
+using LilyXwfc;
 
 /**
  * Entanglement rules based on the ModuleManager
@@ -43,6 +43,8 @@ public class ModuleEntanglementRules : AEntanglementRules
         MarchingModule mx = GetModule(x);
         MarchingModule my = GetModule(y);
 
+        if (mx == null || my == null) return false;
+
         if (connectionType == (int)ConnectionType.Above)
         {
             return mx.hasPillarBellow == my.hasPillarAbove;
@@ -67,8 +69,8 @@ public class ModuleEntanglementRules : AEntanglementRules
         return c;
     }
 
-    //public override int DimensionInExclusionClass(int exclusionClass)
-    //{
-    //    return Mathf.Max(1, moduleManager.ModuleCount(exclusionClass));
-    //}
+    public override int DimensionInExclusionClass(int exclusionClass)
+    {
+        return Mathf.Max(1, moduleManager.ModuleCount(exclusionClass));
+    }
 }

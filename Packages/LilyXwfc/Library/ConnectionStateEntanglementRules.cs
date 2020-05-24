@@ -41,17 +41,21 @@ namespace LilyXwfc
             return s1.Equals(s2);
         }
 
-        public override SuperposedState AllowedStates(SuperposedState x, int connectionType)
+        public override SuperposedState AllowedStates(SuperposedState x, int connectionType, SuperposedState y)
         {
-            SuperposedState y = SuperposedState.None(x);
+            SuperposedState z = SuperposedState.None(y);
             int dualConnectionType = DualConnection(connectionType);
             var components = x.Components();
-            if (components.Count == 0) return y;
+            if (components.Count == 0) return z;
 
-            ConnectionState[] cache = new ConnectionState[x.DimensionInExclusionClass];
-            for (int k = 0; k < cache.Length; ++k)
+            ConnectionState[] cache = new ConnectionState[z.DimensionInExclusionClass];
             {
-                cache[k] = GetConnectionState(new PureState(k), dualConnectionType);
+                int k = 0;
+                foreach (var zc in z.NonExcludedPureStates())
+                {
+                    cache[k] = GetConnectionState(zc, dualConnectionType);
+                    ++k;
+                }
             }
 
             foreach (PureState xc in components)
@@ -59,16 +63,16 @@ namespace LilyXwfc
                 ConnectionState s1 = registry.GetModule(xc).GetConnectionState(connectionType);
 
                 int k = 0;
-                foreach (var yc in x.NonExcludedPureStates())
+                foreach (var zc in z.NonExcludedPureStates())
                 {
                     if (s1.Equals(cache[k]))
                     {
-                        y.Add(yc);
+                        z.Add(zc);
                     }
                     ++k;
                 }
             }
-            return y;
+            return z;
         }
 
         /**

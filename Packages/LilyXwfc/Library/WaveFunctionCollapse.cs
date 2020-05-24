@@ -203,12 +203,12 @@ namespace LilyXwfc
                 int connectionType = neighborhood[i].type;
 
                 // 2a. Test all combinations
+                SuperposedState neighborState = system.GetWave(nidx);
 
                 // Build a mask
-                SuperposedState allowed = system.rules.AllowedStates(system.GetWave(idx), connectionType);
+                SuperposedState allowed = system.rules.AllowedStates(system.GetWave(idx), connectionType, neighborState);
 
                 // Apply the mask to the neighbor
-                SuperposedState neighborState = system.GetWave(nidx);
                 SuperposedState newNeighborState = neighborState.MaskBy(allowed);
                 system.SetWave(nidx, newNeighborState);
 
