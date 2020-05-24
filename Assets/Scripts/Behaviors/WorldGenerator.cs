@@ -194,40 +194,6 @@ public class WorldGenerator : MonoBehaviour
         ShowMesh();
     }
 
-    bool CanFuse(BMesh.Edge e) // iff it joins two triangles
-    {
-        var faces = e.NeighborFaces();
-        return faces.Count == 2 && faces[0].vertcount == 3 && faces[1].vertcount == 3;
-    }
-
-    public bool FuseEdge(BMesh.Edge e) // iff it joins two triangles
-    {
-        var faces = e.NeighborFaces();
-        if (!CanFuse(e)) return false;
-
-        var vertices = new BMesh.Vertex[4];
-        vertices[0] = e.vert1;
-        vertices[1] = null;
-        vertices[2] = e.vert2;
-        vertices[3] = null;
-        foreach (var face in faces)
-        {
-            foreach (var v in face.NeighborVertices())
-            {
-                if (!e.ContainsVertex(v))
-                {
-                    if (vertices[1] == null) vertices[1] = v;
-                    else vertices[3] = v;
-                }
-            }
-        }
-        Debug.Assert(vertices[0] != null && vertices[1] != null && vertices[2] != null && vertices[3] != null);
-
-        currentTile.mesh.RemoveEdge(e);
-        currentTile.mesh.AddFace(vertices);
-        return true;
-    }
-
     public void SquarifyQuads()
     {
         if (currentTile.mesh == null) return;
@@ -279,95 +245,6 @@ public class WorldGenerator : MonoBehaviour
     #endregion
 
     #region [Raycast Mesh]
-    // For DualNgon functions only
-    Vector3 FloorOffset(int floor)
-    {
-        return Vector3.up * Mathf.Max(floor - 0.5f, 0);
-    }
-
-    void AddDualNgon(BMesh mesh, BMesh.Vertex v, int floor, bool flipped = false) // @flipped anyway face orientation is messy (todo)
-    {
-        BMesh.Vertex nv = mesh.AddVertex(v.point + FloorOffset(floor));
-        var faces = v.NeighborFaces();
-        var verts = new List<BMesh.Vertex>();
-        foreach (BMesh.Face f in faces)
-        {
-            BMesh.Vertex u = mesh.AddVertex(f.Center() + FloorOffset(floor));
-            verts.Add(u);
-        }
-        int prev_i = verts.Count - 1;
-        for (int i = 0; i < verts.Count; ++i)
-        {
-            mesh.AddFace(verts[flipped ? i : prev_i], nv, verts[flipped ? prev_i : i]);
-            prev_i = i;
-        }
-    }
-
-    void AddDualNgonWall(BMesh mesh, BMesh.Edge e, int floor)
-    {
-        var faces = e.NeighborFaces();
-        Debug.Assert(faces.Count >= 2);
-        var verts = new List<BMesh.Vertex>();
-        foreach (BMesh.Face f in faces)
-        {
-            BMesh.Vertex u0 = mesh.AddVertex(f.Center() + FloorOffset(floor));
-            BMesh.Vertex u1 = mesh.AddVertex(f.Center() + FloorOffset(floor + 1));
-            verts.Add(u0);
-            verts.Add(u1);
-        }
-        int prev_i = verts.Count / 2 - 1;
-        for (int i = 0; i < verts.Count / 2; ++i)
-        {
-            mesh.AddFace(verts[2 * prev_i + 0], verts[2 * i + 0], verts[2 * i + 1], verts[2 * prev_i + 1]);
-            prev_i = i;
-        }
-    }
-
-    // Assume that vertex as consistent id
-    void AddDualNgonColumn(BMesh mesh, BMesh.Vertex v, BMesh.AttributeDefinition uvAttr)
-    {
-        Debug.Assert(v.edge != null);
-        var occupancy = v.attributes["occupancy"].asFloat().data;
-
-        bool occ, prev_occ = true;
-        for (int floor = 0; floor < occupancy.Length; ++floor, prev_occ = occ)
-        {
-            occ = occupancy[floor] > 0;
-
-            if (occ && !prev_occ)
-            {
-                int dualNgonId = floor + maxHeight * 1;
-                uvAttr.defaultValue = new BMesh.FloatAttributeValue(v.id, dualNgonId);
-                AddDualNgon(mesh, v, floor, true /* flipped */);
-            }
-            if (!occ && prev_occ)
-            {
-                int dualNgonId = floor + maxHeight * 2;
-                uvAttr.defaultValue = new BMesh.FloatAttributeValue(v.id, dualNgonId);
-                AddDualNgon(mesh, v, floor, false /* flipped */);
-            }
-            // If cell is occupied, add wall arounds at interfaces with empty cells
-            if (occ)
-            {
-                int edgeIndex = 0; // will be written in UVs to find it back at mouse ray casting
-                BMesh.Edge it = v.edge;
-                do
-                {
-                    BMesh.Vertex neighbor = it.OtherVertex(v);
-                    float nocc = neighbor.attributes["occupancy"].asFloat().data[floor];
-                    if (nocc == 0)
-                    {
-                        int dualNgonId = floor + maxHeight * (edgeIndex + 3);
-                        uvAttr.defaultValue = new BMesh.FloatAttributeValue(v.id, dualNgonId);
-                        AddDualNgonWall(mesh, it, floor);
-                    }
-                    it = it.Next(v);
-                    ++edgeIndex;
-                } while (it != v.edge);
-            }
-        }
-    }
-
     public void ComputeRaycastMesh()
     {
         if (currentTile.mesh == null) return;
@@ -380,7 +257,7 @@ public class WorldGenerator : MonoBehaviour
 
         foreach (BMesh.Vertex v in currentTile.mesh.vertices)
         {
-            AddDualNgonColumn(raycastMesh, v, uvAttr);
+            BMeshDual.AddDualNgonColumn(raycastMesh, v, uvAttr, "occupancy", maxHeight);
         }
         if (raycastMeshFilter != null) BMeshUnity.SetInMeshFilter(raycastMesh, raycastMeshFilter);
     }
@@ -441,11 +318,11 @@ public class WorldGenerator : MonoBehaviour
         var cursormesh = new BMesh();
         if (cursor.edgeIndex == -2)
         {
-            AddDualNgon(cursormesh, v, cursor.floor, true /* flipped */);
+            BMeshDual.AddDualNgon(cursormesh, v, cursor.floor, true /* flipped */);
         }
         else if (cursor.edgeIndex == -1)
         {
-            AddDualNgon(cursormesh, v, cursor.floor, false /* flipped */);
+            BMeshDual.AddDualNgon(cursormesh, v, cursor.floor, false /* flipped */);
         }
         else
         {
@@ -454,7 +331,7 @@ public class WorldGenerator : MonoBehaviour
             {
                 it = it.Next(v);
             }
-            AddDualNgonWall(cursormesh, it, cursor.floor);
+            BMeshDual.AddDualNgonWall(cursormesh, it, cursor.floor);
         }
         BMeshUnity.SetInMeshFilter(cursormesh, cursorMeshFilter);
     }
