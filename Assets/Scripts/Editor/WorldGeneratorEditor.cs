@@ -32,7 +32,10 @@ public class WorldGeneratorEditor : Editor
         if (GUILayout.Button("Squarify Quads")) cont.SquarifyQuads();
         if (GUILayout.Button("Compute Skin")) cont.ComputeSkin();
         if (GUILayout.Button("Compute Raycast Mesh")) cont.ComputeRaycastMesh();
+
+        EditorGUILayout.Space();
         if (GUILayout.Button("Compute Wfc Grid")) cont.ComputeWfcGrid();
+        if (GUILayout.Button("Compute Exclusion Classes")) cont.ComputeExclusionClasses();
 
         EditorGUILayout.Space();
         if (GUILayout.Button("Validate Tile")) cont.ValidateTile();

@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -263,7 +264,7 @@ public class WorldGenerator : MonoBehaviour
     }
     #endregion
 
-    #region [Wave Function Collapse]
+    #region [Wave Function Collapse Grid]
     BMesh wfcGrid;
 
     /**
@@ -305,6 +306,72 @@ public class WorldGenerator : MonoBehaviour
         }
     }
 
+    // Low level operation ensuring that e2 is right after e1 in the chained
+    // list of edges that are around vertex v.
+    // TODO: move the SwapEdge part to BMesh and test it
+    void EnsureAfter(BMesh.Edge e1, BMesh.Edge e2, BMesh.Vertex v)
+    {
+        int c0 = v.NeighborEdges().Count; // for testing
+
+        Debug.Assert(e1 != e2);
+
+        BMesh.Edge pivot = e1.Next(v);
+        if (pivot != e2)
+        {
+            // SwapEdge(pivot, e2, v)
+
+            var before_e2 = e2.Prev(v);
+            var after_e2 = e2.Next(v);
+            var before_pivot = pivot.Prev(v); // == e1
+            var after_pivot = pivot.Next(v);
+
+            if (after_e2 == pivot && after_pivot == e2)
+            {
+                // nothing to do
+            }
+            else
+            {
+                after_e2.SetPrev(v, pivot);
+                pivot.SetNext(v, after_e2);
+
+                before_pivot.SetNext(v, e2);
+                e2.SetPrev(v, before_pivot);
+                
+                if (after_pivot == e2) // and so after_e2 != pivot
+                {
+                    e2.SetNext(v, pivot);
+                    pivot.SetPrev(v, e2);
+                }
+                else if (after_e2 == pivot) // and so after_pivot != e2
+                {
+                    pivot.SetNext(v, e2);
+                    e2.SetPrev(v, pivot);
+                }
+                else
+                {
+                    before_e2.SetNext(v, pivot);
+                    pivot.SetPrev(v, before_e2);
+
+                    after_pivot.SetPrev(v, e2);
+                    e2.SetNext(v, after_pivot);
+                }
+            }
+
+            Debug.Assert(after_e2.Next(v) != after_e2);
+            Debug.Assert(after_e2.Prev(v) != after_e2);
+            Debug.Assert(before_e2.Next(v) != before_e2);
+            Debug.Assert(before_e2.Prev(v) != before_e2);
+            Debug.Assert(after_pivot.Next(v) != after_pivot);
+            Debug.Assert(after_pivot.Prev(v) != after_pivot);
+            Debug.Assert(before_pivot.Next(v) != before_pivot);
+            Debug.Assert(before_pivot.Prev(v) != before_pivot);
+        }
+
+        Debug.Assert(e1.Next(v) == e2);
+        Debug.Assert(e2.Prev(v) == e1);
+        Debug.Assert(v.NeighborEdges().Count == c0);
+    }
+
     BMesh.Vertex ComputeWfcGrid_Aux(BMesh baseGrid, VFace vface)
     {
         int[] visited = vface.face.attributes["visited"].asInt().data;
@@ -336,7 +403,38 @@ public class WorldGenerator : MonoBehaviour
 
         var v = wfcGrid.AddVertex(vface.face.Center() + Vector3.up * (vface.floor + 0.5f));
 
-        int connectionType = 0;
+        Vector3 d0 = Vector3.zero;
+        foreach (VFace nf in vface.NeighborVFaces())
+        {
+            if (nf.floor == vface.floor)
+            {
+                Vector3 nvp = nf.face.Center() + Vector3.up * (nf.floor + 0.5f);
+                d0 = (nvp - v.point).normalized;
+                break;
+            }
+        }
+        float prevAngle = 361;
+
+        Debug.Log("---");
+        int c = 0;
+        foreach (VFace nf in vface.NeighborVFaces())
+        {
+            if (nf.floor == vface.floor)
+            {
+                Vector3 nvp = nf.face.Center() + Vector3.up * (nf.floor + 0.5f);
+                Vector3 di = (nvp - v.point).normalized;
+                float angle = Vector3.SignedAngle(d0, di, Vector3.up);
+                if (angle <= 0) angle += 360;
+                Debug.Log("#" + c + ": angle = " + angle + ", di = " + di + " and d0 = " + d0);
+                Debug.Assert(angle < prevAngle, "error at vface #" + vface.face.id + ":" + vface.floor);
+                prevAngle = angle;
+                ++c;
+            }
+        }
+
+        prevAngle = 361;
+
+        BMesh.Edge prevHorizontalEdge = null;
         foreach (VFace nf in vface.NeighborVFaces())
         {
             if (nf.IsEmpty()) continue;
@@ -344,7 +442,26 @@ public class WorldGenerator : MonoBehaviour
             if (nv != null)
             {
                 var e = wfcGrid.AddEdge(v, nv);
-                e.attributes["type"].asInt().data[0] = connectionType++;
+                int type = nf.floor == vface.floor ? 0 : 1;
+                e.attributes["type"].asInt().data[0] = type;
+
+                Debug.Assert(Vector3.Distance(nf.face.Center() + Vector3.up * (nf.floor + 0.5f), nv.point) < 1e-5);
+
+                if (type == 0)
+                {
+                    Vector3 di = (nv.point - v.point).normalized;
+                    float angle = Vector3.SignedAngle(d0, di, Vector3.up);
+                    if (angle <= 0) angle += 360;
+                    Debug.Log("angle = " + angle);
+                    Debug.Assert(angle < prevAngle, "error at vface #" + vface.face.id + ":" + vface.floor);
+                    prevAngle = angle;
+
+                    if (prevHorizontalEdge != null)
+                    {
+                        EnsureAfter(prevHorizontalEdge, e, v);
+                    }
+                    prevHorizontalEdge = e;
+                }
             }
         }
 
@@ -361,7 +478,7 @@ public class WorldGenerator : MonoBehaviour
     void ComputeWfcGrid(BMesh baseGrid, BMesh.Face face = null)
     {
         wfcGrid = new BMesh();
-        wfcGrid.AddEdgeAttribute("type", BMesh.AttributeBaseType.Int, 1);
+        wfcGrid.AddEdgeAttribute("type", BMesh.AttributeBaseType.Int, 1); // 0: horizontal, 1: vertical
         if (!baseGrid.HasFaceAttribute("visited"))
         {
             // These attributes are vectors because they are per vface
@@ -401,6 +518,44 @@ public class WorldGenerator : MonoBehaviour
     }
     #endregion
 
+    #region [Wave Function Collapse System]
+    void ComputeExclusionClasses(BMesh wfcTopology)
+    {
+        // exclusion class for XWFC
+        wfcTopology.AddVertexAttribute("class", BMesh.AttributeBaseType.Int, 1);
+
+        { int i = 0; foreach (var v in wfcTopology.vertices) v.id = i++; }
+
+        // Check that edge ordering is consistent
+        // TODO: move to a proper test file
+        foreach (var v in wfcTopology.vertices)
+        {
+            var edges = v.NeighborEdges();
+            if (edges.Count == 0) continue;
+            Vector3 d0 = (edges[0].OtherVertex(v).point - v.point).normalized;
+            float prevAngle = 361;
+            int i = 0;
+            foreach (var e in edges)
+            {
+                int type = e.attributes["type"].asInt().data[0];
+                if (type != 0) continue; // only look at horizontal edges
+
+                Vector3 di = (e.OtherVertex(v).point - v.point).normalized;
+                float angle = Vector3.SignedAngle(d0, di, Vector3.up);
+                if (angle <= 0) angle += 360;
+                if (edges.Count == 4)
+                {
+                    Debug.Log("Angle edge #" + i + " out of vertex #" + v.id + ": " + angle);
+                    Debug.Log("   (di = " + di + ")");
+                }
+                Debug.Assert(edges.Count != 4 || angle < prevAngle);
+                prevAngle = angle;
+                ++i;
+            }
+        }
+    }
+    #endregion
+
     #region [UI Actions]
     public void RemoveRandomEdge()
     {
@@ -433,6 +588,12 @@ public class WorldGenerator : MonoBehaviour
     {
         if (currentTile.mesh == null) return;
         ComputeWfcGrid(currentTile.mesh);
+    }
+
+    public void ComputeExclusionClasses()
+    {
+        if (wfcGrid == null) return;
+        ComputeExclusionClasses(wfcGrid);
     }
     #endregion
 
