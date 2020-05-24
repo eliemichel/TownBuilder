@@ -1,0 +1,12 @@
+{
+	"name": "com.exppad.lily-xwfc",
+	"version": "1.0.0",
+	"displayName": "Lily Exclusive Wave Function Collapse",
+	"description": "A library for Exclusive Wave Function Collapse",
+	"keywords": ["procedural", "wfc", "level design"],
+	"author": {
+		"name": "Elie Michel",
+		"email": "elie@exppad.com",
+		"url": "https://exppad.com/"
+	}
+}

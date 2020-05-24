@@ -263,6 +263,144 @@ public class WorldGenerator : MonoBehaviour
     }
     #endregion
 
+    #region [Wave Function Collapse]
+    BMesh wfcGrid;
+
+    /**
+     * A dual voxel of the virtual grid has a base face and a floor
+     */
+    class VFace
+    {
+        public BMesh.Face face;
+        public int floor;
+
+        public List<VFace> NeighborVFaces()
+        {
+            List<VFace> vfaces = new List<VFace>();
+            foreach (var ne in face.NeighborEdges())
+            {
+                foreach (var nf in ne.NeighborFaces())
+                {
+                    if (nf != face) vfaces.Add(new VFace { face = nf, floor = floor });
+                }
+            }
+            vfaces.Add(new VFace { face = face, floor = floor + 1 });
+            if (floor > 0) vfaces.Add(new VFace { face = face, floor = floor - 1 });
+            return vfaces;
+        }
+
+        /**
+         * A VFace is empty iff its 8 corners are empty
+         */
+        public bool IsEmpty()
+        {
+            //if (floor == 0) return false; // for debug
+            foreach (var corner in face.NeighborVertices())
+            {
+                var occ = corner.attributes["occupancy"].asFloat().data;
+                if (floor < occ.Length && occ[floor] > 0) return false;
+                if (floor + 1 < occ.Length && occ[floor + 1] > 0) return false;
+            }
+            return true;
+        }
+    }
+
+    BMesh.Vertex ComputeWfcGrid_Aux(BMesh baseGrid, VFace vface)
+    {
+        int[] visited = vface.face.attributes["visited"].asInt().data;
+        int[] vertex = vface.face.attributes["vertex"].asInt().data;
+        Debug.Assert(visited.Length == vertex.Length);
+
+        if (visited.Length > vface.floor && visited[vface.floor] > 0)
+        {
+            return wfcGrid.vertices[vertex[vface.floor]];
+        }
+
+        // If needed resize attribute vectors
+        if (visited.Length <= vface.floor)
+        {
+            var newVisited = new int[vface.floor + 1];
+            var newVertex = new int[vface.floor + 1];
+            for (int i = 0; i < visited.Length; ++i)
+            {
+                newVisited[i] = visited[i];
+                newVertex[i] = vertex[i];
+            }
+            vface.face.attributes["visited"].asInt().data = newVisited;
+            vface.face.attributes["vertex"].asInt().data = newVertex;
+            visited = newVisited;
+            vertex = newVertex;
+        }
+        visited[vface.floor] = 1;
+        vertex[vface.floor] = wfcGrid.vertices.Count; // index of the next vertex
+
+        var v = wfcGrid.AddVertex(vface.face.Center() + Vector3.up * (vface.floor + 0.5f));
+
+        int connectionType = 0;
+        foreach (VFace nf in vface.NeighborVFaces())
+        {
+            if (nf.IsEmpty()) continue;
+            var nv = ComputeWfcGrid_Aux(baseGrid, nf);
+            if (nv != null)
+            {
+                var e = wfcGrid.AddEdge(v, nv);
+                e.attributes["type"].asInt().data[0] = connectionType++;
+            }
+        }
+
+        return v;
+    }
+
+    /**
+     * The WFC grid has one vertex per module slot and one edge per module
+     * connection. It propagates from a given face of the baseGrid.
+     * WFC grid is the volumetric dual of the original virtual grid of base
+     * baseGrid, meaning that a vertex in WFC grid corresponds to a (cubic)
+     * element of volume in the virtual grid.
+     */
+    void ComputeWfcGrid(BMesh baseGrid, BMesh.Face face = null)
+    {
+        wfcGrid = new BMesh();
+        wfcGrid.AddEdgeAttribute("type", BMesh.AttributeBaseType.Int, 1);
+        if (!baseGrid.HasFaceAttribute("visited"))
+        {
+            // These attributes are vectors because they are per vface
+            baseGrid.AddFaceAttribute("visited", BMesh.AttributeBaseType.Int, 1);
+            // store the index of the vertex corresponding to this vface
+            baseGrid.AddFaceAttribute("vertex", BMesh.AttributeBaseType.Int, 1);
+        }
+        else
+        {
+            // Reset attributes
+            foreach (var f in baseGrid.faces)
+            {
+                f.attributes["visited"] = new BMesh.IntAttributeValue(0);
+                f.attributes["vertex"] = new BMesh.IntAttributeValue(0);
+            }
+        }
+        int floor = 0;
+        if (face == null)
+        {
+            // Find a non empty vface
+            foreach (var v in baseGrid.vertices)
+            {
+                var occ = v.attributes["occupancy"].asFloat().data;
+                for (int i = 0; i < occ.Length; ++i)
+                {
+                    if (occ[i] > 0)
+                    {
+                        floor = i;
+                        face = v.NeighborFaces()[0];
+                        break;
+                    }
+                }
+                if (face != null) break;
+            }
+        }
+        ComputeWfcGrid_Aux(baseGrid, new VFace { face = face, floor = floor });
+    }
+    #endregion
+
     #region [UI Actions]
     public void RemoveRandomEdge()
     {
@@ -289,6 +427,12 @@ public class WorldGenerator : MonoBehaviour
     {
         if (currentTile.mesh == null) return;
         ComputeSkin(currentTile);
+    }
+
+    public void ComputeWfcGrid()
+    {
+        if (currentTile.mesh == null) return;
+        ComputeWfcGrid(currentTile.mesh);
     }
     #endregion
 
@@ -435,9 +579,24 @@ public class WorldGenerator : MonoBehaviour
 
     void OnDrawGizmos()
     {
+        Gizmos.matrix = transform.localToWorldMatrix;
+
+        if (wfcGrid != null)
+        {
+            BMeshUnity.DrawGizmos(wfcGrid);
+#if UNITY_EDITOR
+            foreach (var e in wfcGrid.edges)
+            {
+                var type = e.attributes["type"].asInt().data[0];
+                Handles.Label(e.Center(), "" + type);
+            }
+#endif // UNITY_EDITOR
+        }
+
+        return;
+
         if (currentTile == null || currentTile.mesh == null) return;
         var bmesh = currentTile.mesh;
-        Gizmos.matrix = transform.localToWorldMatrix;
         BMeshUnity.DrawGizmos(bmesh);
         //if (skinmesh != null) BMeshUnity.DrawGizmos(skinmesh);
 
