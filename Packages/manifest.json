@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.exppad.bmesh-unity": "https://github.com/eliemichel/BMeshUnity.git",
     "com.unity.collab-proxy": "1.2.16",
     "com.unity.ide.rider": "1.1.4",
     "com.unity.ide.vscode": "1.2.0",
@@ -39,5 +40,11 @@
     "com.unity.modules.vr": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
     "com.unity.modules.xr": "1.0.0"
+  },
+  "lock": {
+    "com.exppad.bmesh-unity": {
+      "revision": "HEAD",
+      "hash": "c312c381a8abc7f86745143bb0efaeefc6646a13"
+    }
   }
 }

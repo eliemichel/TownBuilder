@@ -52,36 +52,6 @@ public class WorldGenerator : MonoBehaviour
     #endregion
 
     #region [World Generator]
-    void GenerateSimpleHex()
-    {
-        Vector3[] vertices = new Vector3[7];
-        Vector2[] uvs = new Vector2[7];
-        int[] triangles = new int[3*6];
-
-        for (int i = 0; i < 6; ++i)
-        {
-            float th = i * 2 * Mathf.PI / 6;
-            float c = Mathf.Cos(th);
-            float s = Mathf.Sin(th);
-            vertices[i] = new Vector3(size * c, 0, size * s);
-
-            uvs[i] = new Vector2(c * 0.5f + 0.5f, s * 0.5f + 0.5f);
-
-            triangles[3 * i + 0] = (i + 1) % 6;
-            triangles[3 * i + 1] = i;
-            triangles[3 * i + 2] = 6;
-        }
-        vertices[6] = new Vector3(0, 0, 0);
-        uvs[6] = new Vector2(0.5f, 0.5f);
-
-        // Create mesh
-        Mesh mesh = new Mesh();
-        GetComponent<MeshFilter>().mesh = mesh;
-        mesh.vertices = vertices;
-        mesh.uv = uvs;
-        mesh.triangles = triangles;
-    }
-
     public void Test()
     {
         TestBMesh.Run();
@@ -104,13 +74,16 @@ public class WorldGenerator : MonoBehaviour
     public void GenerateQuad()
     {
         var bmesh = new BMesh();
-        bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("restpos", BMesh.AttributeBaseType.Float, 3));
-        bmesh.AddVertexAttribute(new BMesh.AttributeDefinition("weight", BMesh.AttributeBaseType.Float, 1));
+        bmesh.AddVertexAttribute("uv", BMesh.AttributeBaseType.Float, 2);
+        bmesh.AddVertexAttribute("restpos", BMesh.AttributeBaseType.Float, 3);
+        bmesh.AddVertexAttribute("weight", BMesh.AttributeBaseType.Float, 1);
+        bmesh.AddVertexAttribute("glued", BMesh.AttributeBaseType.Float, 1);
+        bmesh.AddVertexAttribute("occupancy", BMesh.AttributeBaseType.Float, maxHeight); // core voxel data
 
-        BMesh.Vertex v0 = bmesh.AddVertex(new Vector3(-1, 0, -1));
-        BMesh.Vertex v1 = bmesh.AddVertex(new Vector3(-1, 0, 1));
-        BMesh.Vertex v2 = bmesh.AddVertex(new Vector3(1, 0, 1));
-        BMesh.Vertex v3 = bmesh.AddVertex(new Vector3(1, 0, -1));
+        BMesh.Vertex v0 = bmesh.AddVertex(new Vector3(-1, 0, -1) * 8);
+        BMesh.Vertex v1 = bmesh.AddVertex(new Vector3(1, 0, -1) * 8);
+        BMesh.Vertex v2 = bmesh.AddVertex(new Vector3(1, 0, 1) * 8);
+        BMesh.Vertex v3 = bmesh.AddVertex(new Vector3(-1, 0, 1) * 8);
         bmesh.AddFace(v0, v1, v2, v3);
 
         v0.attributes["restpos"] = new BMesh.FloatAttributeValue(v0.point);
@@ -123,6 +96,7 @@ public class WorldGenerator : MonoBehaviour
         v3.attributes["weight"] = new BMesh.FloatAttributeValue(0);
 
         currentTile.mesh = bmesh;
+        currentTileCo = new TileAxialCoordinate(0, 0, divisions);
         ShowMesh();
     }
 
@@ -175,14 +149,14 @@ public class WorldGenerator : MonoBehaviour
 
             if (co2.InRange(n) && co3.InRange(n))
             {
-                bmesh.AddFace(i, co3.ToIndex(n), co2.ToIndex(n));
+                bmesh.AddFace(i, co2.ToIndex(n), co3.ToIndex(n));
                 ++step;
                 if (step >= limitStep) break;
             }
 
             if (co3.InRange(n) && co4.InRange(n))
             {
-                bmesh.AddFace(i, co4.ToIndex(n), co3.ToIndex(n));
+                bmesh.AddFace(i, co3.ToIndex(n), co4.ToIndex(n));
                 ++step;
             }
         }
@@ -260,7 +234,7 @@ public class WorldGenerator : MonoBehaviour
     public void Clear()
     {
         currentTile = new Tile();
-        tileSet = null;
+        tileSet = new Dictionary<AxialCoordinate, Tile>();
         currentTileCo = null;
         ShowMesh();
     }

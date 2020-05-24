@@ -26,6 +26,7 @@ public class WorldGeneratorEditor : Editor
         if (GUILayout.Button("Generate Tile At Cursor")) cont.GenerateTileAtCursor();
 
         EditorGUILayout.Space();
+        if (GUILayout.Button("Remove Random Edge")) cont.RemoveRandomEdge();
         if (GUILayout.Button("Remove Edges")) cont.RemoveEdges();
         if (GUILayout.Button("Subdivide")) cont.Subdivide();
         if (GUILayout.Button("Squarify Quads")) cont.SquarifyQuads();

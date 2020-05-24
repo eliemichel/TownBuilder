@@ -114,14 +114,14 @@ public class TestBMeshOperators
         (grid.vertices[4].attributes["occupancy"] as FloatAttributeValue).data[0] = 1;
 
         var mesh = new BMesh();
-        BMeshOperators.MarchingCubes(mesh, grid, "occupancy");
+        BMeshMarchingCubes.Run(mesh, grid, "occupancy");
 
         Debug.Assert(mesh.faces.Count == 4, "face count (expected 4, found " + mesh.faces.Count + ")");
         Debug.Assert(mesh.loops.Count == 12, "loop count (expected 12, found " + mesh.loops.Count + ")");
         Debug.Assert(mesh.vertices.Count == 5, "vertex count (expected 5, found " + mesh.vertices.Count + ")");
         Debug.Assert(mesh.edges.Count == 8, "edge count (expected 8, found " + mesh.edges.Count + ")");
 
-        if (!BMeshOperators.TestMarchingCubes()) return false;
+        if (!BMeshMarchingCubes.Test()) return false;
 
         Debug.Log("TestBMeshOperators TestMarchingCubes passed.");
         return true;

@@ -1,24 +1,269 @@
-﻿///////////////////////////////////////////////////////////////////////////
-// Marching Cubes
-// read attribute 'occupancyAttr' from 'grid' vertices to get voxel occupancy
-// and use faces as cells to build 'mesh'. Requires grid to contain only quads
+﻿/*
+ * Copyright (c) 2020 -- Élie Michel <elie@exppad.com>
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 using UnityEngine;
 using static BMesh;
 
-public class ModuleBasedMarchingCubes
+/**
+ * Marching Cubes
+ * read attribute 'occupancyAttr' from 'grid' vertices to get voxel occupancy
+ * and use faces as cells to build 'mesh'. Requires grid to contain only quads
+ */
+public class BMeshMarchingCubes
 {
+    ///////////////////////////////////////////////////////////////////////////
+    #region [Public API]
+
+    public static bool Test()
+    {
+        Debug.Assert(LUT.Length == 256, "lut size");
+        for (int i = 0; i < 256; ++i)
+        {
+            var config = LUT[i];
+            var occupancy = PatternOccupancy(config.pattern);
+            int checksum = 0;
+            for (int k = 0; k < 8; ++k)
+            {
+                int o = occupancy[k];
+                if (config.transform.insideout) o = 1 - o;
+                checksum += o << config.transform.FromCanonical(k);
+            }
+            Debug.Assert(checksum == i % 255, "occupancy does no match for LUT entry #" + i + " (found " + checksum + ")");
+        }
+
+        return true;
+    }
+
+    public static void Run(BMesh mesh, BMesh grid, string occupancyAttr)
+    {
+        foreach (var f in grid.faces)
+        {
+            Debug.Assert(f.vertcount == 4);
+            var vertList = f.NeighborVertices();
+            var verts = vertList.ToArray();
+            var edges = f.NeighborEdges().ToArray();
+            var occupancies = vertList.ConvertAll(v => (v.attributes[occupancyAttr] as FloatAttributeValue).data);
+
+            bool reachedTop = false;
+            for (int floor = 0; !reachedTop && floor < 10; ++floor)
+            {
+                reachedTop = true;
+                int hash = 0;
+                for (int k = 0; k < 8; ++k)
+                {
+                    float[] o = occupancies[k % 4];
+                    int fl = floor + (k / 4);
+                    //if (o.Length > fl) reachedTop = false;
+                    int b = o.Length > fl && o[fl] > 0 ? 1 : 0;
+                    hash += b << k;
+                }
+                reachedTop = false;
+
+                var config = LUT[hash];
+
+                switch (config.pattern)
+                {
+                case Pattern.None:
+                    break;
+                case Pattern.Wall:
+                {
+                    //Debug.Log("Adding Wall face...");
+                    var indices = new int[] { 3, 0, 7, 4, 5, 6, 1, 2 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    break;
+                }
+                case Pattern.Corner:
+                {
+                    //Debug.Log("Adding Corner face...");
+                    var indices = new int[] { 3, 0, 7, 4, 4, 5, 0, 1 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    break;
+                }
+                case Pattern.DoubleCorner:
+                {
+                    //Debug.Log("Adding DoubleCorner faces...");
+                    var indices = new int[] { 3, 0, 7, 4, 4, 5, 0, 1 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+
+                    indices = new int[] { 1, 2, 5, 6, 6, 7, 2, 3 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    break;
+                }
+                case Pattern.InnerCorner:
+                {
+                    //Debug.Log("Adding InnerCorner face...");
+                    var indices = new int[] { 0, 1, 4, 5, 7, 4, 3, 0 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    break;
+                }
+                case Pattern.WallTop:
+                {
+                    //Debug.Log("Adding WallTop face...");
+                    var indices = new int[] { 3, 0, 0, 4, 1, 5, 1, 2 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    break;
+                }
+                case Pattern.CornerTop:
+                {
+                    //Debug.Log("Adding CornerTop face...");
+                    var indices = new int[] { 3, 0, 0, 4, 0, 1 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    break;
+                }
+                case Pattern.DoubleCornerTop:
+                {
+                    //Debug.Log("Adding DoubleCornerTop faces...");
+                    var indices = new int[] { 3, 0, 0, 4, 0, 1 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    indices = new int[] { 1, 2, 2, 6, 2, 3 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    break;
+                }
+                case Pattern.InnerCornerTop:
+                {
+                    //Debug.Log("Adding InnerCornerTop faces...");
+                    var indices = new int[] { 3, 0, 0, 1, 2, 6 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    indices = new int[] { 0, 1, 1, 5, 2, 6 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    indices = new int[] { 3, 0, 2, 6, 3, 7 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    break;
+                }
+                case Pattern.Roof:
+                {
+                    //Debug.Log("Adding Roof face...");
+                    var indices = new int[] { 0, 4, 1, 5, 2, 6, 3, 7 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    break;
+                }
+                case Pattern.InnerCornerTopVar:
+                {
+                    //Debug.Log("Adding InnerCornerTopVar face...");
+                    var indices = new int[] { 3, 0, 0, 1, 2, 6 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    indices = new int[] { 0, 1, 1, 5, 2, 6 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    indices = new int[] { 3, 0, 2, 6, 3, 7 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    indices = new int[] { 4, 5, 0, 4, 7, 4 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    break;
+                }
+                case Pattern.CrossedCorner:
+                {
+                    //Debug.Log("Adding CorssedCorner face...");
+                    var indices = new int[] { 3, 0, 0, 4, 0, 1 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    indices = new int[] { 1, 2, 2, 6, 2, 3 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    indices = new int[] { 4, 5, 5, 6, 1, 5 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    indices = new int[] { 6, 7, 7, 4, 3, 7 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    break;
+                }
+                case Pattern.TowerCorner:
+                {
+                    //Debug.Log("Adding TowerCorner face...");
+                    var indices = new int[] { 0, 1, 1, 5, 3, 7, 3, 0 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    indices = new int[] { 3, 7, 1, 5, 5, 6, 6, 7 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    break;
+                }
+                case Pattern.WingCorner:
+                {
+                    //Debug.Log("Adding WingCorner face...");
+                    var indices = new int[] { 1, 5, 2, 6, 0, 1 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    indices = new int[] { 0, 1, 2, 6, 3, 0 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    indices = new int[] { 3, 0, 2, 6, 6, 7 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    indices = new int[] { 3, 0, 6, 7, 7, 4 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    break;
+                }
+                case Pattern.OppositeCorner:
+                {
+                    //Debug.Log("Adding OppositeCorner face...");
+                    var indices = new int[] { 3, 0, 0, 4, 0, 1 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    indices = new int[] { 5, 6, 6, 7, 2, 6 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    break;
+                }
+                case Pattern.WallTopVar:
+                {
+                    //Debug.Log("Adding WallTopVar face...");
+                    var indices = new int[] { 3, 0, 0, 4, 1, 5, 1, 2 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    indices = new int[] { 5, 6, 6, 7, 2, 6 };
+                    //indices = new int[] { 6,7,  7,4,  3,7 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    break;
+                }
+                case Pattern.TripleCorner:
+                {
+                    //Debug.Log("Adding TripleCorner face...");
+                    var indices = new int[] { 3, 0, 0, 4, 0, 1 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    indices = new int[] { 1, 2, 2, 6, 2, 3 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    indices = new int[] { 4, 5, 5, 6, 1, 5 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    break;
+                }
+                case Pattern.TowerRoof: // flipped InnerCornerTop
+                {
+                    //Debug.Log("Adding TowerRoof face...");
+                    var indices = new int[] { 1, 5, 2, 6, 4, 5 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    indices = new int[] { 4, 5, 2, 6, 7, 4 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    indices = new int[] { 7, 4, 2, 6, 3, 7 };
+                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
+                    break;
+                }
+                }
+            }
+        }
+    }
+    #endregion
+
+    ///////////////////////////////////////////////////////////////////////////
+    #region [Internals]
     // Permutation of points to put them in canonial form
-    public class Transform
+    class Transform
     {
         public int[] permutation; // permutation from canonical to config
         public bool flipped = false;
         public bool insideout = false;
 
-        public Transform(int offset, bool mirrorX = false)
+        public Transform(int offset)
         {
             permutation = new int[] { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
             for (int i = 0; i < (4 - offset); ++i) RotateZ();
-            if (mirrorX) MirrorX();
         }
 
         public Transform(string encoded)
@@ -28,24 +273,24 @@ public class ModuleBasedMarchingCubes
             {
                 switch (c)
                 {
-                    case 'x':
-                        RotateX();
-                        break;
-                    case 'y':
-                        RotateY();
-                        break;
-                    case 'z':
-                        RotateZ();
-                        break;
-                    case 's':
-                        MirrorX();
-                        break;
-                    case 'f':
-                        Flip();
-                        break;
-                    default:
-                        Debug.Assert(false);
-                        break;
+                case 'x':
+                    RotateX();
+                    break;
+                case 'y':
+                    RotateY();
+                    break;
+                case 'z':
+                    RotateZ();
+                    break;
+                case 's':
+                    MirrorX();
+                    break;
+                case 'f':
+                    Flip();
+                    break;
+                default:
+                    Debug.Assert(false);
+                    break;
                 }
             }
         }
@@ -126,22 +371,10 @@ public class ModuleBasedMarchingCubes
             return permutation[index];
         }
 
-        // Transform a LUT index such that
-        public int TransformHash(int hash)
+        public Vector3 EdgeCenter(int i, int j, Vertex[] verts, Edge[] edges)
         {
-            int newHash = 0;
-            for (int pow = 0; pow < permutation.Length; ++pow)
-            {
-                int mask = 1 << pow;
-                int newMask = 1 << permutation[pow];
-                bool b = (hash & mask) != 0;
-                newHash += b ? newMask : 0;
-            }
-            return newHash;
-        }
-
-        public static Vector3 DefaultEdgeCenter(int i, int j, Vertex[] verts, Edge[] edges)
-        {
+            i = FromCanonical(i);
+            j = FromCanonical(j);
             if (i / 4 == j / 4)
             {
                 if ((i + 1) % 4 == j % 4)
@@ -163,13 +396,6 @@ public class ModuleBasedMarchingCubes
             }
             Debug.Assert(false);
             return Vector3.zero;
-        }
-
-        public Vector3 EdgeCenter(int i, int j, Vertex[] verts, Edge[] edges)
-        {
-            i = FromCanonical(i);
-            j = FromCanonical(j);
-            return DefaultEdgeCenter(i, j, verts, edges);
         }
     }
 
@@ -570,65 +796,45 @@ public class ModuleBasedMarchingCubes
     {
         switch (pattern)
         {
-            case Pattern.None:
-                return new int[] { 0, 0, 0, 0, 0, 0, 0, 0 };
-            case Pattern.Wall:
-                return new int[] { 1, 1, 0, 0, 1, 1, 0, 0 };
-            case Pattern.Corner:
-                return new int[] { 1, 0, 0, 0, 1, 0, 0, 0 };
-            case Pattern.DoubleCorner:
-                return new int[] { 1, 0, 1, 0, 1, 0, 1, 0 };
-            case Pattern.InnerCorner:
-                return new int[] { 0, 1, 1, 1, 0, 1, 1, 1 };
-            case Pattern.WallTop:
-                return new int[] { 1, 1, 0, 0, 0, 0, 0, 0 };
-            case Pattern.CornerTop:
-                return new int[] { 1, 0, 0, 0, 0, 0, 0, 0 };
-            case Pattern.DoubleCornerTop:
-                return new int[] { 1, 0, 1, 0, 0, 0, 0, 0 };
-            case Pattern.InnerCornerTop:
-                return new int[] { 0, 1, 1, 1, 0, 0, 0, 0 };
-            case Pattern.Roof:
-                return new int[] { 1, 1, 1, 1, 0, 0, 0, 0 };
-            case Pattern.InnerCornerTopVar:
-                return new int[] { 0, 1, 1, 1, 1, 0, 0, 0 };
-            case Pattern.CrossedCorner:
-                return new int[] { 1, 0, 1, 0, 0, 1, 0, 1 };
-            case Pattern.TowerCorner:
-                return new int[] { 0, 1, 1, 1, 0, 0, 1, 0 };
-            case Pattern.WingCorner:
-                return new int[] { 0, 1, 1, 1, 0, 0, 0, 1 };
-            case Pattern.OppositeCorner:
-                return new int[] { 1, 0, 0, 0, 0, 0, 1, 0 };
-            case Pattern.WallTopVar:
-                return new int[] { 1, 1, 0, 0, 0, 0, 1, 0 };
-            case Pattern.TripleCorner:
-                return new int[] { 1, 0, 1, 0, 0, 1, 0, 0 };
-            case Pattern.TowerRoof:
-                return new int[] { 1, 1, 1, 1, 1, 0, 0, 0 };
+        case Pattern.None:
+            return new int[] { 0, 0, 0, 0, 0, 0, 0, 0 };
+        case Pattern.Wall:
+            return new int[] { 1, 1, 0, 0, 1, 1, 0, 0 };
+        case Pattern.Corner:
+            return new int[] { 1, 0, 0, 0, 1, 0, 0, 0 };
+        case Pattern.DoubleCorner:
+            return new int[] { 1, 0, 1, 0, 1, 0, 1, 0 };
+        case Pattern.InnerCorner:
+            return new int[] { 0, 1, 1, 1, 0, 1, 1, 1 };
+        case Pattern.WallTop:
+            return new int[] { 1, 1, 0, 0, 0, 0, 0, 0 };
+        case Pattern.CornerTop:
+            return new int[] { 1, 0, 0, 0, 0, 0, 0, 0 };
+        case Pattern.DoubleCornerTop:
+            return new int[] { 1, 0, 1, 0, 0, 0, 0, 0 };
+        case Pattern.InnerCornerTop:
+            return new int[] { 0, 1, 1, 1, 0, 0, 0, 0 };
+        case Pattern.Roof:
+            return new int[] { 1, 1, 1, 1, 0, 0, 0, 0 };
+        case Pattern.InnerCornerTopVar:
+            return new int[] { 0, 1, 1, 1, 1, 0, 0, 0 };
+        case Pattern.CrossedCorner:
+            return new int[] { 1, 0, 1, 0, 0, 1, 0, 1 };
+        case Pattern.TowerCorner:
+            return new int[] { 0, 1, 1, 1, 0, 0, 1, 0 };
+        case Pattern.WingCorner:
+            return new int[] { 0, 1, 1, 1, 0, 0, 0, 1 };
+        case Pattern.OppositeCorner:
+            return new int[] { 1, 0, 0, 0, 0, 0, 1, 0 };
+        case Pattern.WallTopVar:
+            return new int[] { 1, 1, 0, 0, 0, 0, 1, 0 };
+        case Pattern.TripleCorner:
+            return new int[] { 1, 0, 1, 0, 0, 1, 0, 0 };
+        case Pattern.TowerRoof:
+            return new int[] { 1, 1, 1, 1, 1, 0, 0, 0 };
         }
         Debug.Assert(false);
         return null;
-    }
-
-    public static bool Test()
-    {
-        Debug.Assert(LUT.Length == 256, "lut size");
-        for (int i = 0; i < 256; ++i)
-        {
-            var config = LUT[i];
-            var occupancy = PatternOccupancy(config.pattern);
-            int checksum = 0;
-            for (int k = 0; k < 8; ++k)
-            {
-                int o = occupancy[k];
-                if (config.transform.insideout) o = 1 - o;
-                checksum += o << config.transform.FromCanonical(k);
-            }
-            Debug.Assert(checksum == i % 255, "occupancy does no match for LUT entry #" + i + " (found " + checksum + ")");
-        }
-
-        return true;
     }
 
     static void JoinEdgeCenters(BMesh mesh, int[] indices, Vertex[] verts, Edge[] edges, Transform transform, int floor)
@@ -645,237 +851,5 @@ public class ModuleBasedMarchingCubes
         }
         mesh.AddFace(newVerts);
     }
-
-    static void AddLegacyBlock(int hash, BMesh mesh, Vertex[] verts, Edge[] edges, int floor)
-    {
-        var config = LUT[hash];
-
-        switch (config.pattern)
-        {
-            case Pattern.None:
-                break;
-            case Pattern.Wall:
-                {
-                    //Debug.Log("Adding Wall face...");
-                    var indices = new int[] { 3, 0, 7, 4, 5, 6, 1, 2 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    break;
-                }
-            case Pattern.Corner:
-                {
-                    //Debug.Log("Adding Corner face...");
-                    var indices = new int[] { 3, 0, 7, 4, 4, 5, 0, 1 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    break;
-                }
-            case Pattern.DoubleCorner:
-                {
-                    //Debug.Log("Adding DoubleCorner faces...");
-                    var indices = new int[] { 3, 0, 7, 4, 4, 5, 0, 1 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-
-                    indices = new int[] { 1, 2, 5, 6, 6, 7, 2, 3 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    break;
-                }
-            case Pattern.InnerCorner:
-                {
-                    //Debug.Log("Adding InnerCorner face...");
-                    var indices = new int[] { 0, 1, 4, 5, 7, 4, 3, 0 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    break;
-                }
-            case Pattern.WallTop:
-                {
-                    //Debug.Log("Adding WallTop face...");
-                    var indices = new int[] { 3, 0, 0, 4, 1, 5, 1, 2 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    break;
-                }
-            case Pattern.CornerTop:
-                {
-                    //Debug.Log("Adding CornerTop face...");
-                    var indices = new int[] { 3, 0, 0, 4, 0, 1 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    break;
-                }
-            case Pattern.DoubleCornerTop:
-                {
-                    //Debug.Log("Adding DoubleCornerTop faces...");
-                    var indices = new int[] { 3, 0, 0, 4, 0, 1 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    indices = new int[] { 1, 2, 2, 6, 2, 3 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    break;
-                }
-            case Pattern.InnerCornerTop:
-                {
-                    //Debug.Log("Adding InnerCornerTop faces...");
-                    var indices = new int[] { 3, 0, 0, 1, 2, 6 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    indices = new int[] { 0, 1, 1, 5, 2, 6 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    indices = new int[] { 3, 0, 2, 6, 3, 7 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    break;
-                }
-            case Pattern.Roof:
-                {
-                    //Debug.Log("Adding Roof face...");
-                    var indices = new int[] { 0, 4, 1, 5, 2, 6, 3, 7 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    break;
-                }
-            case Pattern.InnerCornerTopVar:
-                {
-                    //Debug.Log("Adding InnerCornerTopVar face...");
-                    var indices = new int[] { 3, 0, 0, 1, 2, 6 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    indices = new int[] { 0, 1, 1, 5, 2, 6 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    indices = new int[] { 3, 0, 2, 6, 3, 7 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    indices = new int[] { 4, 5, 0, 4, 7, 4 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    break;
-                }
-            case Pattern.CrossedCorner:
-                {
-                    //Debug.Log("Adding CorssedCorner face...");
-                    var indices = new int[] { 3, 0, 0, 4, 0, 1 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    indices = new int[] { 1, 2, 2, 6, 2, 3 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    indices = new int[] { 4, 5, 5, 6, 1, 5 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    indices = new int[] { 6, 7, 7, 4, 3, 7 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    break;
-                }
-            case Pattern.TowerCorner:
-                {
-                    //Debug.Log("Adding TowerCorner face...");
-                    var indices = new int[] { 0, 1, 1, 5, 3, 7, 3, 0 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    indices = new int[] { 3, 7, 1, 5, 5, 6, 6, 7 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    break;
-                }
-            case Pattern.WingCorner:
-                {
-                    //Debug.Log("Adding WingCorner face...");
-                    var indices = new int[] { 1, 5, 2, 6, 0, 1 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    indices = new int[] { 0, 1, 2, 6, 3, 0 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    indices = new int[] { 3, 0, 2, 6, 6, 7 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    indices = new int[] { 3, 0, 6, 7, 7, 4 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    break;
-                }
-            case Pattern.OppositeCorner:
-                {
-                    //Debug.Log("Adding OppositeCorner face...");
-                    var indices = new int[] { 3, 0, 0, 4, 0, 1 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    indices = new int[] { 5, 6, 6, 7, 2, 6 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    break;
-                }
-            case Pattern.WallTopVar:
-                {
-                    //Debug.Log("Adding WallTopVar face...");
-                    var indices = new int[] { 3, 0, 0, 4, 1, 5, 1, 2 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    indices = new int[] { 5, 6, 6, 7, 2, 6 };
-                    //indices = new int[] { 6,7,  7,4,  3,7 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    break;
-                }
-            case Pattern.TripleCorner:
-                {
-                    //Debug.Log("Adding TripleCorner face...");
-                    var indices = new int[] { 3, 0, 0, 4, 0, 1 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    indices = new int[] { 1, 2, 2, 6, 2, 3 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    indices = new int[] { 4, 5, 5, 6, 1, 5 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    break;
-                }
-            case Pattern.TowerRoof: // flipped InnerCornerTop
-                {
-                    //Debug.Log("Adding TowerRoof face...");
-                    var indices = new int[] { 1, 5, 2, 6, 4, 5 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    indices = new int[] { 4, 5, 2, 6, 7, 4 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    indices = new int[] { 7, 4, 2, 6, 3, 7 };
-                    JoinEdgeCenters(mesh, indices, verts, edges, config.transform, floor);
-                    break;
-                }
-        }
-    }
-
-    static bool AddModule(MarchingModuleManager moduleManager, int hash, BMesh mesh, Vertex[] verts, Edge[] edges, int floor)
-    {
-        if (moduleManager == null) return false;
-        var m = moduleManager.SampleModule(hash);
-        if (m == null) return false;
-
-        var mf = m.baseModule.meshFilter;
-        Vector3 floorOffset = floor * Vector3.up;
-        var controlPoints = new Vector3[] {
-            m.transform.EdgeCenter(0, 1, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(1, 2, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(2, 3, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(3, 0, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(0, 4, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(1, 5, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(2, 6, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(3, 7, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(4, 5, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(5, 6, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(6, 7, verts, edges) + floorOffset,
-            m.transform.EdgeCenter(7, 4, verts, edges) + floorOffset
-        };
-        m.baseModule.deformer.controlPoints = controlPoints;
-        BMeshUnityExtra.Merge(mesh, mf.sharedMesh, m.baseModule.deformer, m.transform.flipped);
-
-        return true;
-    }
-
-    public static void Run(BMesh mesh, BMesh grid, string occupancyAttr, MarchingModuleManager moduleManager)
-    {
-        foreach (var f in grid.faces)
-        {
-            Debug.Assert(f.vertcount == 4);
-            var vertList = f.NeighborVertices();
-            var verts = vertList.ToArray();
-            var edges = f.NeighborEdges().ToArray();
-            var occupancies = vertList.ConvertAll(v => (v.attributes[occupancyAttr] as FloatAttributeValue).data);
-
-            bool reachedTop = false;
-            for (int floor = 0; !reachedTop && floor < 99; ++floor)
-            {
-                reachedTop = true;
-                int hash = 0;
-                for (int k = 0; k < 8; ++k)
-                {
-                    float[] o = occupancies[k % 4];
-                    int fl = floor + (k / 4);
-                    if (o.Length > fl) reachedTop = false;
-                    int b = o.Length > fl && o[fl] > 0 ? 1 : 0;
-                    hash += b << k;
-                }
-
-                if (!AddModule(moduleManager, hash, mesh, verts, edges, floor) && hash % 255 != 0)
-                {
-                    Debug.Log("No module found for hash " + hash + ", falling back to regular marching cubes");
-                    AddLegacyBlock(hash, mesh, verts, edges, floor);
-                }
-            }
-        }
-    }
+    #endregion
 }

@@ -1,0 +1,9 @@
+{
+  "name": "BMeshMarchingCubes",
+  "references": [
+  	"BMeshUnity"
+  ],
+  "optionalUnityReferences": [],
+  "includePlatforms": [],
+  "excludePlatforms": []
+}

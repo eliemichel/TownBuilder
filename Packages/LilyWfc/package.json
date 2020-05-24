@@ -1,0 +1,12 @@
+{
+	"name": "com.exppad.lily-wfc",
+	"version": "1.0.0",
+	"displayName": "Lily Wave Function Collapse",
+	"description": "A library for generic Wave Function Collapse that can be applied either to 2D or 3D",
+	"keywords": ["procedural", "wfc", "level design"],
+	"author": {
+		"name": "Elie Michel",
+		"email": "elie@exppad.com",
+		"url": "https://exppad.com/"
+	}
+}

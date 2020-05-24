@@ -1,0 +1,19 @@
+{
+	"name": "com.exppad.bmesh-marching-cubes",
+	"version": "1.0.0",
+	"displayName": "BMesh Marching Cubes operator",
+	"description": "An implementation of marching cubes using the BMeshUnity library",
+	"keywords": [
+		"procedural",
+		"mesh",
+		"data structure",
+		"bmesh",
+		"voxel",
+		"marching cubes"
+	],
+	"author": {
+		"name": "Elie Michel",
+		"email": "elie@exppad.com",
+		"url": "https://exppad.com/"
+	}
+}
