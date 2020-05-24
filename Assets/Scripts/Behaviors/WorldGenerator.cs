@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -59,18 +60,6 @@ public class WorldGenerator : MonoBehaviour
         TestBMeshOperators.Run();
     }
 
-    public void PlayTestScenario()
-    {
-        Clear();
-        GenerateTile(new TileAxialCoordinate(0, 0, divisions));
-        ValidateTile();
-        GenerateTile(new TileAxialCoordinate(1, 0, divisions));
-        ValidateTile();
-        nextTileQ = 0;
-        nextTileR = 1;
-        GenerateTile();
-    }
-
     public void GenerateQuad()
     {
         var bmesh = new BMesh();
@@ -86,13 +75,14 @@ public class WorldGenerator : MonoBehaviour
         BMesh.Vertex v3 = bmesh.AddVertex(new Vector3(-1, 0, 1) * 8);
         bmesh.AddFace(v0, v1, v2, v3);
 
-        v0.attributes["restpos"] = new BMesh.FloatAttributeValue(v0.point);
+        foreach (var v in bmesh.vertices)
+        {
+            v.attributes["restpos"] = new BMesh.FloatAttributeValue(v.point);
+        }
+
         v0.attributes["weight"] = new BMesh.FloatAttributeValue(1);
-        v1.attributes["restpos"] = new BMesh.FloatAttributeValue(v1.point);
         v1.attributes["weight"] = new BMesh.FloatAttributeValue(1);
-        v2.attributes["restpos"] = new BMesh.FloatAttributeValue(v2.point);
         v2.attributes["weight"] = new BMesh.FloatAttributeValue(1);
-        v3.attributes["restpos"] = new BMesh.FloatAttributeValue(v3.point);
         v3.attributes["weight"] = new BMesh.FloatAttributeValue(0);
 
         currentTile.mesh = bmesh;
@@ -103,28 +93,18 @@ public class WorldGenerator : MonoBehaviour
     public void GenerateSubdividedHex(TileAxialCoordinate tileCo = null)
     {
         if (tileCo == null) tileCo = NextTileCoordinate();
-        int n = divisions;
-        int pointcount = (2 * n + 1) * (2 * n + 1) - n * (n + 1);
-        Vector2 offset = tileCo.Center(size);
 
-        var bmesh = new BMesh();
-        bmesh.AddVertexAttribute("uv", BMesh.AttributeBaseType.Float, 2);
-        bmesh.AddVertexAttribute("restpos", BMesh.AttributeBaseType.Float, 3);
-        bmesh.AddVertexAttribute("weight", BMesh.AttributeBaseType.Float, 1);
-        bmesh.AddVertexAttribute("glued", BMesh.AttributeBaseType.Float, 1);
-        bmesh.AddVertexAttribute("occupancy", BMesh.AttributeBaseType.Float, maxHeight); // core voxel data
+        var mesh = BMeshGenerators.SubdividedHex(tileCo.Center(size), divisions, size);
+        mesh.AddVertexAttribute("glued", BMesh.AttributeBaseType.Float, 1);
+        mesh.AddVertexAttribute("occupancy", BMesh.AttributeBaseType.Float, maxHeight); // core voxel data
 
-        for (int i = 0; i < pointcount; ++i)
+        // Try to glue edge points to tiles that are already present
+        foreach (var v in mesh.vertices)
         {
-            var co = AxialCoordinate.FromIndex(i, n);
-            Vector2 c = co.Center(size) + offset;
-            var v = bmesh.AddVertex(new Vector3(c.x, 0, c.y));
-            v.id = i;
-            v.attributes["restpos"] = new BMesh.FloatAttributeValue(v.point);
-            v.attributes["weight"] = new BMesh.FloatAttributeValue(co.OnRangeEdge(n) ? 1 : 0);
-            v.attributes["uv"] = new BMesh.FloatAttributeValue(co.q, co.r);
+            // retrieve axial coords from UV
+            var qr = v.attributes["uv"].asFloat().data;
+            var co = new AxialCoordinate((int)qr[0], (int)qr[1]);
 
-            // Try to glue edge points to tiles that are already present
             var glued = v.attributes["glued"] as BMesh.FloatAttributeValue;
             if (tileSet != null)
             {
@@ -139,42 +119,17 @@ public class WorldGenerator : MonoBehaviour
             }
         }
 
-        int step = 0;
-        for (int i = 0; i < pointcount && step < limitStep; ++i)
-        {
-            var co = AxialCoordinate.FromIndex(i, n);
-            var co2 = new AxialCoordinate(co.q + 1, co.r - 1); // right up of co
-            var co3 = new AxialCoordinate(co.q + 1, co.r); // beneath co2
-            var co4 = new AxialCoordinate(co.q, co.r + 1); // beneath co
-
-            if (co2.InRange(n) && co3.InRange(n))
-            {
-                bmesh.AddFace(i, co2.ToIndex(n), co3.ToIndex(n));
-                ++step;
-                if (step >= limitStep) break;
-            }
-
-            if (co3.InRange(n) && co4.InRange(n))
-            {
-                bmesh.AddFace(i, co3.ToIndex(n), co4.ToIndex(n));
-                ++step;
-            }
-        }
-        Debug.Assert(bmesh.faces.Count == 6 * n * n);
-        Debug.Assert(bmesh.loops.Count == 3 * 6 * n * n);
-        Debug.Assert(bmesh.vertices.Count == pointcount);
+        currentTile.mesh = mesh;
         currentTileCo = tileCo;
         ShowMesh();
-
-        currentTile.mesh = bmesh;
     }
 
     public void GenerateTile(TileAxialCoordinate tileCo = null)
     {
-        Random.InitState(3615);
+        //Random.InitState(3615);
         if (tileCo == null) tileCo = NextTileCoordinate();
         GenerateSubdividedHex(tileCo);
-        while (RemoveRandomEdge()) { }
+        BMeshJoinRandomTriangles.Call(currentTile.mesh);
         BMeshOperators.Subdivide(currentTile.mesh);
         for (int i = 0; i < 3; ++i) SquarifyQuads();
     }
@@ -270,26 +225,6 @@ public class WorldGenerator : MonoBehaviour
 
         currentTile.mesh.RemoveEdge(e);
         currentTile.mesh.AddFace(vertices);
-        return true;
-    }
-
-    public bool RemoveRandomEdge()
-    {
-        if (currentTile.mesh == null) return false;
-
-        var candidates = new List<BMesh.Edge>();
-        foreach (var e in currentTile.mesh.edges)
-        {
-            if (CanFuse(e))
-            {
-                candidates.Add(e);
-            }
-        }
-
-        if (candidates.Count == 0) return false;
-
-        int i = Random.Range(0, candidates.Count);
-        FuseEdge(candidates[i]);
         return true;
     }
 
@@ -452,10 +387,17 @@ public class WorldGenerator : MonoBehaviour
     #endregion
 
     #region [UI Actions]
+    public void RemoveRandomEdge()
+    {
+        if (currentTile.mesh == null) return;
+        BMeshJoinRandomTriangles.Call(currentTile.mesh, 1);
+        ShowMesh();
+    }
+
     public void RemoveEdges()
     {
         if (currentTile.mesh == null) return;
-        while (RemoveRandomEdge()) { }
+        BMeshJoinRandomTriangles.Call(currentTile.mesh);
         ShowMesh();
     }
 

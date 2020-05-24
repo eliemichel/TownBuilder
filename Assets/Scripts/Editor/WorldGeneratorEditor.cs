@@ -36,7 +36,6 @@ public class WorldGeneratorEditor : Editor
         EditorGUILayout.Space();
         if (GUILayout.Button("Validate Tile")) cont.ValidateTile();
         if (GUILayout.Button("Clear")) cont.Clear();
-        if (GUILayout.Button("Play Scenario")) cont.PlayTestScenario();
         if (GUILayout.Button("Run Tests")) cont.Test();
         serializedObject.ApplyModifiedProperties();
     }
