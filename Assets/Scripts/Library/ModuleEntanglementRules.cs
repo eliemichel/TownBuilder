@@ -40,7 +40,7 @@ public class ModuleEntanglementRules : AEntanglementRules
     {
         if (connectionType == (int)ConnectionType.Horizontal)
         {
-            Debug.Log("Allows(_, Horizontal, _) = true");
+            //Debug.Log("Allows(_, Horizontal, _) = true");
             return true;
         }
 
@@ -49,18 +49,18 @@ public class ModuleEntanglementRules : AEntanglementRules
 
         if (mx == null || my == null)
         {
-            Debug.Log("Allows(" + x + ", _, " + y + ") = true (no module found)");
+            //Debug.Log("Allows(" + x + ", _, " + y + ") = true (no module found)");
             return true;
         }
 
         if (connectionType == (int)ConnectionType.Above)
         {
-            Debug.Log("Allows(" + x + ", Above, " + y + ") = " + (mx.hasPillarBellow == my.hasPillarAbove));
+            //Debug.Log("Allows(" + x + ", Above, " + y + ") = " + (mx.hasPillarBellow == my.hasPillarAbove));
             return mx.hasPillarBellow == my.hasPillarAbove;
         }
         else
         {
-            Debug.Log("Allows(" + x + ", Bellow, " + y + ") = " + (mx.hasPillarAbove == my.hasPillarBellow));
+            //Debug.Log("Allows(" + x + ", Bellow, " + y + ") = " + (mx.hasPillarAbove == my.hasPillarBellow));
             return mx.hasPillarAbove == my.hasPillarBellow;
         }
     }

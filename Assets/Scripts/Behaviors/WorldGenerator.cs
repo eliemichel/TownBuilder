@@ -444,7 +444,6 @@ public class WorldGenerator : MonoBehaviour
             {
                 if (wfcGrid.FindEdge(v, nv) != null) continue;
                 var e = wfcGrid.AddEdge(v, nv);
-                //int type = nf.floor == vface.floor ? 0 : (nf.floor == vface.floor + 1 ? 2/*bellow*/ : 1/*above*/); // see ModuleEntanglementRules.ConnectionType
                 int type = nf.floor == vface.floor ? 0 : (nf.floor == vface.floor + 1 ? 2/*bellow*/ : 1/*above*/); // see ModuleEntanglementRules.ConnectionType
                 e.attributes["type"].asInt().data[0] = type;
 
@@ -568,15 +567,15 @@ public class WorldGenerator : MonoBehaviour
         if (rules == null) rules = new ModuleEntanglementRules(moduleManager);
         system = new LilyXwfc.WaveFunctionSystem(wfcGrid, rules, moduleManager.MaxModuleCount, "class");
         var wfc = new LilyXwfc.WaveFunctionCollapse(system, true);
-        for (var it = wfc.CollapseCoroutine(200); it.MoveNext();) { }
-        //if (wfc.Collapse(200))
-        //{
-        //    Debug.Log("wfc finished");
-        //}
-        //else
-        //{
-        //    Debug.Log("wfc did NOT finish in 200 steps");
-        //}
+        //for (var it = wfc.CollapseCoroutine(200); it.MoveNext();) { }
+        if (wfc.Collapse(200))
+        {
+            Debug.Log("wfc finished");
+        }
+        else
+        {
+            Debug.Log("wfc did NOT finish in 200 steps");
+        }
     }
 
     BMesh wfcOutputMesh;
@@ -657,7 +656,6 @@ public class WorldGenerator : MonoBehaviour
                     int subindex = ps.index % system.dimension;
                     m = moduleManager.GetModule(hash, subindex);
                 }
-                Debug.Log("state = " + state);
             }
             else
             {
@@ -921,7 +919,7 @@ public class WorldGenerator : MonoBehaviour
             Gizmos.color = Color.red;
             Gizmos.DrawSphere(restpos, glued.data[0] * 0.15f);
         }
-        */
+        
 
         if (bmesh.HasVertexAttribute("occupancy"))
         {
@@ -936,6 +934,7 @@ public class WorldGenerator : MonoBehaviour
                 }
             }
         }
+        */
     }
     #endregion
 }

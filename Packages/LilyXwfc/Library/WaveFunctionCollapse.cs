@@ -114,6 +114,11 @@ namespace LilyXwfc
                 {
                     if (useBacktracking)
                     {
+                        if (checkpoints.Count == 0)
+                        {
+                            Debug.Log("System is not solvable.");
+                            return false;
+                        }
                         Debug.Assert(checkpoints.Count > 0);
                         Debug.Log("Inconsistent state reached at step #" + i + ", backtracking.");
                         isInconsistent = false;
@@ -133,7 +138,7 @@ namespace LilyXwfc
                     }
                 }
 
-                if (!backtracked) continue; // ensure Propagate is called
+                if (backtracked) continue; // ensure Propagate is called
 
                 idx = Observe();
             }
@@ -326,12 +331,12 @@ namespace LilyXwfc
 
             if (argminEntropy.Count == 0)
             {
-                Debug.Log("No more superposed state.");
+                //Debug.Log("No more superposed state.");
                 return WaveVariable.Null;
             }
 
             // 2. Decohere state
-            Debug.Log("min entropy: " + minEntropy + " found in " + argminEntropy.Count + " states");
+            //Debug.Log("min entropy: " + minEntropy + " found in " + argminEntropy.Count + " states");
             int r = Random.Range(0, argminEntropy.Count);
             var selected = argminEntropy[r];
             var wave = system.GetWave(selected);
