@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEditorInternal;
 
 namespace LilyXwfc
@@ -83,6 +84,10 @@ namespace LilyXwfc
                 {
                     type = rules.DualConnection(type);
                 }
+
+                if (type == 1 /*above*/) Debug.Assert(vert.point.y > e.OtherVertex(vert).point.y, vert.id + " is not above " + e.OtherVertex(vert).id);
+                if (type == 2 /*bellow*/) Debug.Assert(vert.point.y < e.OtherVertex(vert).point.y, vert.id + " is not bellow " + e.OtherVertex(vert).id);
+
                 connections.Add(new WaveConnection { destination = WaveVariable.FromRaw(dest.id), type = type });
             }
             return connections;

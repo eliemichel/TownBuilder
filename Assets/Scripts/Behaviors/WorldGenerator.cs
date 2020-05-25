@@ -442,8 +442,10 @@ public class WorldGenerator : MonoBehaviour
             var nv = ComputeWfcGrid_Aux(baseGrid, nf);
             if (nv != null)
             {
+                if (wfcGrid.FindEdge(v, nv) != null) continue;
                 var e = wfcGrid.AddEdge(v, nv);
-                int type = nf.floor == vface.floor ? 0 : (nf.floor == vface.floor + 1 ? 1 : 2); // see ModuleEntanglementRules.ConnectionType
+                //int type = nf.floor == vface.floor ? 0 : (nf.floor == vface.floor + 1 ? 2/*bellow*/ : 1/*above*/); // see ModuleEntanglementRules.ConnectionType
+                int type = nf.floor == vface.floor ? 0 : (nf.floor == vface.floor + 1 ? 2/*bellow*/ : 1/*above*/); // see ModuleEntanglementRules.ConnectionType
                 e.attributes["type"].asInt().data[0] = type;
 
                 Debug.Assert(Vector3.Distance(nf.face.Center() + Vector3.up * (nf.floor + 0.5f), nv.point) < 1e-5);
@@ -565,8 +567,16 @@ public class WorldGenerator : MonoBehaviour
     {
         if (rules == null) rules = new ModuleEntanglementRules(moduleManager);
         system = new LilyXwfc.WaveFunctionSystem(wfcGrid, rules, moduleManager.MaxModuleCount, "class");
-        var wfc = new LilyXwfc.WaveFunctionCollapse(system);
-        wfc.Collapse(200);
+        var wfc = new LilyXwfc.WaveFunctionCollapse(system, true);
+        for (var it = wfc.CollapseCoroutine(200); it.MoveNext();) { }
+        //if (wfc.Collapse(200))
+        //{
+        //    Debug.Log("wfc finished");
+        //}
+        //else
+        //{
+        //    Debug.Log("wfc did NOT finish in 200 steps");
+        //}
     }
 
     BMesh wfcOutputMesh;
@@ -878,21 +888,28 @@ public class WorldGenerator : MonoBehaviour
         {
             BMeshUnity.DrawGizmos(wfcGrid);
 #if UNITY_EDITOR
+            Handles.color = Color.blue;
+            Gizmos.color = Color.blue;
             foreach (var e in wfcGrid.edges)
             {
                 var type = e.attributes["type"].asInt().data[0];
                 Handles.Label(e.Center(), "" + type);
+                Gizmos.DrawLine(e.Center(), e.vert1.point);
+            }
+            foreach (var v in wfcGrid.vertices)
+            {
+                var xclass = v.attributes["class"].asInt().data[0];
+                Handles.Label(v.point, "#" + v.id + " (" + xclass + ")");
             }
 #endif // UNITY_EDITOR
         }
 
-        return;
-
         if (currentTile == null || currentTile.mesh == null) return;
         var bmesh = currentTile.mesh;
-        BMeshUnity.DrawGizmos(bmesh);
+        //BMeshUnity.DrawGizmos(bmesh);
         //if (skinmesh != null) BMeshUnity.DrawGizmos(skinmesh);
 
+        /*
         foreach (var v in bmesh.vertices)
         {
             float weight = (v.attributes["weight"] as BMesh.FloatAttributeValue).data[0];
@@ -904,6 +921,7 @@ public class WorldGenerator : MonoBehaviour
             Gizmos.color = Color.red;
             Gizmos.DrawSphere(restpos, glued.data[0] * 0.15f);
         }
+        */
 
         if (bmesh.HasVertexAttribute("occupancy"))
         {

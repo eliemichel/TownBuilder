@@ -107,6 +107,8 @@ namespace LilyXwfc
             {
                 Propagate(idx);
 
+                bool backtracked = false;
+
                 // Backtracking
                 while (isInconsistent)
                 {
@@ -120,6 +122,8 @@ namespace LilyXwfc
                         // Avoid doing the same choice again
                         var lastChoice = choices.Pop();
                         isInconsistent = !lastChoice.Prevent(system);
+                        backtracked = true;
+                        idx = lastChoice.variable;
                     }
                     else
                     {
@@ -128,7 +132,9 @@ namespace LilyXwfc
                         isInconsistent = false;
                     }
                 }
-                
+
+                if (!backtracked) continue; // ensure Propagate is called
+
                 idx = Observe();
             }
             return idx.IsNull();
@@ -151,13 +157,18 @@ namespace LilyXwfc
             }
 
             WaveVariable idx = Observe();
+            Debug.Log("initial idx: " + idx);
             for (int i = 0; i < maxSteps && !idx.IsNull() && !isInconsistent; ++i)
             {
                 Debug.Log("#################### Propagate from " + idx);
 
-                for (var it = PropagateCoroutine(idx); it.MoveNext();) {
+                for (var it = PropagateCoroutine(idx); it.MoveNext() && !isInconsistent;) {
                     currentIndex = idx; yield return idx.IsNull();
                 }
+
+                Debug.Log("PropagateCoroutine terminated");
+
+                bool backtracked = false;
 
                 // Backtracking
                 while (isInconsistent)
@@ -171,7 +182,11 @@ namespace LilyXwfc
 
                         // Avoid doing the same choice again
                         var lastChoice = choices.Pop();
+                        Debug.Log("Last choice was " + lastChoice.variable + " := " + lastChoice.value + " from  " + system.GetWave(lastChoice.variable));
                         isInconsistent = !lastChoice.Prevent(system);
+                        Debug.Log("Inconsistent after prevent: " + isInconsistent + " (state=" + system.GetWave(lastChoice.variable) + ")");
+                        backtracked = true;
+                        idx = lastChoice.variable;
                     }
                     else
                     {
@@ -182,6 +197,8 @@ namespace LilyXwfc
                 }
 
                 currentIndex = idx; yield return idx.IsNull();
+
+                if (backtracked) continue;
 
                 idx = Observe();
             }
@@ -245,50 +262,35 @@ namespace LilyXwfc
                 Debug.Log("neighbor (" + nidx + "), in direction #" + connectionType + " (state = " + system.GetWave(nidx) + ")");
 
                 // 2a. Test all combinations (might get speeded up)
-                bool changed = false;
+                SuperposedState neighborState = system.GetWave(nidx);
 
                 // Build a mask
-                SuperposedState allowed = SuperposedState.None(wave);
-                foreach (PureState x in wave.Components())
-                {
-                    for (int k = 0; k < system.dimension; ++k)
-                    {
-                        var y = new PureState(k);
-                        if (system.rules.Allows(x, connectionType, y))
-                        {
-                            allowed.Add(y);
-                        }
-                    }
-                }
+                SuperposedState allowed = system.rules.AllowedStates(system.GetWave(idx), connectionType, neighborState);
 
                 // Apply the mask to the neighbor
-                SuperposedState newNeighborState = system.GetWave(nidx);
-                foreach (PureState y in system.GetWave(nidx).Components())
-                {
-                    if (!allowed.Components().Contains(y))
-                    {
-                        Debug.Log("Remove pure state " + y);
-                        newNeighborState.Remove(y);
-                        changed = true;
-                    }
-                }
+                SuperposedState newNeighborState = neighborState.MaskBy(allowed);
+                Debug.Log("    Masked " + neighborState + " with " + allowed);
                 system.SetWave(nidx, newNeighborState);
+
+                bool changed = !newNeighborState.Equals(neighborState);
 
                 if (changed)
                 {
                     if (newNeighborState.Components().Count == 0)
                     {
-                        // Inconsistency, abort (This is where we could decide to backtrack)
+                        Debug.Log("Inconsistency, abort.");
                         isInconsistent = true;
                         yield break;
                     }
 
                     // 2b. Recursive call
                     currentIndex = nidx;  yield return null;
-                    for (var it = PropagateCoroutine(nidx); it.MoveNext();)
+                    for (var it = PropagateCoroutine(nidx); it.MoveNext() && !isInconsistent;)
                     {
                         yield return null;
                     }
+                    Debug.Log("Rec call to PropagateCoroutine terminated with isInconsistent = " + isInconsistent);
+                    if (isInconsistent) yield break;
                 }
             }
             Debug.Log("<-- Propagate(" + idx + ")");
@@ -324,12 +326,12 @@ namespace LilyXwfc
 
             if (argminEntropy.Count == 0)
             {
-                //Debug.Log("No more superposed state.");
+                Debug.Log("No more superposed state.");
                 return WaveVariable.Null;
             }
 
             // 2. Decohere state
-            //Debug.Log("min entropy: " + minEntropy + " found in " + argminEntropy.Count + " states");
+            Debug.Log("min entropy: " + minEntropy + " found in " + argminEntropy.Count + " states");
             int r = Random.Range(0, argminEntropy.Count);
             var selected = argminEntropy[r];
             var wave = system.GetWave(selected);

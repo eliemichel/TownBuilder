@@ -38,19 +38,29 @@ public class ModuleEntanglementRules : AEntanglementRules
     //public override SuperposedState AllowedStates(SuperposedState x, int connectionType);
     public override bool Allows(PureState x, int connectionType, PureState y)
     {
-        if (connectionType == (int)ConnectionType.Horizontal) return true;
+        if (connectionType == (int)ConnectionType.Horizontal)
+        {
+            Debug.Log("Allows(_, Horizontal, _) = true");
+            return true;
+        }
 
         MarchingModule mx = GetModule(x);
         MarchingModule my = GetModule(y);
 
-        if (mx == null || my == null) return false;
+        if (mx == null || my == null)
+        {
+            Debug.Log("Allows(" + x + ", _, " + y + ") = true (no module found)");
+            return true;
+        }
 
         if (connectionType == (int)ConnectionType.Above)
         {
+            Debug.Log("Allows(" + x + ", Above, " + y + ") = " + (mx.hasPillarBellow == my.hasPillarAbove));
             return mx.hasPillarBellow == my.hasPillarAbove;
         }
         else
         {
+            Debug.Log("Allows(" + x + ", Bellow, " + y + ") = " + (mx.hasPillarAbove == my.hasPillarBellow));
             return mx.hasPillarAbove == my.hasPillarBellow;
         }
     }

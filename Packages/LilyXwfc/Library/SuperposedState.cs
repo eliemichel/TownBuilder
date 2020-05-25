@@ -218,7 +218,8 @@ namespace LilyXwfc
             float ent = 0;
             for (int i = 0; i < DimensionInExclusionClass; ++i)
             {
-                if (Project(i))
+                var ps = new PureState(PureStateOffset + i);
+                if (Project(ps))
                 {
                     ent += 1;
                 }

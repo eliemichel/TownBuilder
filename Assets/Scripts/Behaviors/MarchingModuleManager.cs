@@ -82,7 +82,7 @@ public class MarchingModuleManager : MonoBehaviour
     public TransformedModule GetModule(int hash, int subindex)
     {
         Debug.Assert(hash >= 0 && hash < 256);
-        if (subindex >= 0 && subindex < moduleLut[hash].Length)
+        if (moduleLut[hash] != null && subindex >= 0 && subindex < moduleLut[hash].Length)
         {
             return moduleLut[hash][subindex];
         }
