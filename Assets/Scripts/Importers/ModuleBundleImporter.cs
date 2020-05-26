@@ -12,7 +12,7 @@ class ModuleInfo
 {
     public string name;
     public int hash;
-    // + connections
+    public int[] adjacency; // one int per direction -- horizontal, above, bellow -- which must be equal in neighbor's dual connection
 }
 [System.Serializable()]
 class ModuleBundleInfo
@@ -60,6 +60,8 @@ public class ModuleBundleImporter : ScriptedImporter
             MarchingModule behavior = module.AddComponent<MarchingModule>();
             behavior.hash = moduleInfo.hash;
             behavior.allowRotationAroundVerticalAxis = true;
+            behavior.hasPillarAbove = moduleInfo.adjacency[2] == 0;
+            behavior.hasPillarBellow = moduleInfo.adjacency[1] == 0;
             if (meshFilters.ContainsKey(moduleInfo.name))
             {
                 behavior.meshFilter = meshFilters[moduleInfo.name];
