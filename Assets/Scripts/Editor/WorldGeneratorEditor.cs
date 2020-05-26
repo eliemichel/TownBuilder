@@ -29,12 +29,9 @@ public class WorldGeneratorEditor : Editor
         if (GUILayout.Button("Remove Random Edge")) cont.RemoveRandomEdge();
         if (GUILayout.Button("Remove Edges")) cont.RemoveEdges();
         if (GUILayout.Button("Subdivide")) cont.Subdivide();
-        if (GUILayout.Button("Squarify Quads")) cont.SquarifyQuads();
-        if (GUILayout.Button("Compute Skin")) cont.ComputeSkin();
         if (GUILayout.Button("Compute Raycast Mesh")) cont.ComputeRaycastMesh();
 
         EditorGUILayout.Space();
-        if (GUILayout.Button("Validate Tile")) cont.ValidateTile();
         if (GUILayout.Button("Clear")) cont.Clear();
         if (GUILayout.Button("Run Tests")) cont.Test();
         serializedObject.ApplyModifiedProperties();

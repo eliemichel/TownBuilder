@@ -51,7 +51,7 @@ public class BMeshDual
         var faces = e.NeighborFaces();
         Debug.Assert(faces.Count >= 2);
         var verts = new List<Vertex>();
-        foreach (BMesh.Face f in faces)
+        foreach (Face f in faces)
         {
             Vertex u0 = mesh.AddVertex(f.Center() + FloorOffset(floor));
             Vertex u1 = mesh.AddVertex(f.Center() + FloorOffset(floor + 1));
@@ -77,7 +77,7 @@ public class BMeshDual
      * 
      * Assumes that vertices have consistent id from 0 to vertCount - 1
      */
-    public static void AddDualNgonColumn(BMesh mesh, Vertex v, AttributeDefinition uvAttr, string occupancyAttr, int maxHeight)
+    public static void AddDualNgonColumn(BMesh mesh, Vertex v, AttributeDefinition uvAttr, string occupancyAttr, int maxEdgeCount = 4)
     {
         Debug.Assert(v.edge != null);
         var occupancy = v.attributes[occupancyAttr].asFloat().data;
@@ -90,7 +90,7 @@ public class BMeshDual
             // Add face above the cell
             if (occ && !prev_occ)
             {
-                int dualNgonId = floor + maxHeight * 1;
+                int dualNgonId = 1 + floor * (maxEdgeCount + 2) + 0;
                 uvAttr.defaultValue = new FloatAttributeValue(v.id, dualNgonId);
                 AddDualNgon(mesh, v, floor, true /* flipped */);
             }
@@ -98,7 +98,7 @@ public class BMeshDual
             // Add face bellow the cell
             if (!occ && prev_occ)
             {
-                int dualNgonId = floor + maxHeight * 2;
+                int dualNgonId = 1 + floor * (maxEdgeCount + 2) + 1;
                 uvAttr.defaultValue = new FloatAttributeValue(v.id, dualNgonId);
                 AddDualNgon(mesh, v, floor, false /* flipped */);
             }
@@ -114,7 +114,7 @@ public class BMeshDual
                     float nocc = neighbor.attributes[occupancyAttr].asFloat().data[floor];
                     if (nocc == 0)
                     {
-                        int dualNgonId = floor + maxHeight * (edgeIndex + 3);
+                        int dualNgonId = 1 + floor * (maxEdgeCount + 2) + (edgeIndex + 2);
                         uvAttr.defaultValue = new FloatAttributeValue(v.id, dualNgonId);
                         AddDualNgonWall(mesh, it, floor);
                     }
@@ -123,5 +123,57 @@ public class BMeshDual
                 } while (it != v.edge);
             }
         }
+    }
+
+    // Low level operation ensuring that e2 is right after e1 in the chained
+    // list of edges that are around vertex v.
+    // TODO: move the SwapEdge part to BMesh and test it
+    public static void SwapEdge(Edge e1, Edge e2, Vertex v)
+    {
+        var before_e2 = e2.Prev(v);
+        var after_e2 = e2.Next(v);
+        var before_pivot = e1.Prev(v);
+        var after_pivot = e1.Next(v);
+
+        if (after_e2 == e1 && after_pivot == e2)
+        {
+            // nothing to do
+        }
+        else
+        {
+            after_e2.SetPrev(v, e1);
+            e1.SetNext(v, after_e2);
+
+            before_pivot.SetNext(v, e2);
+            e2.SetPrev(v, before_pivot);
+
+            if (after_pivot == e2) // and so after_e2 != pivot
+            {
+                e2.SetNext(v, e1);
+                e1.SetPrev(v, e2);
+            }
+            else if (after_e2 == e1) // and so after_pivot != e2
+            {
+                e1.SetNext(v, e2);
+                e2.SetPrev(v, e1);
+            }
+            else
+            {
+                before_e2.SetNext(v, e1);
+                e1.SetPrev(v, before_e2);
+
+                after_pivot.SetPrev(v, e2);
+                e2.SetNext(v, after_pivot);
+            }
+        }
+
+        Debug.Assert(after_e2.Next(v) != after_e2);
+        Debug.Assert(after_e2.Prev(v) != after_e2);
+        Debug.Assert(before_e2.Next(v) != before_e2);
+        Debug.Assert(before_e2.Prev(v) != before_e2);
+        Debug.Assert(after_pivot.Next(v) != after_pivot);
+        Debug.Assert(after_pivot.Prev(v) != after_pivot);
+        Debug.Assert(before_pivot.Next(v) != before_pivot);
+        Debug.Assert(before_pivot.Prev(v) != before_pivot);
     }
 }

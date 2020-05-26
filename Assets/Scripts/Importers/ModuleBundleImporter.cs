@@ -57,8 +57,8 @@ public class ModuleBundleImporter : ScriptedImporter
             MarchingModule behavior = module.AddComponent<MarchingModule>();
             behavior.hash = moduleInfo.hash;
             behavior.allowRotationAroundVerticalAxis = true;
-            behavior.hasPillarAbove = moduleInfo.adjacency[2] == 0;
-            behavior.hasPillarBellow = moduleInfo.adjacency[1] == 0;
+            behavior.hasPillarAbove = moduleInfo.adjacency[4] == 0;
+            behavior.hasPillarBellow = moduleInfo.adjacency[5] == 0;
             if (meshFilters.ContainsKey(moduleInfo.name))
             {
                 behavior.meshFilter = meshFilters[moduleInfo.name];

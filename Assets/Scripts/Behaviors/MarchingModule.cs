@@ -37,7 +37,7 @@ public class MarchingModule : MonoBehaviour
             m.SetColumn(0, -z);
             m.SetColumn(3, new Vector4(0, 0, 0, 1));
             Gizmos.matrix = transform.localToWorldMatrix * m;
-            Gizmos.DrawWireMesh(meshFilter.sharedMesh);
+            if (meshFilter.sharedMesh.vertexCount > 0) Gizmos.DrawWireMesh(meshFilter.sharedMesh);
         }
 
         Gizmos.matrix = transform.localToWorldMatrix;

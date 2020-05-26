@@ -61,7 +61,7 @@ public class CameraController : MonoBehaviour
             if (c.g > 0)
             {
                 int vertId = (int)c.r;
-                int dualNgonId = (int)c.g;
+                int dualNgonId = (int)c.g - 1;
                 int q = (int)c.b;
                 int r = (int)c.a;
                 worldGenerator.SetCursorAtVertex(vertId, dualNgonId, new TileAxialCoordinate(q, r, worldGenerator.divisions));
