@@ -245,7 +245,7 @@ public class WorldGenerator : MonoBehaviour
     /**
      * @param vface face of the change since last update
      */
-    void UpdateSkin(Tile tile, VVert vvert)
+    void UpdateSkin(Tile tile, Voxel vvert)
     {
         if (tile == null) return;
 
@@ -258,13 +258,13 @@ public class WorldGenerator : MonoBehaviour
         UnityEngine.Profiling.Profiler.EndSample();
 
         UnityEngine.Profiling.Profiler.BeginSample("RunXwfc");
-        RunXwfc();
+        RunXwfc(wfcTopology);
         UnityEngine.Profiling.Profiler.EndSample();
 
-        tile.skin = UpdateWfcOutputMesh(tile.skin, tile.mesh);
+        tile.skin = UpdateWfcOutputMesh(tile.skin, tile.mesh, wfcTopology);
         ShowMesh();
 
-        wfcGrid = wfcTopology; // for debug
+        wfcGridForGizmos = wfcTopology; // for debug
     }
     #endregion
 
@@ -288,51 +288,98 @@ public class WorldGenerator : MonoBehaviour
     #endregion
 
     #region [Wave Function Collapse Grid]
-    BMesh wfcGrid;
+    BMesh wfcGridForGizmos;
 
     /**
-     * A dual voxel of the virtual grid has a base face and a floor
+     * A voxel is a location that can be occupied or not.
+     * Voxels are placed as regular columns on top of the vertices of an
+     * arbitrary grid so they are identified by the vertex plus a floor.
+     * Occupation flag is contained in vertex attribute "occupancy".
      */
-    class VFace
+    class Voxel
+    {
+        public BMesh.Vertex vert;
+        public int floor;
+
+        public bool IsOccupied()
+        {
+            var occ = vert.attributes["occupancy"].asFloat().data;
+            return floor >= 0 && occ.Length > floor && occ[floor] > 0;
+        }
+    }
+
+    /**
+     * A dual voxel is somehow a corner of voxel. The same way voxels are
+     * columns on top of vertices of the base grid, dual voxels are column on
+     * top of faces (vertex' dual).
+     * Dual voxels are slots where to put tiles (using wave function collapse)
+     */
+    class DualVoxel
     {
         public BMesh.Face face;
         public int floor;
 
-        public List<VFace> NeighborVFaces()
+        public List<DualVoxel> NeighborDualVoxels()
         {
-            List<VFace> vfaces = new List<VFace>();
+            List<DualVoxel> neighbors = new List<DualVoxel>();
             foreach (var ne in face.NeighborEdges())
             {
                 foreach (var nf in ne.NeighborFaces())
                 {
-                    if (nf != face) vfaces.Add(new VFace { face = nf, floor = floor });
+                    if (nf != face) neighbors.Add(new DualVoxel { face = nf, floor = floor });
                 }
             }
-            vfaces.Add(new VFace { face = face, floor = floor + 1 });
-            if (floor > 0) vfaces.Add(new VFace { face = face, floor = floor - 1 });
-            return vfaces;
+            neighbors.Add(new DualVoxel { face = face, floor = floor + 1 });
+            if (floor > 0) neighbors.Add(new DualVoxel { face = face, floor = floor - 1 });
+            return neighbors;
         }
 
         /**
-         * A VFace is empty iff its 8 corners are empty
+         * Corners of a dual voxels are voxels, and vice versa.
+         * They are returned in the right order to measure occupation hash
+         */
+        public List<Voxel> Corners()
+        {
+            var corners = new List<Voxel>();
+            var cornersTop = new List<Voxel>();
+            foreach (var vert in face.NeighborVertices())
+            {
+                corners.Add(new Voxel { vert = vert, floor = floor });
+                cornersTop.Add(new Voxel { vert = vert, floor = floor + 1 });
+            }
+            corners.AddRange(cornersTop);
+            return corners;
+        }
+
+        /**
+         * A dual voxel is empty iff its 8 corners are empty
          */
         public bool IsEmpty()
         {
             //if (floor == 0) return false; // for debug
-            foreach (var corner in face.NeighborVertices())
+            foreach (var corner in Corners())
             {
-                var occ = corner.attributes["occupancy"].asFloat().data;
-                if (floor < occ.Length && occ[floor] > 0) return false;
-                if (floor + 1 < occ.Length && occ[floor + 1] > 0) return false;
+                if (corner.IsOccupied()) return false;
             }
             return true;
         }
-    }
 
-    class VVert
-    {
-        public BMesh.Vertex vert;
-        public int floor;
+        /**
+         * The occupation hash summarizes in one single int the occupation of
+         * the 8 corners. This value ranges from 0 (empty) to 255 (full) and
+         * is used to query module registry.
+         */
+        public int OccupationHash()
+        {
+            int hash = 0;
+            int k = 0;
+            foreach (var corner in Corners())
+            {
+                if (corner.IsOccupied()) hash += (1 << k);
+                ++k;
+            }
+            return hash;
+        }
     }
 
     // Low level operation ensuring that e2 is right after e1 in the chained
@@ -401,50 +448,50 @@ public class WorldGenerator : MonoBehaviour
         Debug.Assert(v.NeighborEdges().Count == c0);
     }
 
-    BMesh.Vertex ComputeWfcGrid_Aux(BMesh baseGrid, VFace vface)
+    BMesh.Vertex ComputeWfcGrid_Aux(BMesh baseGrid, BMesh wfcGrid, DualVoxel dualvoxel)
     {
-        int[] visited = vface.face.attributes["visited"].asInt().data;
-        int[] vertex = vface.face.attributes["vertex"].asInt().data;
+        int[] visited = dualvoxel.face.attributes["visited"].asInt().data;
+        int[] vertex = dualvoxel.face.attributes["vertex"].asInt().data;
         Debug.Assert(visited.Length == vertex.Length);
 
-        if (visited.Length > vface.floor && visited[vface.floor] > 0)
+        if (visited.Length > dualvoxel.floor && visited[dualvoxel.floor] > 0)
         {
-            return wfcGrid.vertices[vertex[vface.floor]];
+            return wfcGrid.vertices[vertex[dualvoxel.floor]];
         }
 
         // If needed resize attribute vectors
-        if (visited.Length <= vface.floor)
+        if (visited.Length <= dualvoxel.floor)
         {
-            var newVisited = new int[vface.floor + 1];
-            var newVertex = new int[vface.floor + 1];
+            var newVisited = new int[dualvoxel.floor + 1];
+            var newVertex = new int[dualvoxel.floor + 1];
             for (int i = 0; i < visited.Length; ++i)
             {
                 newVisited[i] = visited[i];
                 newVertex[i] = vertex[i];
             }
-            vface.face.attributes["visited"].asInt().data = newVisited;
-            vface.face.attributes["vertex"].asInt().data = newVertex;
+            dualvoxel.face.attributes["visited"].asInt().data = newVisited;
+            dualvoxel.face.attributes["vertex"].asInt().data = newVertex;
             visited = newVisited;
             vertex = newVertex;
         }
-        visited[vface.floor] = 1;
-        vertex[vface.floor] = wfcGrid.vertices.Count; // index of the next vertex
+        visited[dualvoxel.floor] = 1;
+        vertex[dualvoxel.floor] = wfcGrid.vertices.Count; // index of the next vertex
 
-        var v = wfcGrid.AddVertex(vface.face.Center() + Vector3.up * (vface.floor + 0.5f));
+        var v = wfcGrid.AddVertex(dualvoxel.face.Center() + Vector3.up * (dualvoxel.floor + 0.5f));
         var dualvface = v.attributes["dualvface"].asInt().data;
-        dualvface[0] = vface.face.id;
-        dualvface[1] = vface.floor;
+        dualvface[0] = dualvoxel.face.id;
+        dualvface[1] = dualvoxel.floor;
 
         BMesh.Edge prevHorizontalEdge = null;
-        foreach (VFace nf in vface.NeighborVFaces())
+        foreach (DualVoxel nf in dualvoxel.NeighborDualVoxels())
         {
-            if (nf.IsEmpty() && nf.floor != vface.floor - 1) continue;
-            var nv = ComputeWfcGrid_Aux(baseGrid, nf);
+            if (nf.IsEmpty() && nf.floor != dualvoxel.floor - 1) continue;
+            var nv = ComputeWfcGrid_Aux(baseGrid, wfcGrid, nf);
             if (nv != null)
             {
                 if (wfcGrid.FindEdge(v, nv) != null) continue;
                 var e = wfcGrid.AddEdge(v, nv);
-                int type = nf.floor == vface.floor ? 0 : (nf.floor == vface.floor + 1 ? 2/*bellow*/ : 1/*above*/); // see ModuleEntanglementRules.ConnectionType
+                int type = nf.floor == dualvoxel.floor ? 0 : (nf.floor == dualvoxel.floor + 1 ? 2/*bellow*/ : 1/*above*/); // see ModuleEntanglementRules.ConnectionType
                 e.attributes["type"].asInt().data[0] = type;
 
                 Debug.Assert(Vector3.Distance(nf.face.Center() + Vector3.up * (nf.floor + 0.5f), nv.point) < 1e-5);
@@ -471,9 +518,9 @@ public class WorldGenerator : MonoBehaviour
      * element of volume in the virtual grid.
      * Reset face's id
      */
-    BMesh ComputeWfcGrid(BMesh baseGrid, VVert vvert = null)
+    BMesh ComputeWfcGrid(BMesh baseGrid, Voxel voxel = null)
     {
-        wfcGrid = new BMesh();
+        BMesh wfcGrid = new BMesh();
         wfcGrid.AddEdgeAttribute("type", BMesh.AttributeBaseType.Int, 1); // 0: horizontal, 1: vertical
         wfcGrid.AddVertexAttribute("dualvface", BMesh.AttributeBaseType.Int, 2); // index of the corresponding face in gridMesh, and floor
         if (!baseGrid.HasFaceAttribute("visited"))
@@ -497,7 +544,7 @@ public class WorldGenerator : MonoBehaviour
         { int i = 0; foreach (var f in baseGrid.faces) f.id = i++; }
 
         int floor = 0;
-        if (vvert == null)
+        if (voxel == null)
         {
             BMesh.Vertex vert = null;
             // Find a non empty vface
@@ -515,12 +562,12 @@ public class WorldGenerator : MonoBehaviour
                 }
                 if (vert != null) break;
             }
-            vvert = new VVert { vert = vert, floor = floor };
+            voxel = new Voxel { vert = vert, floor = floor };
         }
 
-        foreach (var f in vvert.vert.NeighborFaces())
+        foreach (var f in voxel.vert.NeighborFaces())
         {
-            ComputeWfcGrid_Aux(baseGrid, new VFace { face = f, floor = vvert.floor });
+            ComputeWfcGrid_Aux(baseGrid, wfcGrid, new DualVoxel { face = f, floor = voxel.floor });
         }
 
         return wfcGrid;
@@ -562,10 +609,10 @@ public class WorldGenerator : MonoBehaviour
     ModuleEntanglementRules rules;
     LilyXwfc.WaveFunctionSystem system;
 
-    public void RunXwfc()
+    public void RunXwfc(BMesh topology)
     {
         if (rules == null) rules = new ModuleEntanglementRules(moduleManager);
-        system = new LilyXwfc.WaveFunctionSystem(wfcGrid, rules, moduleManager.MaxModuleCount, "class");
+        system = new LilyXwfc.WaveFunctionSystem(topology, rules, moduleManager.MaxModuleCount, "class");
         var wfc = new LilyXwfc.WaveFunctionCollapse(system, true);
         //for (var it = wfc.CollapseCoroutine(200); it.MoveNext();) { }
         if (wfc.Collapse(200))
@@ -579,11 +626,6 @@ public class WorldGenerator : MonoBehaviour
     }
 
     BMesh wfcOutputMesh;
-    public void ShowWfcOutputMesh()
-    {
-        wfcOutputMesh = UpdateWfcOutputMesh(wfcOutputMesh, currentTile.mesh);
-        ShowMesh();
-    }
 
     void ClearUpdatedParts(BMesh skinMesh, BMesh baseGrid)
     {
@@ -625,7 +667,7 @@ public class WorldGenerator : MonoBehaviour
         return null;
     }
 
-    public BMesh UpdateWfcOutputMesh(BMesh skinMesh, BMesh baseGrid)
+    public BMesh UpdateWfcOutputMesh(BMesh skinMesh, BMesh baseGrid, BMesh wfcGrid)
     {
         //if (skinMesh == null) skinMesh = new BMesh();
         skinMesh = new BMesh();
@@ -718,18 +760,6 @@ public class WorldGenerator : MonoBehaviour
     {
         if (currentTile.mesh == null) return;
         ComputeSkin(currentTile);
-    }
-
-    public void ComputeWfcGrid()
-    {
-        if (currentTile.mesh == null) return;
-        ComputeWfcGrid(currentTile.mesh);
-    }
-
-    public void ComputeExclusionClasses()
-    {
-        if (wfcGrid == null || currentTile.mesh == null) return;
-        ComputeExclusionClasses(wfcGrid, currentTile.mesh);
     }
     #endregion
 
@@ -830,7 +860,7 @@ public class WorldGenerator : MonoBehaviour
         }
         occupancy[floor] = 1;
 
-        UpdateSkin(tile, new VVert { vert = v, floor = floor });
+        UpdateSkin(tile, new Voxel { vert = v, floor = floor });
         //ComputeSkin(tile);
     }
 
@@ -857,7 +887,7 @@ public class WorldGenerator : MonoBehaviour
 
         occupancy[floor] = 0;
 
-        UpdateSkin(tile, new VVert { vert = v, floor = floor });
+        UpdateSkin(tile, new Voxel { vert = v, floor = floor });
         //ComputeSkin(tile);
     }
     #endregion
@@ -882,19 +912,19 @@ public class WorldGenerator : MonoBehaviour
     {
         Gizmos.matrix = transform.localToWorldMatrix;
 
-        if (wfcGrid != null)
+        if (wfcGridForGizmos != null)
         {
-            BMeshUnity.DrawGizmos(wfcGrid);
+            BMeshUnity.DrawGizmos(wfcGridForGizmos);
 #if UNITY_EDITOR
             Handles.color = Color.blue;
             Gizmos.color = Color.blue;
-            foreach (var e in wfcGrid.edges)
+            foreach (var e in wfcGridForGizmos.edges)
             {
                 var type = e.attributes["type"].asInt().data[0];
                 Handles.Label(e.Center(), "" + type);
                 Gizmos.DrawLine(e.Center(), e.vert1.point);
             }
-            foreach (var v in wfcGrid.vertices)
+            foreach (var v in wfcGridForGizmos.vertices)
             {
                 var xclass = v.attributes["class"].asInt().data[0];
                 Handles.Label(v.point, "#" + v.id + " (" + xclass + ")");

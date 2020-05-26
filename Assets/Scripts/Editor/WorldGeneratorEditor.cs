@@ -34,12 +34,6 @@ public class WorldGeneratorEditor : Editor
         if (GUILayout.Button("Compute Raycast Mesh")) cont.ComputeRaycastMesh();
 
         EditorGUILayout.Space();
-        if (GUILayout.Button("Compute Wfc Grid")) cont.ComputeWfcGrid();
-        if (GUILayout.Button("Compute Exclusion Classes")) cont.ComputeExclusionClasses();
-        if (GUILayout.Button("Run Exclusive WFC")) cont.RunXwfc();
-        if (GUILayout.Button("Show Wfc Output Mesh")) cont.ShowWfcOutputMesh();
-
-        EditorGUILayout.Space();
         if (GUILayout.Button("Validate Tile")) cont.ValidateTile();
         if (GUILayout.Button("Clear")) cont.Clear();
         if (GUILayout.Button("Run Tests")) cont.Test();

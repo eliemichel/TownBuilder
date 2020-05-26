@@ -1,11 +1,8 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor.Experimental.AssetImporters;
 using System.IO;
-using Boo.Lang;
 using UnityEditor;
-using System.Linq;
 
 [System.Serializable()]
 class ModuleInfo
@@ -70,19 +67,7 @@ public class ModuleBundleImporter : ScriptedImporter
             ++i;
         }
 
-        // 'cube' is a a GameObject and will be automatically converted into a prefab
-        // (Only the 'Main Asset' is elligible to become a Prefab.)
         ctx.AddObjectToAsset("Module Bundle", root);
         ctx.SetMainObject(root);
-
-        var material = new Material(Shader.Find("Standard"));
-        material.color = Color.red;
-
-        // Assets must be assigned a unique identifier string consistent across imports
-        ctx.AddObjectToAsset("my Material", material);
-
-        // Assets that are not passed into the context as import outputs must be destroyed
-        var tempMesh = new Mesh();
-        DestroyImmediate(tempMesh);
     }
 }
