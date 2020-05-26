@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -31,8 +32,7 @@ public class WorldGenerator : MonoBehaviour
     #region [Private attributes]
     class Tile
     {
-        public BMesh mesh; // control mesh
-        public BMesh skin; // visible mesh
+        public BMesh.Vertex[] vertices; // keep a reference to the vertices of the tile for glueing
     }
 
     class Cursor
@@ -42,7 +42,6 @@ public class WorldGenerator : MonoBehaviour
         public int floor;
     }
 
-    Tile currentTile;
     Dictionary<AxialCoordinate, Tile> tileSet;
     Cursor cursor;
     BMesh wfcGridForGizmos; // for debug only
@@ -68,6 +67,7 @@ public class WorldGenerator : MonoBehaviour
         bmesh.AddVertexAttribute("restpos", BMesh.AttributeBaseType.Float, 3);
         bmesh.AddVertexAttribute("weight", BMesh.AttributeBaseType.Float, 1);
         bmesh.AddVertexAttribute("glued", BMesh.AttributeBaseType.Float, 1);
+        bmesh.AddVertexAttribute("gluedId", BMesh.AttributeBaseType.Int, 1);
         bmesh.AddVertexAttribute("occupancy", BMesh.AttributeBaseType.Float, maxHeight); // core voxel data
 
         BMesh.Vertex v0 = bmesh.AddVertex(new Vector3(-1, 0, -1) * 8);
@@ -85,8 +85,6 @@ public class WorldGenerator : MonoBehaviour
         v1.attributes["weight"] = new BMesh.FloatAttributeValue(1);
         v2.attributes["weight"] = new BMesh.FloatAttributeValue(1);
         v3.attributes["weight"] = new BMesh.FloatAttributeValue(0);
-
-        currentTile.mesh = bmesh;
         ShowMesh();
     }
 
@@ -96,6 +94,7 @@ public class WorldGenerator : MonoBehaviour
 
         var mesh = BMeshGenerators.SubdividedHex(tileCo.Center(size), divisions, size);
         mesh.AddVertexAttribute("glued", BMesh.AttributeBaseType.Float, 1);
+        mesh.AddVertexAttribute("gluedId", BMesh.AttributeBaseType.Int, 1);
         mesh.AddVertexAttribute("occupancy", BMesh.AttributeBaseType.Float, maxHeight); // core voxel data
 
         // Try to glue edge points to tiles that are already present
@@ -105,7 +104,7 @@ public class WorldGenerator : MonoBehaviour
             var qr = v.attributes["uv"].asFloat().data;
             var co = new AxialCoordinate((int)qr[0], (int)qr[1]);
 
-            var glued = v.attributes["glued"] as BMesh.FloatAttributeValue;
+            var glued = v.attributes["glued"].asFloat();
             if (tileSet != null)
             {
                 foreach (var neighborTileCo in tileCo.NeighboringTiles(co))
@@ -129,9 +128,64 @@ public class WorldGenerator : MonoBehaviour
         BMeshJoinRandomTriangles.Call(mesh);
         BMeshOperators.Subdivide(mesh);
         for (int i = 0; i < 3; ++i) SquarifyQuads(mesh, tileCo);
-        tileSet[tileCo] = new Tile { mesh = mesh };
+        tileSet[tileCo] = new Tile { vertices = mesh.vertices.ToArray() };
 
         AddToBaseGrid(mesh);
+    }
+
+    // Custom Merge to remove doubles based on a priori knownledge
+    // base copied from BMeshOperators.Merge
+    void CustomMerge(BMesh mesh, BMesh other)
+    {
+        // For modifications A and B
+        var firstNewVert = mesh.vertices.Count;
+        var newIndices = new int[other.vertices.Count];
+        int c = 0;
+
+        var newVerts = new BMesh.Vertex[other.vertices.Count];
+        int i = 0;
+        foreach (BMesh.Vertex v in other.vertices)
+        {
+            v.id = i;
+            // MODIFICATION A: do not copy glued points
+            bool glued = v.attributes["glued"].asFloat().data[0] >= 1;
+            if (glued)
+            {
+                newVerts[i] = mesh.vertices[v.attributes["gluedId"].asInt().data[0]];
+                Debug.Log("Gluing new #" + v.id + " to old #" + newVerts[i].id);
+                newIndices[i] = newVerts[i].id;
+            }
+            else
+            {
+                newVerts[i] = mesh.AddVertex(v.point);
+                newIndices[i] = firstNewVert + c++;
+            }
+            BMeshOperators.AttributeLerp(mesh, newVerts[i], v, v, 1); // copy all attributes
+            ++i;
+        }
+        foreach (BMesh.Edge e in other.edges)
+        {
+            BMesh.Vertex v1 = newVerts[e.vert1.id];
+            BMesh.Vertex v2 = newVerts[e.vert2.id];
+            mesh.AddEdge(v1, v2);
+        }
+        foreach (BMesh.Face f in other.faces)
+        {
+            var neighbors = f.NeighborVertices();
+            var newNeighbors = new BMesh.Vertex[neighbors.Count];
+            int j = 0;
+            foreach (var v in neighbors)
+            {
+                newNeighbors[j] = newVerts[v.id];
+                ++j;
+            }
+            mesh.AddFace(newNeighbors);
+        }
+        // MODIFICATION B: update index in other.vertices
+        foreach (var v in other.vertices)
+        {
+            v.id = newIndices[v.id];
+        }
     }
 
     void AddToBaseGrid(BMesh mesh)
@@ -142,7 +196,7 @@ public class WorldGenerator : MonoBehaviour
             fullBaseGrid = new BMesh();
             fullBaseGrid.AddVertexAttribute("occupancy", BMesh.AttributeBaseType.Float, maxHeight); // core voxel data
         }
-        BMeshOperators.Merge(fullBaseGrid, mesh);
+        CustomMerge(fullBaseGrid, mesh);
         ShowMesh();
     }
 
@@ -166,17 +220,6 @@ public class WorldGenerator : MonoBehaviour
     {
         var acc = new BMesh();
         acc.AddVertexAttribute("uv", BMesh.AttributeBaseType.Float, 2);
-        if (false && tileSet != null)
-        {
-            foreach (var pair in tileSet)
-            {
-                BMeshOperators.Merge(acc, pair.Value.mesh);
-                if (pair.Value.skin != null)
-                {
-                    BMeshOperators.Merge(acc, pair.Value.skin);
-                }
-            }
-        }
         if (wfcOutputMesh != null) BMeshOperators.Merge(acc, wfcOutputMesh);
         if (fullBaseGrid != null) BMeshOperators.Merge(acc, fullBaseGrid);
         BMeshUnity.SetInMeshFilter(acc, GetComponent<MeshFilter>());
@@ -209,11 +252,19 @@ public class WorldGenerator : MonoBehaviour
                     {
                         var gluedCo = tileCo.ConvertLocalCoordTo(fco, neighborTileCo);
                         var gluedUv = new BMesh.FloatAttributeValue(gluedCo.q, gluedCo.r);
-                        BMesh.Vertex target = BMeshOperators.Nearpoint(tileSet[neighborTileCo].mesh, gluedUv, "uv");
+
+                        // This is a pretty dirty way of building the mesh but for efficiency we only keep vertices in Tile.
+                        BMesh points = new BMesh {
+                            vertices = tileSet[neighborTileCo].vertices.ToList(),
+                            vertexAttributes = new List<BMesh.AttributeDefinition> { new BMesh.AttributeDefinition("uv", BMesh.AttributeBaseType.Float, 2) }
+                        };
+
+                        BMesh.Vertex target = BMeshOperators.Nearpoint(points, gluedUv, "uv");
                         Debug.Assert(target != null);
                         float dist = BMesh.AttributeValue.Distance(target.attributes["uv"], gluedUv);
                         Debug.Assert(dist < 1e-5, "Distance in UVs is too large: " + dist);
                         v.attributes["restpos"] = new BMesh.FloatAttributeValue(target.point);
+                        v.attributes["gluedId"].asInt().data[0] = target.id;
                         weight.data[0] = 9999;
                     }
                 }
@@ -701,18 +752,6 @@ public class WorldGenerator : MonoBehaviour
     #endregion
 
     #region [World Controller]
-    Tile GetTile(TileAxialCoordinate tileCo)
-    {
-        if (tileCo == null) return null;
-        if (tileSet != null && tileSet.ContainsKey(tileCo))
-        {
-            return tileSet[tileCo];
-        }
-        else
-        {
-            return null;
-        }
-    }
 
     void BuildCursorMesh()
     {
@@ -860,11 +899,16 @@ public class WorldGenerator : MonoBehaviour
 #endif // UNITY_EDITOR
         }
 
-        //BMeshUnity.DrawGizmos(bmesh);
-        //if (skinmesh != null) BMeshUnity.DrawGizmos(skinmesh);
+        BMeshUnity.DrawGizmos(fullBaseGrid);
+#if UNITY_EDITOR
+        foreach (var v in fullBaseGrid.vertices)
+        {
+            Handles.Label(v.point, "" + v.id);
+        }
+#endif // UNITY_EDITOR
 
         /*
-        foreach (var v in bmesh.vertices)
+        foreach (var v in fullBaseGrid.vertices)
         {
             float weight = (v.attributes["weight"] as BMesh.FloatAttributeValue).data[0];
             Gizmos.color = Color.blue;
@@ -879,7 +923,7 @@ public class WorldGenerator : MonoBehaviour
 
         if (bmesh.HasVertexAttribute("occupancy"))
         {
-            foreach (var v in bmesh.vertices)
+            foreach (var v in fullBaseGrid.vertices)
             {
                 var occupancy = v.attributes["occupancy"] as BMesh.FloatAttributeValue;
                 for (int i = 0; i < occupancy.data.Length; ++i)
