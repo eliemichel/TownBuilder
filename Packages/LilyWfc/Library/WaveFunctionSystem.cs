@@ -13,7 +13,7 @@ namespace LilyWfc
     {
         public readonly int dimension; // number of possible states (i.e. dimension of the superposed state space)
         SuperposedState[] waves; // state vector, one state per topology vertex
-        readonly BMesh topology;
+        public readonly BMesh topology;
         public readonly IEntanglementRules rules;
 
         public WaveFunctionSystem(BMesh topology, IEntanglementRules rules, int dimension)
