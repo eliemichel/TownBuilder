@@ -445,21 +445,24 @@ public class WorldGenerator : MonoBehaviour
      * given dualvoxel, creating the WFC topology and returning the vertex of
      * this topology that corresponds to teh dual voxel.
      */
-    BMesh.Vertex ComputeWfcTopology_Walk(BMesh baseGrid, BMesh wfcTopology, DualVoxel dualvoxel, bool boundary = false, bool probeOnly = false)
+    BMesh.Vertex ComputeWfcTopology_Walk(BMesh baseGrid, BMesh wfcTopology, DualVoxel dualvoxel, bool asIfNotEmpty = false)
     {
         int[] visited = dualvoxel.face.attributes["visited"].asInt().data;
         int[] vertex = dualvoxel.face.attributes["vertex"].asInt().data;
         Debug.Assert(visited.Length == vertex.Length);
+
+        bool isBoundary = dualvoxel.IsEmpty() && !asIfNotEmpty;
 
         BMesh.Vertex v = null;
         // If dual voxel has already been visited, return.
         if (visited.Length > dualvoxel.floor && visited[dualvoxel.floor] > 0)
         {
             v = wfcTopology.vertices[vertex[dualvoxel.floor]];
-            if (probeOnly) return v;
-
+            
             var boundaryAttr = v.attributes["boundary"].asInt().data;
-            if (!boundary && boundaryAttr[0] != -1)
+            bool wasBoundaryAtLastVisit = boundaryAttr[0] != -1;
+
+            if (wasBoundaryAtLastVisit && !isBoundary)
             {
                 boundaryAttr[0] = -1;
                 // don't return: if the first time this point has been visited
@@ -470,8 +473,6 @@ public class WorldGenerator : MonoBehaviour
                 return v;
             }
         }
-
-        if (probeOnly) return null;
 
         // If needed resize attribute vectors
         if (visited.Length <= dualvoxel.floor)
@@ -494,70 +495,38 @@ public class WorldGenerator : MonoBehaviour
             vertex = newVertex;
         }
         
+        if (v == null)
+        {
+            v = wfcTopology.AddVertex(dualvoxel.Center());
+            v.id = wfcTopology.vertices.Count - 1;
+        }
         visited[dualvoxel.floor] = 1;
-        vertex[dualvoxel.floor] = wfcTopology.vertices.Count; // index of the next vertex
-
-        if (v == null) v = wfcTopology.AddVertex(dualvoxel.Center());
+        vertex[dualvoxel.floor] = v.id;
         dualvoxel.SaveToAttribute(v.attributes["dualvoxel"]);
-        if (boundary)
+
+        if (isBoundary)
         {
             v.attributes["boundary"].asInt().data[0] = 1;
+            return v;
         }
-
-        if (boundary) v.attributes["debug"].asInt().data[0] = 1;
 
         int adj = -1;
         foreach (DualVoxel nf in dualvoxel.NeighborDualVoxels())
         {
             ++adj;
-            /*
-            // If the whole column on top of it is empty, ignore
-            {
-                // a bit dirty
-                bool empty = true;
-                foreach (var corner in nf.face.NeighborVertices())
-                {
-                    var occ = corner.attributes["occupancy"].asFloat().data;
-                    for (int i = nf.floor; i < occ.Length && empty; ++i)
-                    {
-                        if (occ[i] > 0) empty = false;
-                    }
-                    if (!empty) break;
-                }
-                if (empty) continue;
-            }
-            */
-            BMesh.Vertex nv;
-            if (nf.IsEmpty() && boundary)
-            {
-                // Don't recurse to empty block when handling an empty block
-                nv = ComputeWfcTopology_Walk(baseGrid, wfcTopology, nf, true, true);
-                if (nv != null && nv.attributes["boundary"].asInt().data[0] != -1)
-                {
-                    // Don't connect a boundary to another one
-                    nv = null;
-                }
-            }
-            else if (nf.IsEmpty() && nf.floor != dualvoxel.floor - 1) // the voxel bellow behaves as a normal one
-            {
-                nv = ComputeWfcTopology_Walk(baseGrid, wfcTopology, nf, true);
-            }
-            else
-            {
-                nv = ComputeWfcTopology_Walk(baseGrid, wfcTopology, nf);
-            }
-
+            // the voxel bellow behaves as a normal one (it propagates recursion) even if it is empty
+            asIfNotEmpty = nf.floor == dualvoxel.floor - 1;
+            var nv = ComputeWfcTopology_Walk(baseGrid, wfcTopology, nf, asIfNotEmpty);
+            
             if (nv != null)
             {
                 // Neighboring mechanism for WFC: use 2-vertex face,
                 // i.e. half-edges with a different type on each loop.
                 BMesh.Loop l;
                 BMesh.Edge e = wfcTopology.FindEdge(v, nv);
-                bool test = false;
                 if (e != null && e.loop != null)
                 {
                     l = e.loop;
-                    test = true;
                 }
                 else
                 {
@@ -567,13 +536,15 @@ public class WorldGenerator : MonoBehaviour
                 if (l.vert != v) l = l.next;
                 Debug.Assert(l.vert == v);
 
-                if (test)
-                {
-                    int nadj = l.next.attributes["adjacency"].asInt().data[0];
-                    if (adj < 4) Debug.Assert(nadj < 4, "adj = " + adj + ", and nadj = " + nadj);
-                }
-
                 l.attributes["adjacency"].asInt().data[0] = adj;
+
+                // If the neighbor is a boundary, it won't deal with the other
+                // side of the connection itself so we do it here
+                if (nv.attributes["boundary"].asInt().data[0] > -1)
+                {
+                    int nadj = adj == 4 ? 5 : (adj == 5 ? 4 : 0);
+                    l.next.attributes["adjacency"].asInt().data[0] = nadj;
+                }
 
                 Debug.Assert(Vector3.Distance(nf.Center(), nv.point) < 1e-5);
             }
@@ -628,7 +599,7 @@ public class WorldGenerator : MonoBehaviour
         foreach (var f in voxel.vert.NeighborFaces())
         {
             var dualvoxel = new DualVoxel { face = f, floor = voxel.floor };
-            ComputeWfcTopology_Walk(baseGrid, wfcTopology, dualvoxel, dualvoxel.IsEmpty());
+            ComputeWfcTopology_Walk(baseGrid, wfcTopology, dualvoxel);
         }
 
         { int i = 0; foreach (var v in wfcTopology.vertices) v.id = i++; }
