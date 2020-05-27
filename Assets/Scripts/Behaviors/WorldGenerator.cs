@@ -445,7 +445,7 @@ public class WorldGenerator : MonoBehaviour
      * given dualvoxel, creating the WFC topology and returning the vertex of
      * this topology that corresponds to teh dual voxel.
      */
-    BMesh.Vertex ComputeWfcTopology_Walk(BMesh baseGrid, BMesh wfcTopology, DualVoxel dualvoxel)
+    BMesh.Vertex ComputeWfcTopology_Walk(BMesh baseGrid, BMesh wfcTopology, DualVoxel dualvoxel, bool boundary = false)
     {
         int[] visited = dualvoxel.face.attributes["visited"].asInt().data;
         int[] vertex = dualvoxel.face.attributes["vertex"].asInt().data;
@@ -454,7 +454,12 @@ public class WorldGenerator : MonoBehaviour
         // If dual voxel has already been visited, return.
         if (visited.Length > dualvoxel.floor && visited[dualvoxel.floor] > 0)
         {
-            return wfcTopology.vertices[vertex[dualvoxel.floor]];
+            var vert = wfcTopology.vertices[vertex[dualvoxel.floor]];
+            if (!boundary)
+            {
+                vert.attributes["boundary"].asInt().data[0] = -1;
+            }
+            return vert;
         }
 
         // If needed resize attribute vectors
@@ -483,12 +488,16 @@ public class WorldGenerator : MonoBehaviour
 
         var v = wfcTopology.AddVertex(dualvoxel.Center());
         dualvoxel.SaveToAttribute(v.attributes["dualvoxel"]);
+        if (boundary)
+        {
+            v.attributes["boundary"].asInt().data[0] = 1;
+        }
 
         int adj = -1;
         foreach (DualVoxel nf in dualvoxel.NeighborDualVoxels())
         {
             ++adj;
-            
+            /*
             // If the whole column on top of it is empty, ignore
             {
                 // a bit dirty
@@ -504,21 +513,25 @@ public class WorldGenerator : MonoBehaviour
                 }
                 if (empty) continue;
             }
-            var nv = ComputeWfcTopology_Walk(baseGrid, wfcTopology, nf);
+            */
+            BMesh.Vertex nv;
+            if (nf.IsEmpty() && boundary)
+            {
+                // Don't recurse to empty block when handling an empty block
+                nv = null;
+            }
+            else if (nf.IsEmpty() && nf.floor != dualvoxel.floor - 1) // the voxel bellow behaves as a normal one
+            {
+                nv = ComputeWfcTopology_Walk(baseGrid, wfcTopology, nf, true);
+            }
+            else
+            {
+                nv = ComputeWfcTopology_Walk(baseGrid, wfcTopology, nf);
+            }
+
             if (nv != null)
             {
-                // old neighboring mechanism
-                if (wfcTopology.FindEdge(v, nv) == null)
-                {
-                    var edge = wfcTopology.AddEdge(v, nv);
-                    int type = nf.floor == dualvoxel.floor ? 0 : (nf.floor == dualvoxel.floor + 1 ? 2/*bellow*/ : 1/*above*/); // see ModuleEntanglementRules.ConnectionType
-                    //edge.attributes["type"].asInt().data[0] = type;
-
-                    if (type == 2) Debug.Assert(adj == 4, "adj = " + adj);
-                    if (type == 1) Debug.Assert(adj == 5, "adj = " + adj);
-                }
-
-                // New neighboring mechanism for WFC: use 2-vertex face,
+                // Neighboring mechanism for WFC: use 2-vertex face,
                 // i.e. half-edges with a different type on each loop.
                 BMesh.Loop l;
                 BMesh.Edge e = wfcTopology.FindEdge(v, nv);
@@ -562,14 +575,11 @@ public class WorldGenerator : MonoBehaviour
     BMesh ComputeWfcTopology(BMesh baseGrid, Voxel voxel)
     {
         BMesh wfcTopology = new BMesh();
-
-        // 0: horizontal, 1: vertical
-        wfcTopology.AddEdgeAttribute("type", BMesh.AttributeBaseType.Int, 1);
-
         // index of the corresponding face in gridMesh, and floor
         wfcTopology.AddVertexAttribute("dualvoxel", BMesh.AttributeBaseType.Int, 2);
-
-        // new adjacency mechanism
+        // Flag some variables as being boundary
+        wfcTopology.AddVertexAttribute("boundary", BMesh.AttributeBaseType.Int, 1)
+            .defaultValue = new BMesh.IntAttributeValue(-1);
         wfcTopology.AddLoopAttribute("adjacency", BMesh.AttributeBaseType.Int, 1)
             .defaultValue = new BMesh.IntAttributeValue(-1);
 
@@ -649,7 +659,7 @@ public class WorldGenerator : MonoBehaviour
     public void RunXwfc(BMesh topology)
     {
         if (rules == null) rules = new ModuleEntanglementRules(moduleManager);
-        system = new LilyXwfc.WaveFunctionSystem(topology, rules, moduleManager.MaxModuleCount, "class");
+        system = new LilyXwfc.WaveFunctionSystem(topology, rules, moduleManager.MaxModuleCount, "class", "boundary");
         var wfc = new LilyXwfc.WaveFunctionCollapse(system, true);
         //for (var it = wfc.CollapseCoroutine(200); it.MoveNext();) { }
         if (wfc.Collapse(200))

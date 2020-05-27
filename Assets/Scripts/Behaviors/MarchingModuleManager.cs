@@ -64,8 +64,6 @@ public class MarchingModuleManager : MonoBehaviour
             int j = 0;
             foreach (var m in moduleSets[hash])
             {
-                if (hash == 2)
-                    Debug.Log("Adding module for hash 2: " + m.baseModule.meshFilter.name + " with transform " + m.transform);
                 moduleLut[hash][j++] = m;
             }
         }

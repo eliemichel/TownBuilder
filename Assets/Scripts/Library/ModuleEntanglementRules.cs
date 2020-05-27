@@ -57,10 +57,15 @@ public class ModuleEntanglementRules : AEntanglementRules
         }
 
         if (connectionType < 4) Debug.Assert(dualConnectionType < 4);
-        if (connectionType == -1 || dualConnectionType == -1) return false;
 
-        bool allowed = GetTransformedAdjacency(mx, connectionType) == GetTransformedAdjacency(my, dualConnectionType);
-        return allowed;
+        // The special value of -1 for connection type means "toward empty area"
+        // The empty area has an adjacency of -1 in all directions
+        int adjx = -1;
+        int adjy = -1;
+        if (connectionType != -1) adjx = GetTransformedAdjacency(mx, connectionType);
+        if (dualConnectionType != -1) adjy = GetTransformedAdjacency(my, dualConnectionType);
+
+        return adjx == adjy;
     }
 
     public override int DimensionInExclusionClass(int exclusionClass)

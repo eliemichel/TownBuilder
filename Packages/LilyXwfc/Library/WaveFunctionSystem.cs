@@ -17,6 +17,7 @@ namespace LilyXwfc
         public readonly BMesh topology;
         public readonly IEntanglementRules rules;
         readonly string exclusionClassAttr;
+        readonly string boundaryAttr;
 
         /**
          * @param exclusionClassAttr name of the vertex attribute in the
@@ -24,14 +25,17 @@ namespace LilyXwfc
          * corresponding wave variable with. It must be an integer attribute.
          * If null, the 0th exclusion class will be used for all states, which
          * makes XWFC totally equivalent to WFC.
+         * Boundary attribute is used to force the intial value of some vertices
+         * if set to a non negative value
          */
-        public WaveFunctionSystem(BMesh topology, IEntanglementRules rules, int dimension, string exclusionClassAttr = null)
+        public WaveFunctionSystem(BMesh topology, IEntanglementRules rules, int dimension, string exclusionClassAttr = null, string boundaryAttr = null)
         {
             this.dimension = dimension;
             { int i = 0; foreach (var v in topology.vertices) v.id = i++; } // ensure ids
             this.topology = topology;
             this.rules = rules;
             this.exclusionClassAttr = exclusionClassAttr;
+            this.boundaryAttr = boundaryAttr;
             Reset();
         }
 
@@ -50,8 +54,20 @@ namespace LilyXwfc
                     exclusionClassAttr != null
                     ? v.attributes[exclusionClassAttr].asInt().data[0]
                     : 0;
-                waves[i] = SuperposedState.EquiprobableInClass(dimension, rules.DimensionInExclusionClass(exclusionClass), exclusionClass);
-                ++i;
+
+                int boundary = boundaryAttr != null ? v.attributes[boundaryAttr].asInt().data[0] : -1;
+                SuperposedState state;
+                if (boundary != -1)
+                {
+                    state = SuperposedState.None(dimension, rules.DimensionInExclusionClass(exclusionClass), exclusionClass);
+                    state.Add(new PureState(exclusionClass * dimension + boundary));
+                }
+                else
+                {
+                    state = SuperposedState.EquiprobableInClass(dimension, rules.DimensionInExclusionClass(exclusionClass), exclusionClass);
+                }
+
+                waves[i++] = state;
             }
         }
 
