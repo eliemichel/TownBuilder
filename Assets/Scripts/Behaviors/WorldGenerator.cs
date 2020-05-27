@@ -445,22 +445,33 @@ public class WorldGenerator : MonoBehaviour
      * given dualvoxel, creating the WFC topology and returning the vertex of
      * this topology that corresponds to teh dual voxel.
      */
-    BMesh.Vertex ComputeWfcTopology_Walk(BMesh baseGrid, BMesh wfcTopology, DualVoxel dualvoxel, bool boundary = false)
+    BMesh.Vertex ComputeWfcTopology_Walk(BMesh baseGrid, BMesh wfcTopology, DualVoxel dualvoxel, bool boundary = false, bool probeOnly = false)
     {
         int[] visited = dualvoxel.face.attributes["visited"].asInt().data;
         int[] vertex = dualvoxel.face.attributes["vertex"].asInt().data;
         Debug.Assert(visited.Length == vertex.Length);
 
+        BMesh.Vertex v = null;
         // If dual voxel has already been visited, return.
         if (visited.Length > dualvoxel.floor && visited[dualvoxel.floor] > 0)
         {
-            var vert = wfcTopology.vertices[vertex[dualvoxel.floor]];
-            if (!boundary)
+            v = wfcTopology.vertices[vertex[dualvoxel.floor]];
+            if (probeOnly) return v;
+
+            var boundaryAttr = v.attributes["boundary"].asInt().data;
+            if (!boundary && boundaryAttr[0] != -1)
             {
-                vert.attributes["boundary"].asInt().data[0] = -1;
+                boundaryAttr[0] = -1;
+                // don't return: if the first time this point has been visited
+                // it was treated as boundary, it may be different this time.
             }
-            return vert;
+            else
+            {
+                return v;
+            }
         }
+
+        if (probeOnly) return null;
 
         // If needed resize attribute vectors
         if (visited.Length <= dualvoxel.floor)
@@ -486,12 +497,14 @@ public class WorldGenerator : MonoBehaviour
         visited[dualvoxel.floor] = 1;
         vertex[dualvoxel.floor] = wfcTopology.vertices.Count; // index of the next vertex
 
-        var v = wfcTopology.AddVertex(dualvoxel.Center());
+        if (v == null) v = wfcTopology.AddVertex(dualvoxel.Center());
         dualvoxel.SaveToAttribute(v.attributes["dualvoxel"]);
         if (boundary)
         {
             v.attributes["boundary"].asInt().data[0] = 1;
         }
+
+        if (boundary) v.attributes["debug"].asInt().data[0] = 1;
 
         int adj = -1;
         foreach (DualVoxel nf in dualvoxel.NeighborDualVoxels())
@@ -518,7 +531,12 @@ public class WorldGenerator : MonoBehaviour
             if (nf.IsEmpty() && boundary)
             {
                 // Don't recurse to empty block when handling an empty block
-                nv = null;
+                nv = ComputeWfcTopology_Walk(baseGrid, wfcTopology, nf, true, true);
+                if (nv != null && nv.attributes["boundary"].asInt().data[0] != -1)
+                {
+                    // Don't connect a boundary to another one
+                    nv = null;
+                }
             }
             else if (nf.IsEmpty() && nf.floor != dualvoxel.floor - 1) // the voxel bellow behaves as a normal one
             {
@@ -583,6 +601,9 @@ public class WorldGenerator : MonoBehaviour
         wfcTopology.AddLoopAttribute("adjacency", BMesh.AttributeBaseType.Int, 1)
             .defaultValue = new BMesh.IntAttributeValue(-1);
 
+        wfcTopology.AddVertexAttribute("debug", BMesh.AttributeBaseType.Int, 1)
+            .defaultValue = new BMesh.IntAttributeValue(-1);
+
         // Initialize or reset attributes "visited" and "vertex" that label voxels (so columns on vertices)
         if (!baseGrid.HasFaceAttribute("visited"))
         {
@@ -606,15 +627,25 @@ public class WorldGenerator : MonoBehaviour
 
         foreach (var f in voxel.vert.NeighborFaces())
         {
-            ComputeWfcTopology_Walk(baseGrid, wfcTopology, new DualVoxel { face = f, floor = voxel.floor });
+            var dualvoxel = new DualVoxel { face = f, floor = voxel.floor };
+            ComputeWfcTopology_Walk(baseGrid, wfcTopology, dualvoxel, dualvoxel.IsEmpty());
         }
 
         { int i = 0; foreach (var v in wfcTopology.vertices) v.id = i++; }
         foreach (var l in wfcTopology.loops)
         {
+            var adj = l.attributes["adjacency"].asInt().data;
             //Debug.Assert(l.attributes["adjacency"].asInt().data[0] != -1, "Loop " + l.vert.id + "->" + l.next.vert.id + " has not been initialized");
-            if (l.attributes["adjacency"].asInt().data[0] == -1)
+            if (adj[0] == -1)
+            {
+                // I don't know exactly when it occurs, it should not.
                 Debug.LogWarning("Loop " + l.vert.id + "->" + l.next.vert.id + " has not been initialized");
+                // We can dirty fix it in case of vertical connection
+                var nadj = l.next.attributes["adjacency"].asInt().data;
+                if (nadj[0] == 4) adj[0] = 5;
+                else if (nadj[0] == 5) adj[0] = 4;
+                else Debug.Assert(false);
+            }
         }
 
         return wfcTopology;
@@ -741,6 +772,7 @@ public class WorldGenerator : MonoBehaviour
     {
         //if (skinMesh == null) skinMesh = new BMesh();
         skinMesh = new BMesh();
+        skinMesh.AddVertexAttribute("uv", BMesh.AttributeBaseType.Float, 2);
 
         BMesh.AttributeDefinition vfaceAttr = EnsureVFaceAttribute(skinMesh);
 
@@ -942,62 +974,29 @@ public class WorldGenerator : MonoBehaviour
             foreach (var l in wfcGridForGizmos.loops)
             {
                 var adj = l.attributes["adjacency"].asInt().data[0];
-                Handles.Label(l.vert.point * 0.75f + l.edge.Center() * 0.25f, "" + adj);
+                if (adj == -1)
+                    Handles.Label(l.vert.point * 0.75f + l.edge.Center() * 0.25f, "" + adj);
             }
             foreach (var v in wfcGridForGizmos.vertices)
             {
                 var xclass = v.attributes["class"].asInt().data[0];
-                Handles.Label(v.point, "#" + v.id + " (" + xclass + ")");
-            }
-#endif // UNITY_EDITOR
-        }
+                //Handles.Label(v.point, "#" + v.id + " (" + xclass + ")");
 
-        if (wfcGridForGizmos != null && fullBaseGrid != null && wfcGridForGizmos.vertices.Count > 0)
-        {
-            var v0 = wfcGridForGizmos.vertices[0];
-            var dualvoxel = DualVoxel.FromAttribute(v0.attributes["dualvoxel"], fullBaseGrid);
-            var verts = dualvoxel.face.NeighborVertices().ToArray();
-            var edges = dualvoxel.face.NeighborEdges().ToArray();
-            var m = GetTransformedModule(v0);
-            if (m != null)
-            {
-                var mf = m.baseModule.meshFilter;
-                Vector3 floorOffset = dualvoxel.floor * Vector3.up;
-                var controlPoints = new Vector3[12]; ;
-                ModuleTransform transform = m.transform;
-                //ModuleTransform transform = new ModuleTransform("z");
-
-#if UNITY_EDITOR
-                Handles.color = Color.blue;
-                Gizmos.color = Color.blue;
-                for (int i = 0; i < 8; ++i)
+                var boundaryAttr = v.attributes["boundary"].asInt().data;
+                if (boundaryAttr[0] >= 0)
                 {
-                    int j = transform.FromCanonical(i);
-                    Handles.Label(verts[j%4].point + (dualvoxel.floor + (j/4)) * Vector3.up, "" + i);
+                    Gizmos.color = Color.red;
+                    Gizmos.DrawSphere(v.point, 0.025f);
                 }
-            
-                // Match occupation points with control points
-                controlPoints[0] = transform.EdgeCenter(1, 2, verts, edges) + floorOffset;
-                controlPoints[1] = transform.EdgeCenter(2, 3, verts, edges) + floorOffset;
-                controlPoints[2] = transform.EdgeCenter(3, 0, verts, edges) + floorOffset;
-                controlPoints[3] = transform.EdgeCenter(0, 1, verts, edges) + floorOffset;
-                controlPoints[4] = transform.EdgeCenter(1, 5, verts, edges) + floorOffset;
-                controlPoints[5] = transform.EdgeCenter(2, 6, verts, edges) + floorOffset;
-                controlPoints[6] = transform.EdgeCenter(3, 7, verts, edges) + floorOffset;
-                controlPoints[7] = transform.EdgeCenter(0, 4, verts, edges) + floorOffset;
-                controlPoints[8] = transform.EdgeCenter(5, 6, verts, edges) + floorOffset;
-                controlPoints[9] = transform.EdgeCenter(6, 7, verts, edges) + floorOffset;
-                controlPoints[10] = transform.EdgeCenter(7, 4, verts, edges) + floorOffset;
-                controlPoints[11] = transform.EdgeCenter(4, 5, verts, edges) + floorOffset;
-
-                for (int j = 0; j < 12; ++j)
+                var debugAttr = v.attributes["debug"].asInt().data;
+                if (debugAttr[0] >= 0)
                 {
-                    Handles.Label(controlPoints[j], "$" + j);
+                    Gizmos.color = Color.blue;
+                    Gizmos.DrawSphere(v.point, 0.035f);
                 }
             }
 #endif // UNITY_EDITOR
         }
-
 
         /*
         BMeshUnity.DrawGizmos(fullBaseGrid);
