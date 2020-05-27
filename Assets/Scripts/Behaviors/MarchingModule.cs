@@ -15,6 +15,7 @@ public class MarchingModule : MonoBehaviour
     public bool allowRotationAroundVerticalAxis = true; // there is almost no reason not to tick this
     public bool allowFlipAlongX = true;
     public MeshDeformer deformer;
+    public int[] adjacency; // one int per direction which must be equal in neighbor's dual connection
 
     // For entanglement rules (a bit ad hoc for now)
     public bool hasPillarAbove = false;

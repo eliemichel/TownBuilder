@@ -16,17 +16,10 @@ namespace LilyXwfc
     public class ConnectionStateEntanglementRules : AEntanglementRules
     {
         readonly ModuleRegistry registry;
-        readonly int[] connectionLut;
 
-        public ConnectionStateEntanglementRules(ModuleRegistry registry, int[] connectionLut = null)
+        public ConnectionStateEntanglementRules(ModuleRegistry registry)
         {
-            if (connectionLut == null)
-            {
-                connectionLut = new int[] { 1, 0, 3, 2 }; // default for 2d rectangle tiles
-            }
-
             this.registry = registry;
-            this.connectionLut = connectionLut;
         }
 
         ConnectionState GetConnectionState(PureState x, int connectionType)
@@ -34,17 +27,20 @@ namespace LilyXwfc
             return registry.GetModule(x).GetConnectionState(connectionType);
         }
 
-        public override bool Allows(PureState x, int connectionType, PureState y)
+        public override bool Allows(PureState x, BMesh.Loop connection, PureState y)
         {
+            int connectionType = connection.attributes["adjacency"].asInt().data[0];
+            int dualConnectionType = connection.next.attributes["adjacency"].asInt().data[0];
             ConnectionState s1 = GetConnectionState(x, connectionType);
-            ConnectionState s2 = GetConnectionState(y, DualConnection(connectionType));
+            ConnectionState s2 = GetConnectionState(y, dualConnectionType);
             return s1.Equals(s2);
         }
 
-        public override SuperposedState AllowedStates(SuperposedState x, int connectionType, SuperposedState y)
+        public override SuperposedState AllowedStates(SuperposedState x, BMesh.Loop connection, SuperposedState y)
         {
             SuperposedState z = SuperposedState.None(y);
-            int dualConnectionType = DualConnection(connectionType);
+            int connectionType = connection.attributes["adjacency"].asInt().data[0];
+            int dualConnectionType = connection.next.attributes["adjacency"].asInt().data[0];
             var components = x.Components();
             if (components.Count == 0) return z;
 
@@ -73,15 +69,6 @@ namespace LilyXwfc
                 }
             }
             return z;
-        }
-
-        /**
-         * If edge is stored going from other vertex to this, we use the dual connection type
-         * e.g. is the edge means "other is on the right of vert" we translate into "vert is on the left of other"
-         */
-        public override int DualConnection(int c)
-        {
-            return connectionLut[c];
         }
     }
 

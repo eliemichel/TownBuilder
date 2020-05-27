@@ -14,7 +14,7 @@ namespace LilyXwfc
     {
         public readonly int dimension; // number of possible states (i.e. dimension of the superposed state space)
         SuperposedState[] waves; // state vector, one state per topology vertex
-        readonly BMesh topology;
+        public readonly BMesh topology;
         public readonly IEntanglementRules rules;
         readonly string exclusionClassAttr;
 
@@ -80,15 +80,16 @@ namespace LilyXwfc
             {
                 var dest = e.OtherVertex(vert);
                 int type = e.attributes["type"].asInt().data[0];
-                if (vert != e.vert1)
-                {
-                    type = rules.DualConnection(type);
-                }
+                
+                var loop = e.loop;
+                if (loop.vert != vert) loop = loop.next;
+                Debug.Assert(loop.vert == vert);
 
-                if (type == 1 /*above*/) Debug.Assert(vert.point.y > e.OtherVertex(vert).point.y, vert.id + " is not above " + e.OtherVertex(vert).id);
-                if (type == 2 /*bellow*/) Debug.Assert(vert.point.y < e.OtherVertex(vert).point.y, vert.id + " is not bellow " + e.OtherVertex(vert).id);
-
-                connections.Add(new WaveConnection { destination = WaveVariable.FromRaw(dest.id), type = type });
+                connections.Add(new WaveConnection {
+                    destination = WaveVariable.FromRaw(dest.id),
+                    type = type,
+                    loop = loop
+                });
             }
             return connections;
         }

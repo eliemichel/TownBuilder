@@ -489,16 +489,31 @@ public class WorldGenerator : MonoBehaviour
         foreach (DualVoxel nf in dualvoxel.NeighborDualVoxels())
         {
             ++adj;
-            if (nf.IsEmpty() && nf.floor != dualvoxel.floor - 1) continue;
+            
+            // If the whole column on top of it is empty, ignore
+            {
+                // a bit dirty
+                bool empty = true;
+                foreach (var corner in nf.face.NeighborVertices())
+                {
+                    var occ = corner.attributes["occupancy"].asFloat().data;
+                    for (int i = nf.floor; i < occ.Length && empty; ++i)
+                    {
+                        if (occ[i] > 0) empty = false;
+                    }
+                    if (!empty) break;
+                }
+                if (empty) continue;
+            }
             var nv = ComputeWfcTopology_Walk(baseGrid, wfcTopology, nf);
             if (nv != null)
             {
                 // old neighboring mechanism
                 if (wfcTopology.FindEdge(v, nv) == null)
                 {
-                    var e = wfcTopology.AddEdge(v, nv);
+                    var edge = wfcTopology.AddEdge(v, nv);
                     int type = nf.floor == dualvoxel.floor ? 0 : (nf.floor == dualvoxel.floor + 1 ? 2/*bellow*/ : 1/*above*/); // see ModuleEntanglementRules.ConnectionType
-                    e.attributes["type"].asInt().data[0] = type;
+                    //edge.attributes["type"].asInt().data[0] = type;
 
                     if (type == 2) Debug.Assert(adj == 4, "adj = " + adj);
                     if (type == 1) Debug.Assert(adj == 5, "adj = " + adj);
@@ -506,10 +521,28 @@ public class WorldGenerator : MonoBehaviour
 
                 // New neighboring mechanism for WFC: use 2-vertex face,
                 // i.e. half-edges with a different type on each loop.
-                BMesh.Face f = wfcTopology.AddFace(new BMesh.Vertex[] { v, nv });
-                BMesh.Loop l = f.loop;
+                BMesh.Loop l;
+                BMesh.Edge e = wfcTopology.FindEdge(v, nv);
+                bool test = false;
+                if (e != null && e.loop != null)
+                {
+                    l = e.loop;
+                    test = true;
+                }
+                else
+                {
+                    BMesh.Face f = wfcTopology.AddFace(new BMesh.Vertex[] { v, nv });
+                    l = f.loop;
+                }
                 if (l.vert != v) l = l.next;
                 Debug.Assert(l.vert == v);
+
+                if (test)
+                {
+                    int nadj = l.next.attributes["adjacency"].asInt().data[0];
+                    if (adj < 4) Debug.Assert(nadj < 4, "adj = " + adj + ", and nadj = " + nadj);
+                }
+
                 l.attributes["adjacency"].asInt().data[0] = adj;
 
                 Debug.Assert(Vector3.Distance(nf.Center(), nv.point) < 1e-5);
@@ -538,7 +571,8 @@ public class WorldGenerator : MonoBehaviour
         wfcTopology.AddVertexAttribute("dualvoxel", BMesh.AttributeBaseType.Int, 2);
 
         // new adjacency mechanism
-        wfcTopology.AddLoopAttribute("adjacency", BMesh.AttributeBaseType.Int, 1);
+        wfcTopology.AddLoopAttribute("adjacency", BMesh.AttributeBaseType.Int, 1)
+            .defaultValue = new BMesh.IntAttributeValue(-1);
 
         // Initialize or reset attributes "visited" and "vertex" that label voxels (so columns on vertices)
         if (!baseGrid.HasFaceAttribute("visited"))
@@ -564,6 +598,14 @@ public class WorldGenerator : MonoBehaviour
         foreach (var f in voxel.vert.NeighborFaces())
         {
             ComputeWfcTopology_Walk(baseGrid, wfcTopology, new DualVoxel { face = f, floor = voxel.floor });
+        }
+
+        { int i = 0; foreach (var v in wfcTopology.vertices) v.id = i++; }
+        foreach (var l in wfcTopology.loops)
+        {
+            //Debug.Assert(l.attributes["adjacency"].asInt().data[0] != -1, "Loop " + l.vert.id + "->" + l.next.vert.id + " has not been initialized");
+            if (l.attributes["adjacency"].asInt().data[0] == -1)
+                Debug.LogWarning("Loop " + l.vert.id + "->" + l.next.vert.id + " has not been initialized");
         }
 
         return wfcTopology;
@@ -885,20 +927,21 @@ public class WorldGenerator : MonoBehaviour
 #if UNITY_EDITOR
             Handles.color = Color.blue;
             Gizmos.color = Color.blue;
-            foreach (var e in wfcGridForGizmos.edges)
+            foreach (var l in wfcGridForGizmos.loops)
             {
-                var type = e.attributes["type"].asInt().data[0];
-                Handles.Label(e.Center(), "" + type);
-                Gizmos.DrawLine(e.Center(), e.vert1.point);
+                var adj = l.attributes["adjacency"].asInt().data[0];
+                Handles.Label(l.vert.point * 0.75f + l.edge.Center() * 0.25f, "" + adj);
             }
             foreach (var v in wfcGridForGizmos.vertices)
             {
                 var xclass = v.attributes["class"].asInt().data[0];
-                Handles.Label(v.point, "#" + v.id + " (" + xclass + ")");
+                //Handles.Label(v.point, "#" + v.id + " (" + xclass + ")");
             }
 #endif // UNITY_EDITOR
         }
 
+
+        /*
         BMeshUnity.DrawGizmos(fullBaseGrid);
 #if UNITY_EDITOR
         foreach (var v in fullBaseGrid.vertices)
@@ -906,8 +949,7 @@ public class WorldGenerator : MonoBehaviour
             Handles.Label(v.point, "" + v.id);
         }
 #endif // UNITY_EDITOR
-
-        /*
+        
         foreach (var v in fullBaseGrid.vertices)
         {
             float weight = (v.attributes["weight"] as BMesh.FloatAttributeValue).data[0];

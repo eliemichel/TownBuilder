@@ -9,6 +9,7 @@ namespace LilyXwfc
     {
         public int type; // symbol labeling this connection, e.g. North, South, East, West
         public WaveVariable destination;
+        public BMesh.Loop loop;
     }
 
 }

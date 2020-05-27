@@ -10,21 +10,18 @@
          * Return the probability that two variables X and Y are respectively
          * in states x and y knowing that they are related by a connection of
          * type #connectionType.
+         * 
+         * In this variant, it may be context dependent, i.e. depend on the slots
+         * so we provide a loop associated to the slot of x (loop.next.vert is
+         * the slot of y). An attribute "adjacency" must be present on it.
          */
-        bool Allows(PureState x, int connectionType, PureState y);
+        bool Allows(PureState x, BMesh.Loop connection, PureState y);
 
         /**
          * Contrary to regular WFC, the superposition must depend on y because
          * a single SuperposedState object cannot hold all the allowed neighbors
          */
-        SuperposedState AllowedStates(SuperposedState x, int connectionType, SuperposedState y);
-
-        /**
-         * If edge is stored going from other vertex to this, we use the dual connection type
-         * e.g. is the edge means "other is on the right of vert" we translate
-         * into "vert is on the left of other"
-         */
-        int DualConnection(int c);
+        SuperposedState AllowedStates(SuperposedState x, BMesh.Loop connection, SuperposedState y);
 
         /**
          * The number of dimensions within a given class may be inferior to the
@@ -39,17 +36,16 @@
      */
     public abstract class AEntanglementRules : IEntanglementRules
     {
-        public abstract bool Allows(PureState x, int connectionType, PureState y);
-        public abstract int DualConnection(int c);
+        public abstract bool Allows(PureState x, BMesh.Loop connection, PureState y);
 
-        public virtual SuperposedState AllowedStates(SuperposedState x, int connectionType, SuperposedState y)
+        public virtual SuperposedState AllowedStates(SuperposedState x, BMesh.Loop connection, SuperposedState y)
         {
             SuperposedState z = SuperposedState.None(y);
             foreach (PureState xc in x.Components())
             {
                 foreach (PureState zc in z.NonExcludedPureStates())
                 {
-                    if (Allows(xc, connectionType, zc))
+                    if (Allows(xc, connection, zc))
                     {
                         z.Add(zc);
                     }

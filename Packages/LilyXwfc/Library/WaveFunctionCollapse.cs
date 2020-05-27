@@ -244,18 +244,20 @@ namespace LilyXwfc
         {
             // 1. build neighborhood
             var neighborhood = system.OutgoingConnections(idx);
+            BMesh.Vertex slot = system.topology.vertices[idx.Raw()];
 
             // 2. For each neighbor
             for (int i = 0; i < neighborhood.Count; ++i)
             {
                 WaveVariable nidx = neighborhood[i].destination;
                 int connectionType = neighborhood[i].type;
+                BMesh.Loop loop = neighborhood[i].loop;
 
                 // 2a. Test all combinations
                 SuperposedState neighborState = system.GetWave(nidx);
 
                 // Build a mask
-                SuperposedState allowed = system.rules.AllowedStates(system.GetWave(idx), connectionType, neighborState);
+                SuperposedState allowed = system.rules.AllowedStates(system.GetWave(idx), loop, neighborState);
 
                 // Apply the mask to the neighbor
                 SuperposedState newNeighborState = neighborState.MaskBy(allowed);
@@ -291,6 +293,7 @@ namespace LilyXwfc
             {
                 WaveVariable nidx = neighborhood[i].destination;
                 int connectionType = neighborhood[i].type;
+                BMesh.Loop loop = neighborhood[i].loop;
 
                 Debug.Log("neighbor (" + nidx + "), in direction #" + connectionType + " (state = " + system.GetWave(nidx) + ")");
 
@@ -298,7 +301,7 @@ namespace LilyXwfc
                 SuperposedState neighborState = system.GetWave(nidx);
 
                 // Build a mask
-                SuperposedState allowed = system.rules.AllowedStates(system.GetWave(idx), connectionType, neighborState);
+                SuperposedState allowed = system.rules.AllowedStates(system.GetWave(idx), loop, neighborState);
 
                 // Apply the mask to the neighbor
                 SuperposedState newNeighborState = neighborState.MaskBy(allowed);
