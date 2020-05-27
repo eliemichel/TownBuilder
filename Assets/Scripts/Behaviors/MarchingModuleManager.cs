@@ -34,13 +34,19 @@ public class MarchingModuleManager : MonoBehaviour
         {
             {
                 var transform = new ModuleTransform(i);
-                moduleSets[transform.TransformHash(module.hash)].Add(new TransformedModule { baseModule = module, transform = transform });
+                moduleSets[transform.TransformHash(module.hash)].Add(new TransformedModule {
+                    baseModule = module,
+                    transform = transform
+                });
             }
             if (module.allowFlipAlongX)
             {
                 var transform = new ModuleTransform(i, true);
                 Debug.Assert(transform.flipped);
-                moduleSets[transform.TransformHash(module.hash)].Add(new TransformedModule { baseModule = module, transform = transform });
+                moduleSets[transform.TransformHash(module.hash)].Add(new TransformedModule {
+                    baseModule = module,
+                    transform = transform
+                });
             }
         }
     }
@@ -49,16 +55,18 @@ public class MarchingModuleManager : MonoBehaviour
     {
         maxModuleCount = 0;
         moduleLut = new TransformedModule[256][];
-        for (int i = 0; i < 256; ++i)
+        for (int hash = 0; hash < 256; ++hash)
         {
-            if (moduleSets[i] == null || moduleSets[i].Count == 0) continue;
-            int n = moduleSets[i].Count;
-            moduleLut[i] = new TransformedModule[n];
+            if (moduleSets[hash] == null || moduleSets[hash].Count == 0) continue;
+            int n = moduleSets[hash].Count;
+            moduleLut[hash] = new TransformedModule[n];
             maxModuleCount = Mathf.Max(maxModuleCount, n);
             int j = 0;
-            foreach (var m in moduleSets[i])
+            foreach (var m in moduleSets[hash])
             {
-                moduleLut[i][j++] = m;
+                if (hash == 2)
+                    Debug.Log("Adding module for hash 2: " + m.baseModule.meshFilter.name + " with transform " + m.transform);
+                moduleLut[hash][j++] = m;
             }
         }
         moduleSets = null;

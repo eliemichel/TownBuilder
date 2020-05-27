@@ -57,6 +57,7 @@ public class ModuleBundleImporter : ScriptedImporter
             MarchingModule behavior = module.AddComponent<MarchingModule>();
             behavior.hash = moduleInfo.hash;
             behavior.allowRotationAroundVerticalAxis = true;
+            behavior.allowFlipAlongX = true;
             behavior.hasPillarAbove = moduleInfo.adjacency[4] == 0;
             behavior.hasPillarBellow = moduleInfo.adjacency[5] == 0;
             behavior.adjacency = moduleInfo.adjacency;

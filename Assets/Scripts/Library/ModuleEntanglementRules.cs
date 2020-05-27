@@ -37,9 +37,9 @@ public class ModuleEntanglementRules : AEntanglementRules
 
     static int GetTransformedAdjacency(MarchingModuleManager.TransformedModule m, int face)
     {
-        int transformedFace = m.transform.FromCanonicalFace(face);
-        if (face < 4) Debug.Assert(transformedFace < 4, "Face #" + face + " transformed to " + transformedFace + " by transform " + m.transform); // we only use transforms around Z
-        return m.baseModule.adjacency[transformedFace];
+        int untransformedFace = m.transform.ToCanonicalFace(face);
+        if (face < 4) Debug.Assert(untransformedFace < 4, "Face #" + face + " transformed from " + untransformedFace + " by transform " + m.transform); // we only use transforms around Z
+        return m.baseModule.adjacency[untransformedFace];
     }
 
     public override bool Allows(PureState x, BMesh.Loop connection, PureState y)
@@ -60,10 +60,6 @@ public class ModuleEntanglementRules : AEntanglementRules
         if (connectionType == -1 || dualConnectionType == -1) return false;
 
         bool allowed = GetTransformedAdjacency(mx, connectionType) == GetTransformedAdjacency(my, dualConnectionType);
-        if (!allowed)
-        {
-            Debug.Log("Forbidden connection " + mx.baseModule.meshFilter.name + ":" + connectionType + " to " + my.baseModule.meshFilter.name + ":" + dualConnectionType);
-        }
         return allowed;
     }
 

@@ -41,10 +41,10 @@ namespace Tests
         // In Blender's direct Z-up base
         static readonly Vector3[] faces = new Vector3[]
         {
-            new Vector3(-1, 0, 0),
             new Vector3(0, -1, 0),
             new Vector3(1, 0, 0),
             new Vector3(0, 1, 0),
+            new Vector3(-1, 0, 0),
             new Vector3(0, 0, 1),
             new Vector3(0, 0, -1),
         };
@@ -137,6 +137,15 @@ namespace Tests
             }
         }
 
+        public static void TestInvFaceTransformMatch(ModuleTransform transform, Matrix4x4 m)
+        {
+            for (int i = 0; i < faces.Length; ++i)
+            {
+                int j = transform.ToCanonicalFace(transform.FromCanonicalFace(i));
+                Debug.Assert(j == i, "Not inversed at index " + i + ": found " + j);
+            }
+        }
+
         /**
          * Utility to run a test delegate over a few random transforms
          */
@@ -189,6 +198,21 @@ namespace Tests
             TestFaceTransformMatch(new ModuleTransform("s"), mx);
 
             TestRandomTransforms(TestFaceTransformMatch);
+        }
+
+        [Test]
+        public void TestInvFaceTransform()
+        {
+            TestInvFaceTransformMatch(new ModuleTransform(0), Matrix4x4.identity);
+            TestInvFaceTransformMatch(new ModuleTransform("x"), rx);
+            TestInvFaceTransformMatch(new ModuleTransform("y"), ry);
+            TestInvFaceTransformMatch(new ModuleTransform("z"), rz);
+            TestInvFaceTransformMatch(new ModuleTransform("s"), mx);
+
+            TestInvFaceTransformMatch(new ModuleTransform("xy"), rx * ry);
+            return;
+
+            TestRandomTransforms(TestInvFaceTransformMatch);
         }
 
         [Test]

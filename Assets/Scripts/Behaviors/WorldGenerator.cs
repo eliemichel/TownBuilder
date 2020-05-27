@@ -923,7 +923,7 @@ public class WorldGenerator : MonoBehaviour
     {
         Gizmos.matrix = transform.localToWorldMatrix;
 
-        if (wfcGridForGizmos != null && false)
+        if (wfcGridForGizmos != null)
         {
             BMeshUnity.DrawGizmos(wfcGridForGizmos);
 #if UNITY_EDITOR
@@ -937,7 +937,7 @@ public class WorldGenerator : MonoBehaviour
             foreach (var v in wfcGridForGizmos.vertices)
             {
                 var xclass = v.attributes["class"].asInt().data[0];
-                //Handles.Label(v.point, "#" + v.id + " (" + xclass + ")");
+                Handles.Label(v.point, "#" + v.id + " (" + xclass + ")");
             }
 #endif // UNITY_EDITOR
         }

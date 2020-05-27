@@ -6,8 +6,9 @@ using static BMesh;
 public class ModuleTransform
 {
     // After transformation, #i becomes cornerPermutation[#i]
-    public int[] cornerPermutation; // permutation from canonical to transformed
-    public int[] facePermutation; // permutation from canonical to transformed
+    int[] cornerPermutation; // permutation from canonical to transformed
+    int[] facePermutation; // permutation from canonical to transformed
+    int[] facePermutationInv; // permutation from transformed to canonical
     public bool flipped = false;
     public bool insideout = false;
 
@@ -24,6 +25,7 @@ public class ModuleTransform
         facePermutation = new int[] { 0, 1, 2, 3, 4, 5 };
         for (int i = 0; i < offset; ++i) RotateZ();
         if (mirrorX) MirrorX();
+        PrecomputeInverse();
     }
 
     /**
@@ -60,6 +62,8 @@ public class ModuleTransform
                 break;
             }
         }
+
+        PrecomputeInverse();
     }
 
     void RotateX()
@@ -79,12 +83,12 @@ public class ModuleTransform
 
         facePermutation = new int[]
         {
-            facePermutation[0],//
             facePermutation[5],
-            facePermutation[2],//
+            facePermutation[1],//
             facePermutation[4],
-            facePermutation[1],
-            facePermutation[3],
+            facePermutation[3],//
+            facePermutation[0],
+            facePermutation[2],
         };
 
         _encoded += "x";
@@ -107,12 +111,12 @@ public class ModuleTransform
 
         facePermutation = new int[]
         {
-            facePermutation[4],
-            facePermutation[1],//
+            facePermutation[0],//
             facePermutation[5],
-            facePermutation[3],//
-            facePermutation[2],
-            facePermutation[0],
+            facePermutation[2],//
+            facePermutation[4],
+            facePermutation[1],
+            facePermutation[3],
         };
 
         _encoded += "y";
@@ -163,10 +167,10 @@ public class ModuleTransform
 
         facePermutation = new int[]
         {
-            facePermutation[2],
-            facePermutation[1],//
-            facePermutation[0],
-            facePermutation[3],//
+            facePermutation[0],//
+            facePermutation[3],
+            facePermutation[2],//
+            facePermutation[1],
             facePermutation[4],//
             facePermutation[5],//
         };
@@ -183,6 +187,15 @@ public class ModuleTransform
         _encoded += "f";
     }
 
+    void PrecomputeInverse()
+    {
+        facePermutationInv = new int[6];
+        for (int i = 0; i < 6; ++i)
+        {
+            facePermutationInv[facePermutation[i]] = i;
+        }
+    }
+
     public int FromCanonical(int index)
     {
         return cornerPermutation[index];
@@ -191,6 +204,11 @@ public class ModuleTransform
     public int FromCanonicalFace(int index)
     {
         return facePermutation[index];
+    }
+
+    public int ToCanonicalFace(int index)
+    {
+        return facePermutationInv[index];
     }
 
     // Transform a LUT index such that
