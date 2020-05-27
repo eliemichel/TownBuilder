@@ -1,0 +1,17 @@
+{
+    "name": "TownBuilder",
+    "references": [
+        "GUID:db13353449e37b74789bb07a49328676",
+        "GUID:0b435cac84ac4ad4080e10bce5f14e81",
+        "GUID:2be2a17b6c6ad6a46ae0c7fd34c95f52"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

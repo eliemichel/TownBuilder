@@ -8,21 +8,36 @@ public class TestExclusiveWaveFunctionCollapse
     static BMesh GenerateGridTopologyMesh(int width, int height)
     {
         var topology = new BMesh();
-        topology.AddEdgeAttribute("type", BMesh.AttributeBaseType.Int, 1);
+        topology.AddLoopAttribute("adjacency", BMesh.AttributeBaseType.Int, 1);
         for (int j = 0; j < height; ++j)
         {
             for (int i = 0; i < width; ++i)
             {
-                topology.AddVertex(i, 0, j); // vertex # i + j * w
+                BMesh.Vertex v = topology.AddVertex(i, 0, j); // vertex # i + j * w
                 if (j > 0)
                 {
-                    var e = topology.AddEdge(i + j * width, i + (j - 1) * width);
-                    e.attributes["type"] = new BMesh.IntAttributeValue(1 /* south */);
+                    BMesh.Vertex sv = topology.vertices[i + (j - 1) * width]; // south vertex
+                    var f = topology.AddFace(new BMesh.Vertex[] { v, sv });
+                    var loop = f.loop;
+                    if (loop.vert != v) loop = loop.next;
+                    Debug.Assert(loop.vert == v);
+
+                    loop.attributes["adjacency"] = new BMesh.IntAttributeValue(1 /* south */);
+                    loop.next.attributes["adjacency"] = new BMesh.IntAttributeValue(0 /* north */);
                 }
                 if (i > 0)
                 {
-                    var e = topology.AddEdge(i + j * width, i - 1 + j * width);
-                    e.attributes["type"] = new BMesh.IntAttributeValue(3 /* west */);
+                    BMesh.Vertex wv = topology.vertices[i - 1 + j * width]; // west vertex
+                    var e = topology.AddEdge(v, wv);
+                    e.attributes["adjacency"] = new BMesh.IntAttributeValue(3 /* west */);
+
+                    var f = topology.AddFace(new BMesh.Vertex[] { v, wv });
+                    var loop = f.loop;
+                    if (loop.vert != v) loop = loop.next;
+                    Debug.Assert(loop.vert == v);
+
+                    loop.attributes["adjacency"] = new BMesh.IntAttributeValue(3 /* west */);
+                    loop.next.attributes["adjacency"] = new BMesh.IntAttributeValue(2 /* east */);
                 }
             }
         }

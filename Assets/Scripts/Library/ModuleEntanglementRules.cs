@@ -28,11 +28,18 @@ public class ModuleEntanglementRules : AEntanglementRules
         this.moduleManager = moduleManager;
     }
 
-    MarchingModule GetModule(PureState s)
+    MarchingModuleManager.TransformedModule GetModule(PureState s)
     {
         int hash = s.index / Dimension;
         int subindex = s.index % Dimension;
-        return moduleManager.GetModule(hash, subindex)?.baseModule;
+        return moduleManager.GetModule(hash, subindex);
+    }
+
+    static int GetTransformedAdjacency(MarchingModuleManager.TransformedModule m, int face)
+    {
+        int transformedFace = m.transform.FromCanonicalFace(face);
+        if (face < 4) Debug.Assert(transformedFace < 4, "Face #" + face + " transformed to " + transformedFace + " by transform " + m.transform); // we only use transforms around Z
+        return m.baseModule.adjacency[transformedFace];
     }
 
     public override bool Allows(PureState x, BMesh.Loop connection, PureState y)
@@ -40,8 +47,8 @@ public class ModuleEntanglementRules : AEntanglementRules
         int connectionType = connection.attributes["adjacency"].asInt().data[0];
         int dualConnectionType = connection.next.attributes["adjacency"].asInt().data[0];
 
-        MarchingModule mx = GetModule(x);
-        MarchingModule my = GetModule(y);
+        var mx = GetModule(x);
+        var my = GetModule(y);
 
         if (mx == null || my == null)
         {
@@ -50,14 +57,14 @@ public class ModuleEntanglementRules : AEntanglementRules
         }
 
         if (connectionType < 4) Debug.Assert(dualConnectionType < 4);
-
         if (connectionType == -1 || dualConnectionType == -1) return false;
 
-        if (mx.adjacency[connectionType] != my.adjacency[dualConnectionType])
+        bool allowed = GetTransformedAdjacency(mx, connectionType) == GetTransformedAdjacency(my, dualConnectionType);
+        if (!allowed)
         {
-            Debug.Log("Forbidden connection " + mx.meshFilter.name + ":" + connectionType + " to " + my.meshFilter.name + ":" + dualConnectionType);
+            Debug.Log("Forbidden connection " + mx.baseModule.meshFilter.name + ":" + connectionType + " to " + my.baseModule.meshFilter.name + ":" + dualConnectionType);
         }
-        return mx.adjacency[connectionType] == my.adjacency[dualConnectionType];
+        return allowed;
     }
 
     public override int DimensionInExclusionClass(int exclusionClass)

@@ -79,7 +79,7 @@ namespace LilyXwfc
             foreach (var e in vert.NeighborEdges())
             {
                 var dest = e.OtherVertex(vert);
-                int type = e.attributes["type"].asInt().data[0];
+                int type = e.attributes.ContainsKey("type") ? e.attributes["type"].asInt().data[0] : 0;
                 
                 var loop = e.loop;
                 if (loop.vert != vert) loop = loop.next;

@@ -53,13 +53,6 @@ public class WorldGenerator : MonoBehaviour
     #endregion
 
     #region [World Generator]
-    public void Test()
-    {
-        TestBMesh.Run();
-        TestAxialCoordinate.Run();
-        TestBMeshOperators.Run();
-    }
-
     public void GenerateQuad()
     {
         var bmesh = new BMesh();
@@ -435,6 +428,12 @@ public class WorldGenerator : MonoBehaviour
             data[1] = floor;
         }
 
+        public static DualVoxel FromAttribute(BMesh.AttributeValue attr, BMesh mesh)
+        {
+            int[] data = attr.asInt().data;
+            return new DualVoxel { face = mesh.faces[data[0]], floor = data[1] };
+        }
+
         public Vector3 Center()
         {
             return face.Center() + Vector3.up * (floor + 0.5f);
@@ -703,6 +702,31 @@ public class WorldGenerator : MonoBehaviour
         return null;
     }
 
+    MarchingModuleManager.TransformedModule GetTransformedModule(BMesh.Vertex v)
+    {
+        if (system != null)
+        {
+            var state = system.GetWave(LilyXwfc.WaveVariable.FromRaw(v.id));
+            var comp = state.Components();
+            if (comp.Count > 0)
+            {
+                LilyXwfc.PureState ps = comp[0];
+                int hash = ps.index / system.dimension;
+                int subindex = ps.index % system.dimension;
+                return moduleManager.GetModule(hash, subindex);
+            }
+            else
+            {
+                return null;
+            }
+        }
+        else
+        {
+            int hash = v.attributes["class"].asInt().data[0];
+            return moduleManager.SampleModule(hash);
+        }
+    }
+
     public BMesh UpdateWfcOutputMesh(BMesh skinMesh, BMesh baseGrid, BMesh wfcGrid)
     {
         //if (skinMesh == null) skinMesh = new BMesh();
@@ -717,53 +741,31 @@ public class WorldGenerator : MonoBehaviour
 
         foreach (var v in wfcGrid.vertices)
         {
-            int[] dualVFace = v.attributes["dualvoxel"].asInt().data;
-            int dualFaceId = dualVFace[0];
-            int floor = dualVFace[1];
-            var dualFace = baseGrid.faces[dualFaceId];
-
-            MarchingModuleManager.TransformedModule m = null;
-            if (system != null)
-            {
-                var state = system.GetWave(LilyXwfc.WaveVariable.FromRaw(v.id));
-                var comp = state.Components();
-                if (comp.Count > 0)
-                {
-                    LilyXwfc.PureState ps = comp[0];
-                    int hash = ps.index / system.dimension;
-                    int subindex = ps.index % system.dimension;
-                    m = moduleManager.GetModule(hash, subindex);
-                }
-            }
-            else
-            {
-                int hash = v.attributes["class"].asInt().data[0];
-                m = moduleManager.SampleModule(hash);
-            }
-            
+            var m = GetTransformedModule(v);
             if (m == null) continue;
-            
-            var verts = dualFace.NeighborVertices().ToArray();
-            var edges = dualFace.NeighborEdges().ToArray();
+
+            var dualvoxel = DualVoxel.FromAttribute(v.attributes["dualvoxel"], baseGrid);
+            var verts = dualvoxel.face.NeighborVertices().ToArray();
+            var edges = dualvoxel.face.NeighborEdges().ToArray();
 
             var mf = m.baseModule.meshFilter;
-            Vector3 floorOffset = floor * Vector3.up;
+            Vector3 floorOffset = dualvoxel.floor * Vector3.up;
             var controlPoints = m.baseModule.deformer.controlPoints;
-            int k = 0;
-            controlPoints[k++] = m.transform.EdgeCenter(0, 1, verts, edges) + floorOffset;
-            controlPoints[k++] = m.transform.EdgeCenter(1, 2, verts, edges) + floorOffset;
-            controlPoints[k++] = m.transform.EdgeCenter(2, 3, verts, edges) + floorOffset;
-            controlPoints[k++] = m.transform.EdgeCenter(3, 0, verts, edges) + floorOffset;
-            controlPoints[k++] = m.transform.EdgeCenter(0, 4, verts, edges) + floorOffset;
-            controlPoints[k++] = m.transform.EdgeCenter(1, 5, verts, edges) + floorOffset;
-            controlPoints[k++] = m.transform.EdgeCenter(2, 6, verts, edges) + floorOffset;
-            controlPoints[k++] = m.transform.EdgeCenter(3, 7, verts, edges) + floorOffset;
-            controlPoints[k++] = m.transform.EdgeCenter(4, 5, verts, edges) + floorOffset;
-            controlPoints[k++] = m.transform.EdgeCenter(5, 6, verts, edges) + floorOffset;
-            controlPoints[k++] = m.transform.EdgeCenter(6, 7, verts, edges) + floorOffset;
-            controlPoints[k++] = m.transform.EdgeCenter(7, 4, verts, edges) + floorOffset;
+            // Match occupation points with control points
+            controlPoints[0] = m.transform.EdgeCenter(1, 2, verts, edges) + floorOffset;
+            controlPoints[1] = m.transform.EdgeCenter(2, 3, verts, edges) + floorOffset;
+            controlPoints[2] = m.transform.EdgeCenter(3, 0, verts, edges) + floorOffset;
+            controlPoints[3] = m.transform.EdgeCenter(0, 1, verts, edges) + floorOffset;
+            controlPoints[4] = m.transform.EdgeCenter(1, 5, verts, edges) + floorOffset;
+            controlPoints[5] = m.transform.EdgeCenter(2, 6, verts, edges) + floorOffset;
+            controlPoints[6] = m.transform.EdgeCenter(3, 7, verts, edges) + floorOffset;
+            controlPoints[7] = m.transform.EdgeCenter(0, 4, verts, edges) + floorOffset;
+            controlPoints[8] = m.transform.EdgeCenter(5, 6, verts, edges) + floorOffset;
+            controlPoints[9] = m.transform.EdgeCenter(6, 7, verts, edges) + floorOffset;
+            controlPoints[10] = m.transform.EdgeCenter(7, 4, verts, edges) + floorOffset;
+            controlPoints[11] = m.transform.EdgeCenter(4, 5, verts, edges) + floorOffset;
             vfaceAttr.defaultValue = v.attributes["dualvoxel"];
-            BMeshUnityExtra.Merge(skinMesh, mf.sharedMesh, m.baseModule.deformer, m.transform.flipped);
+            BMeshUnityExtra.Merge(skinMesh, mf.sharedMesh, m.baseModule.deformer, !m.transform.flipped);
         }
 
         return skinMesh;
@@ -921,7 +923,7 @@ public class WorldGenerator : MonoBehaviour
     {
         Gizmos.matrix = transform.localToWorldMatrix;
 
-        if (wfcGridForGizmos != null)
+        if (wfcGridForGizmos != null && false)
         {
             BMeshUnity.DrawGizmos(wfcGridForGizmos);
 #if UNITY_EDITOR
@@ -936,6 +938,52 @@ public class WorldGenerator : MonoBehaviour
             {
                 var xclass = v.attributes["class"].asInt().data[0];
                 //Handles.Label(v.point, "#" + v.id + " (" + xclass + ")");
+            }
+#endif // UNITY_EDITOR
+        }
+
+        if (wfcGridForGizmos != null && fullBaseGrid != null && wfcGridForGizmos.vertices.Count > 0)
+        {
+            var v0 = wfcGridForGizmos.vertices[0];
+            var dualvoxel = DualVoxel.FromAttribute(v0.attributes["dualvoxel"], fullBaseGrid);
+            var verts = dualvoxel.face.NeighborVertices().ToArray();
+            var edges = dualvoxel.face.NeighborEdges().ToArray();
+            var m = GetTransformedModule(v0);
+            if (m != null)
+            {
+                var mf = m.baseModule.meshFilter;
+                Vector3 floorOffset = dualvoxel.floor * Vector3.up;
+                var controlPoints = new Vector3[12]; ;
+                ModuleTransform transform = m.transform;
+                //ModuleTransform transform = new ModuleTransform("z");
+
+#if UNITY_EDITOR
+                Handles.color = Color.blue;
+                Gizmos.color = Color.blue;
+                for (int i = 0; i < 8; ++i)
+                {
+                    int j = transform.FromCanonical(i);
+                    Handles.Label(verts[j%4].point + (dualvoxel.floor + (j/4)) * Vector3.up, "" + i);
+                }
+            
+                // Match occupation points with control points
+                controlPoints[0] = transform.EdgeCenter(1, 2, verts, edges) + floorOffset;
+                controlPoints[1] = transform.EdgeCenter(2, 3, verts, edges) + floorOffset;
+                controlPoints[2] = transform.EdgeCenter(3, 0, verts, edges) + floorOffset;
+                controlPoints[3] = transform.EdgeCenter(0, 1, verts, edges) + floorOffset;
+                controlPoints[4] = transform.EdgeCenter(1, 5, verts, edges) + floorOffset;
+                controlPoints[5] = transform.EdgeCenter(2, 6, verts, edges) + floorOffset;
+                controlPoints[6] = transform.EdgeCenter(3, 7, verts, edges) + floorOffset;
+                controlPoints[7] = transform.EdgeCenter(0, 4, verts, edges) + floorOffset;
+                controlPoints[8] = transform.EdgeCenter(5, 6, verts, edges) + floorOffset;
+                controlPoints[9] = transform.EdgeCenter(6, 7, verts, edges) + floorOffset;
+                controlPoints[10] = transform.EdgeCenter(7, 4, verts, edges) + floorOffset;
+                controlPoints[11] = transform.EdgeCenter(4, 5, verts, edges) + floorOffset;
+
+                for (int j = 0; j < 12; ++j)
+                {
+                    Handles.Label(controlPoints[j], "$" + j);
+                }
             }
 #endif // UNITY_EDITOR
         }

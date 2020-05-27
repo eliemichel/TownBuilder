@@ -17,7 +17,7 @@ public class MarchingModuleManager : MonoBehaviour
     public class TransformedModule
     {
         public MarchingModule baseModule;
-        public ModuleBasedMarchingCubes.Transform transform = new ModuleBasedMarchingCubes.Transform(0);
+        public ModuleTransform transform = new ModuleTransform(0);
     }
 
     int maxModuleCount;
@@ -33,12 +33,12 @@ public class MarchingModuleManager : MonoBehaviour
         for (int i = 0; i < rotations; ++i)
         {
             {
-                var transform = new ModuleBasedMarchingCubes.Transform(i);
+                var transform = new ModuleTransform(i);
                 moduleSets[transform.TransformHash(module.hash)].Add(new TransformedModule { baseModule = module, transform = transform });
             }
             if (module.allowFlipAlongX)
             {
-                var transform = new ModuleBasedMarchingCubes.Transform(i, true);
+                var transform = new ModuleTransform(i, true);
                 Debug.Assert(transform.flipped);
                 moduleSets[transform.TransformHash(module.hash)].Add(new TransformedModule { baseModule = module, transform = transform });
             }

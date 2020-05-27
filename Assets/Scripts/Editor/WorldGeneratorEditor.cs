@@ -33,7 +33,6 @@ public class WorldGeneratorEditor : Editor
 
         EditorGUILayout.Space();
         if (GUILayout.Button("Clear")) cont.Clear();
-        if (GUILayout.Button("Run Tests")) cont.Test();
         serializedObject.ApplyModifiedProperties();
     }
 }

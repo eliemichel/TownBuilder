@@ -52,6 +52,14 @@ public class MeshDeformer
     public MeshDeformer(Transform transform)
     {
         premultiplyMatrix = transform.localToWorldMatrix;
+        // dirty fix (because of FBX axes?)
+        //premultiplyMatrix = Matrix4x4.Rotate(Quaternion.AngleAxis(-90, Vector3.up)) * premultiplyMatrix;
+        premultiplyMatrix = new Matrix4x4(
+            new Vector4(0, 0, -1, 0),
+            new Vector4(0, 1, 0, 0),
+            new Vector4(-1, 0, 0, 0),
+            new Vector4(0, 0, 0, 1)
+        ) * premultiplyMatrix;
     }
 
     public void Precompute(Mesh mesh)
@@ -60,8 +68,6 @@ public class MeshDeformer
         Debug.Assert(cageVertices.Length == 12);
 
         weights = new float[vertices.Length][];
-
-        float startTime = Time.realtimeSinceStartup;
 
         for (var vid = 0; vid < vertices.Length; vid++)
         {
