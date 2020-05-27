@@ -17,21 +17,22 @@ public class SmvcDeform
         return factor / Mathf.Sqrt(Mathf.Max(1 - factor * factor, 0.0f));
     }
 
-    public static float[] ComputeCoordinates(
+    public static void ComputeCoordinates(
         Vector3 eta,
         int[][] cage_faces,
         Vector3[] cage_vertices,
-        float[] weights) // output, must have size equal to cage_vertices.Length
+        float[] weights, // output
+        int offset = 0)
     {
         double epsilon = 1e-6;
 
         int n_vertices = cage_vertices.Length;
         int n_faces = cage_faces.Length;
 
-        for (int i = 0; i < weights.Length; ++i) weights[i] = 0;
+        for (int i = 0; i < cage_vertices.Length; ++i) weights[offset+i] = 0;
 
         float[] w_weights = new float[n_vertices];// unnormalized weights
-        for (int i = 0; i < weights.Length; ++i) weights[i] = 0;
+        for (int i = 0; i < cage_vertices.Length; ++i) w_weights[i] = 0;
 
         float[] d = new float[n_vertices];
         for (int i = 0; i < d.Length; ++i) d[i] = 0;
@@ -45,10 +46,10 @@ public class SmvcDeform
             d[v] = (eta - cage_vertices[v]).magnitude;
             if (d[v] < epsilon)
             {
-                weights[v] = 1;
-                return weights;
+                weights[offset+v] = 1;
+                return;
             }
-            u[v] = (cage_vertices[v] - eta) / (float)d[v];
+            u[v] = (cage_vertices[v] - eta) / d[v];
         }
 
         for (int f = 0; f < n_faces; ++f)
@@ -72,9 +73,9 @@ public class SmvcDeform
                                 (cage_vertices[v1] - cage_vertices[v0]).sqrMagnitude;
                     if (eLambda >= 0 && eLambda <= 1)
                     {
-                        weights[v0] = 1 - eLambda;
-                        weights[v1] = eLambda;
-                        return weights;
+                        weights[offset+v0] = 1 - eLambda;
+                        weights[offset+v1] = eLambda;
+                        return;
                     }
                 }
 
@@ -131,7 +132,7 @@ public class SmvcDeform
                 {
                     int vi = cage_faces[f][i];
                     float lambdai = lambdas[i];
-                    weights[vi] = lambdai;
+                    weights[offset+vi] = lambdai;
                     sumWeightsFace += lambdai;
                 }
                 if (sumWeightsFace > epsilon)
@@ -139,9 +140,9 @@ public class SmvcDeform
                     for (int i = 0; i < faceVertCount; ++i)
                     {
                         int vi = cage_faces[f][i];
-                        weights[vi] /= sumWeightsFace;
+                        weights[offset+vi] /= sumWeightsFace;
                     }
-                    return weights;
+                    return;
                 }
             }
 
@@ -164,14 +165,14 @@ public class SmvcDeform
 
         for (int v = 0; v < n_vertices; ++v)
         {
-            weights[v] = w_weights[v] / sumWeights;
-            if (float.IsNaN(weights[v]))
+            weights[offset+v] = w_weights[v] / sumWeights;
+            if (float.IsNaN(weights[offset+v]))
             {
-                weights[v] = 0;
+                weights[offset+v] = 0;
             }
         }
 
 
-        return weights;
+        return;
     }
 }
