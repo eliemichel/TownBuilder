@@ -12,6 +12,7 @@
     {
         Tags { "RenderType"="Opaque" }
         LOD 200
+        Cull Off // better idea would be to make two shaders, one with each cull mode and batch renders in two sets of instances depending on whether their faces must be flipped
 
         CGPROGRAM
         // Physically based Standard lighting model, and enable shadows on all light types
@@ -19,7 +20,6 @@
         #pragma multi_compile_instancing
         #include "UnityCG.cginc"
 
-        // Use shader model 3.0 target, to get nicer looking lighting
         #pragma target 5.0
 
         sampler2D _MainTex;
@@ -27,6 +27,7 @@
 #ifdef SHADER_API_D3D11
         StructuredBuffer<float> _Weights;
         StructuredBuffer<float3> _ControlPoints;
+        StructuredBuffer<int> _Flags;
 #endif
         struct appdata {
             float4 vertex : POSITION;
@@ -50,13 +51,6 @@
         fixed4 _Color;
         uint _CageVertCount;
 
-        // Add instancing support for this shader. You need to check 'Enable Instancing' on materials that use the shader.
-        // See https://docs.unity3d.com/Manual/GPUInstancing.html for more information about instancing.
-        // #pragma instancing_options assumeuniformscaling
-        UNITY_INSTANCING_BUFFER_START(Props)
-            // put more per-instance properties here
-        UNITY_INSTANCING_BUFFER_END(Props)
-
         void vert(inout appdata v) {
 #ifdef SHADER_API_D3D11
 #ifdef UNITY_INSTANCING_ENABLED 
@@ -68,6 +62,10 @@
             for (uint i = 0; i < _CageVertCount; ++i)
             {
                 v.vertex.xyz += _Weights[v.id * _CageVertCount + i] * _ControlPoints[i + 12 * unity_InstanceID];
+            }
+            //if (_Flags[unity_InstanceID] & 1 != 0)
+            {
+                v.normal = -v.normal;
             }
 #endif
         }

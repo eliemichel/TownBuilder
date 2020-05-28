@@ -24,6 +24,7 @@ public class WorldGenerator : MonoBehaviour
     public MeshFilter raycastMeshFilter;
     public MeshFilter cursorMeshFilter;
     public MarchingModuleManager moduleManager;
+    public MarchingModuleRenderer testRenderer;
 
     public int nextTileQ = 0;
     public int nextTileR = 0;
@@ -741,6 +742,9 @@ public class WorldGenerator : MonoBehaviour
 
     public BMesh UpdateWfcOutputMesh(BMesh skinMesh, BMesh baseGrid, BMesh wfcGrid)
     {
+        // Test
+        testRenderer.ResetInstances();
+
         //if (skinMesh == null) skinMesh = new BMesh();
         skinMesh = new BMesh();
         skinMesh.AddVertexAttribute("uv", BMesh.AttributeBaseType.Float, 2);
@@ -779,6 +783,19 @@ public class WorldGenerator : MonoBehaviour
             controlPoints[11] = m.transform.EdgeCenter(4, 5, verts, edges) + floorOffset;
             vfaceAttr.defaultValue = v.attributes["dualvoxel"];
             BMeshUnityExtra.Merge(skinMesh, mf.sharedMesh, m.baseModule.deformer, !m.transform.flipped);
+
+            if (m.baseModule.hash != 0)
+            {
+                int offset = testRenderer.AddInstance(m.transform.flipped ? 1 : 0);
+                for (int i = 0; i < 12; ++i)
+                {
+                    Vector3 p = /*m.baseModule.meshFilter.transform.worldToLocalMatrix * */controlPoints[i];
+                    for (int k = 0; k < 3; ++k)
+                    {
+                        testRenderer.ControlPointData[offset + 3 * i + k] = p[k];
+                    }
+                }
+            }
         }
 
         return skinMesh;
