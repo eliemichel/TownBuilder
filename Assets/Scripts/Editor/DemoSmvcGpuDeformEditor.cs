@@ -16,9 +16,6 @@ public class DemoSmvcGpuDeformEditor : Editor
     {
         serializedObject.Update();
         DrawDefaultInspector();
-        if (GUILayout.Button("Deform")) cont.Deform();
-        if (GUILayout.Button("Deform Debug")) cont.DeformDebug();
-        if (GUILayout.Button("Show Cage")) cont.ShowCage();
         serializedObject.ApplyModifiedProperties();
     }
 }

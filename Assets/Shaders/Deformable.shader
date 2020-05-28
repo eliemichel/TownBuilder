@@ -17,6 +17,7 @@
         // Physically based Standard lighting model, and enable shadows on all light types
         #pragma surface surf Standard fullforwardshadows addshadow vertex:vert
         #pragma multi_compile_instancing
+        #include "UnityCG.cginc"
 
         // Use shader model 3.0 target, to get nicer looking lighting
         #pragma target 5.0
@@ -36,6 +37,7 @@
 
             uint id : SV_VertexID;
             uint inst : SV_InstanceID;
+            UNITY_VERTEX_INPUT_INSTANCE_ID
         };
 
         struct Input
@@ -57,10 +59,15 @@
 
         void vert(inout appdata v) {
 #ifdef SHADER_API_D3D11
+#ifdef UNITY_INSTANCING_ENABLED 
+            UNITY_SETUP_INSTANCE_ID(v);
+#else // UNITY_INSTANCING_ENABLED 
+            uint unity_InstanceID = 0;
+#endif // UNITY_INSTANCING_ENABLED 
             v.vertex.xyz = 0;
             for (uint i = 0; i < _CageVertCount; ++i)
             {
-                v.vertex.xyz += _Weights[v.id * _CageVertCount + i] * _ControlPoints[i];
+                v.vertex.xyz += _Weights[v.id * _CageVertCount + i] * _ControlPoints[i + 12 * unity_InstanceID];
             }
 #endif
         }
