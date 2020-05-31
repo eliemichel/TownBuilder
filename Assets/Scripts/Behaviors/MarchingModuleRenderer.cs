@@ -20,7 +20,9 @@ public class MarchingModuleRenderer : MonoBehaviour
     public float[] ControlPointData { get; private set; }
     public int[] FlagData { get; private set; } // one int per instance, used for flipping normals depending on module transform
 
-    bool ready = false;
+    public bool IsReady { get; private set; } = false;
+
+    bool hasEmptyMesh = false;
     float[] weights;
     ComputeBuffer weightBuffer;
     ComputeBuffer controlPointBuffer;
@@ -113,12 +115,17 @@ public class MarchingModuleRenderer : MonoBehaviour
             }
         }
 
-        ready = WriteWeightsToComputeBuffer();
+        WriteWeightsToComputeBuffer();
+        IsReady = true;
     }
 
-    bool WriteWeightsToComputeBuffer()
+    void WriteWeightsToComputeBuffer()
     {
-        if (weights.Length == 0) return false;
+        if (weights.Length == 0)
+        {
+            hasEmptyMesh = true;
+            return;
+        }
 
         weightBuffer = new ComputeBuffer(weights.Length, sizeof(float), ComputeBufferType.Default, ComputeBufferMode.Immutable);
         weightBuffer.SetData(weights);
@@ -126,8 +133,6 @@ public class MarchingModuleRenderer : MonoBehaviour
 
         localMaterial.SetBuffer("_Weights", weightBuffer);
         localMaterial.SetInt("_CageVertCount", cageVertices.Length);
-
-        return true;
     }
 
     /**
@@ -176,7 +181,7 @@ public class MarchingModuleRenderer : MonoBehaviour
 
     void UpdateControlPointBuffer()
     {
-        if (controlPointBufferUpToDate || !ready || instanceCount == 0) return;
+        if (controlPointBufferUpToDate || !IsReady || hasEmptyMesh || instanceCount == 0) return;
         
         if (controlPointBuffer == null || cageVertices.Length * instanceCount > controlPointBuffer.count)
         {

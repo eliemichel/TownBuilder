@@ -120,6 +120,24 @@ public class MarchingModuleManager : MonoBehaviour
         }
     }
 
+    public bool AreAllRenderersReady()
+    {
+        foreach (var arr in moduleLut)
+        {
+            if (arr != null)
+            {
+                foreach (var m in arr)
+                {
+                    if (m.baseModule.Renderer && !m.baseModule.Renderer.IsReady)
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
     void Start()
     {
         moduleSets = new HashSet<TransformedModule>[256];
