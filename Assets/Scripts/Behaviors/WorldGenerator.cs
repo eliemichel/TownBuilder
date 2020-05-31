@@ -758,6 +758,8 @@ public class WorldGenerator : MonoBehaviour
         //ClearUpdatedParts(skinMesh, baseGrid);
         //UnityEngine.Profiling.Profiler.EndSample();
 
+        var controlPoints = new Vector3[12];
+
         foreach (var v in wfcGrid.vertices)
         {
             var m = GetTransformedModule(v);
@@ -769,7 +771,6 @@ public class WorldGenerator : MonoBehaviour
 
             var mf = m.baseModule.meshFilter;
             Vector3 floorOffset = dualvoxel.floor * Vector3.up;
-            var controlPoints = m.baseModule.deformer.controlPoints;
             // Match occupation points with control points
             controlPoints[0] = m.transform.EdgeCenter(1, 2, verts, edges) + floorOffset;
             controlPoints[1] = m.transform.EdgeCenter(2, 3, verts, edges) + floorOffset;

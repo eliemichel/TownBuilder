@@ -14,7 +14,6 @@ public class MarchingModule : MonoBehaviour
     public MeshFilter meshFilter;
     public bool allowRotationAroundVerticalAxis = true; // there is almost no reason not to tick this
     public bool allowFlipAlongX = true;
-    public MeshDeformer deformer;
     public int[] adjacency; // one int per direction which must be equal in neighbor's dual connection
 
     public MarchingModuleRenderer Renderer { get; private set; }
@@ -22,12 +21,6 @@ public class MarchingModule : MonoBehaviour
     // For entanglement rules (a bit ad hoc for now)
     public bool hasPillarAbove = false;
     public bool hasPillarBellow = false;
-
-    public void Init()
-    {
-        deformer = new MeshDeformer(meshFilter.transform);
-        deformer.Precompute(meshFilter.sharedMesh);
-    }
 
     public void AddRenderer(Material material)
     {

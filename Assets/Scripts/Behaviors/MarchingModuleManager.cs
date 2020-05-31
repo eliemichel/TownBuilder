@@ -28,7 +28,6 @@ public class MarchingModuleManager : MonoBehaviour
 
     void RegisterModule(MarchingModule module)
     {
-        module.Init();
         module.AddRenderer(sharedMaterial);
         moduleSets[module.hash].Add(new TransformedModule { baseModule = module });
 

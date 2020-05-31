@@ -239,7 +239,7 @@ public class MarchingModuleRenderer : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-        return;
+#if UNDEF
         for (int i = 0; i < instanceCount; ++i)
         {
             Vector3 prev = Vector3.zero;
@@ -257,5 +257,6 @@ public class MarchingModuleRenderer : MonoBehaviour
                 prev = p;
             }
         }
+#endif
     }
 }

@@ -210,8 +210,6 @@ namespace Tests
             TestInvFaceTransformMatch(new ModuleTransform("s"), mx);
 
             TestInvFaceTransformMatch(new ModuleTransform("xy"), rx * ry);
-            return;
-
             TestRandomTransforms(TestInvFaceTransformMatch);
         }
 

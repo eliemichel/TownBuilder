@@ -7,15 +7,15 @@ using UnityEditor;
 [System.Serializable()]
 class ModuleInfo
 {
-    public string name;
-    public int hash;
-    public int[] adjacency; // one int per direction which must be equal in neighbor's dual connection
+    public string name = null;
+    public int hash = 0;
+    public int[] adjacency = null; // one int per direction which must be equal in neighbor's dual connection
 }
 [System.Serializable()]
 class ModuleBundleInfo
 {
-    public ModuleInfo[] modules;
-    public string fbx_file;
+    public ModuleInfo[] modules = null;
+    public string fbx_file = null;
 }
 
 /**
