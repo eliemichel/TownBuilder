@@ -17,6 +17,8 @@ public class MarchingModule : MonoBehaviour
     public MeshDeformer deformer;
     public int[] adjacency; // one int per direction which must be equal in neighbor's dual connection
 
+    public MarchingModuleRenderer Renderer { get; private set; }
+
     // For entanglement rules (a bit ad hoc for now)
     public bool hasPillarAbove = false;
     public bool hasPillarBellow = false;
@@ -25,6 +27,12 @@ public class MarchingModule : MonoBehaviour
     {
         deformer = new MeshDeformer(meshFilter.transform);
         deformer.Precompute(meshFilter.sharedMesh);
+    }
+
+    public void AddRenderer(Material material)
+    {
+        Renderer = gameObject.AddComponent<MarchingModuleRenderer>();
+        Renderer.material = material;
     }
 
     private void OnDrawGizmos()

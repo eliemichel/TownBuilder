@@ -125,6 +125,7 @@ public class WorldGenerator : MonoBehaviour
         tileSet[tileCo] = new Tile { vertices = mesh.vertices.ToArray() };
 
         AddToBaseGrid(mesh);
+        ComputeRaycastMesh();
     }
 
     // Custom Merge to remove doubles based on a priori knownledge
@@ -293,6 +294,7 @@ public class WorldGenerator : MonoBehaviour
 
         wfcOutputMesh = UpdateWfcOutputMesh(wfcOutputMesh, fullBaseGrid, wfcTopology);
         ShowMesh();
+        ComputeRaycastMesh();
 
         wfcGridForGizmos = wfcTopology; // for debug
     }
@@ -743,7 +745,7 @@ public class WorldGenerator : MonoBehaviour
     public BMesh UpdateWfcOutputMesh(BMesh skinMesh, BMesh baseGrid, BMesh wfcGrid)
     {
         // Test
-        testRenderer.ResetInstances();
+        moduleManager.ResetRenderers();
 
         //if (skinMesh == null) skinMesh = new BMesh();
         skinMesh = new BMesh();
@@ -782,17 +784,18 @@ public class WorldGenerator : MonoBehaviour
             controlPoints[10] = m.transform.EdgeCenter(7, 4, verts, edges) + floorOffset;
             controlPoints[11] = m.transform.EdgeCenter(4, 5, verts, edges) + floorOffset;
             vfaceAttr.defaultValue = v.attributes["dualvoxel"];
-            BMeshUnityExtra.Merge(skinMesh, mf.sharedMesh, m.baseModule.deformer, !m.transform.flipped);
+            //BMeshUnityExtra.Merge(skinMesh, mf.sharedMesh, m.baseModule.deformer, !m.transform.flipped);
 
-            if (m.baseModule.hash != 0)
+            var moduleRenderer = m.baseModule.Renderer;
+            if (moduleRenderer != null)
             {
-                int offset = testRenderer.AddInstance(m.transform.flipped ? 1 : 0);
+                int offset = moduleRenderer.AddInstance(m.transform.flipped ? 1 : 0);
                 for (int i = 0; i < 12; ++i)
                 {
                     Vector3 p = /*m.baseModule.meshFilter.transform.worldToLocalMatrix * */controlPoints[i];
                     for (int k = 0; k < 3; ++k)
                     {
-                        testRenderer.ControlPointData[offset + 3 * i + k] = p[k];
+                        moduleRenderer.ControlPointData[offset + 3 * i + k] = p[k];
                     }
                 }
             }
@@ -940,12 +943,17 @@ public class WorldGenerator : MonoBehaviour
         tileSet = new Dictionary<AxialCoordinate, Tile>();
         cursor = new Cursor();
     }
+
+    private void Start()
+    {
+        ComputeRaycastMesh();
+    }
+
     void Update()
     {
         if (run)
         {
             GenerateTileAtCursor();
-            ComputeRaycastMesh();
         }
     }
 

@@ -27,8 +27,8 @@ public class MarchingModuleRenderer : MonoBehaviour
     ComputeBuffer flagBuffer;
     Mesh mesh;
     int instanceCount = 0;
-    int previousInstanceCount = 0;
     bool controlPointBufferUpToDate = false;
+    Material localMaterial; // local copy of the material
 
     static readonly Vector3[] cageVertices = new Vector3[] {
         new Vector3(0.5f, -0.5f, 0) * 2 + Vector3.up,
@@ -113,18 +113,21 @@ public class MarchingModuleRenderer : MonoBehaviour
             }
         }
 
-        WriteWeightsToComputeBuffer();
-        ready = true;
+        ready = WriteWeightsToComputeBuffer();
     }
 
-    void WriteWeightsToComputeBuffer()
+    bool WriteWeightsToComputeBuffer()
     {
+        if (weights.Length == 0) return false;
+
         weightBuffer = new ComputeBuffer(weights.Length, sizeof(float), ComputeBufferType.Default, ComputeBufferMode.Immutable);
         weightBuffer.SetData(weights);
         weights = null; // free memory
 
-        material.SetBuffer("_Weights", weightBuffer);
-        material.SetInt("_CageVertCount", cageVertices.Length);
+        localMaterial.SetBuffer("_Weights", weightBuffer);
+        localMaterial.SetInt("_CageVertCount", cageVertices.Length);
+
+        return true;
     }
 
     /**
@@ -132,7 +135,6 @@ public class MarchingModuleRenderer : MonoBehaviour
      */
     public void ResetInstances()
     {
-        previousInstanceCount = instanceCount;
         instanceCount = 0;
         controlPointBufferUpToDate = false;
     }
@@ -182,11 +184,11 @@ public class MarchingModuleRenderer : MonoBehaviour
                 Debug.Log("Reallocating cp buffer because we need " + (cageVertices.Length * instanceCount) + " > " + (controlPointBuffer.count) + " points");
             if (controlPointBuffer != null) controlPointBuffer.Dispose();
             controlPointBuffer = new ComputeBuffer(cageVertices.Length * instanceCount, 3 * sizeof(float), ComputeBufferType.Default);
-            material.SetBuffer("_ControlPoints", controlPointBuffer);
+            localMaterial.SetBuffer("_ControlPoints", controlPointBuffer);
 
             if (flagBuffer != null) flagBuffer.Dispose();
             flagBuffer = new ComputeBuffer(instanceCount, sizeof(int), ComputeBufferType.Default);
-            material.SetBuffer("_Flags", flagBuffer);
+            localMaterial.SetBuffer("_Flags", flagBuffer);
         }
 
         Debug.Log("UpdateControlPointBuffer: " + instanceCount + " instances");
@@ -197,18 +199,19 @@ public class MarchingModuleRenderer : MonoBehaviour
 
     void DrawDeformedInstances()
     {
-        if (material == null) return;
+        if (localMaterial == null) return;
 
         Matrix4x4[] matrices = new Matrix4x4[instanceCount];
         for (int i = 0; i < matrices.Length; ++i)
         {
             matrices[i] = Matrix4x4.identity; // moduleMesh.transform.localToWorldMatrix;
         }
-        Graphics.DrawMeshInstanced(moduleMesh.sharedMesh, 0, material, matrices);
+        Graphics.DrawMeshInstanced(moduleMesh.sharedMesh, 0, localMaterial, matrices);
     }
 
     void Start()
     {
+        localMaterial = new Material(material);
         if (moduleMesh == null)
         {
             var module = GetComponent<MarchingModule>();
@@ -225,6 +228,13 @@ public class MarchingModuleRenderer : MonoBehaviour
     {
         UpdateControlPointBuffer();
         DrawDeformedInstances();
+    }
+
+    private void OnDestroy()
+    {
+        if (weightBuffer != null) weightBuffer.Dispose();
+        if (controlPointBuffer != null) controlPointBuffer.Dispose();
+        if (flagBuffer != null) flagBuffer.Dispose();
     }
 
     private void OnDrawGizmos()

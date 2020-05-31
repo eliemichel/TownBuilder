@@ -9,6 +9,8 @@ using UnityEngine;
  */
 public class MarchingModuleManager : MonoBehaviour
 {
+    public Material sharedMaterial; // material used to render modules (supporting deformation and instancing)
+
     /**
      * Maximum number of modules in the same moduleset
      */
@@ -27,6 +29,7 @@ public class MarchingModuleManager : MonoBehaviour
     void RegisterModule(MarchingModule module)
     {
         module.Init();
+        module.AddRenderer(sharedMaterial);
         moduleSets[module.hash].Add(new TransformedModule { baseModule = module });
 
         int rotations = module.allowRotationAroundVerticalAxis ? 4 : 1;
@@ -102,6 +105,20 @@ public class MarchingModuleManager : MonoBehaviour
     {
         if (moduleLut[hash] != null) return moduleLut[hash].Length;
         return 0;
+    }
+
+    public void ResetRenderers()
+    {
+        foreach (var arr in moduleLut)
+        {
+            if (arr != null)
+            {
+                foreach (var m in arr)
+                {
+                    m.baseModule.Renderer?.ResetInstances();
+                }
+            }
+        }
     }
 
     void Start()
