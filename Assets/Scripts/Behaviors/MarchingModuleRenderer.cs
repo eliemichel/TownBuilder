@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 
 /**
@@ -16,6 +17,7 @@ public class MarchingModuleRenderer : MonoBehaviour
     public MeshFilter moduleMesh;
     public Transform moduleTransform;
     public float timeBudget = 20; // in ms, for precomputation coroutine
+    public bool showGizmos = false;
 
     public float[] ControlPointData { get; private set; }
     public int[] FlagData { get; private set; } // one int per instance, used for flipping normals depending on module transform
@@ -32,7 +34,7 @@ public class MarchingModuleRenderer : MonoBehaviour
     bool controlPointBufferUpToDate = false;
     Material localMaterial; // local copy of the material
 
-    static readonly Vector3[] cageVertices = new Vector3[] {
+    public static readonly Vector3[] cageVertices = new Vector3[] {
         new Vector3(0.5f, -0.5f, 0) * 2 + Vector3.up,
         new Vector3(0, -0.5f, 0.5f) * 2 + Vector3.up,
         new Vector3(-0.5f, -0.5f, 0) * 2 + Vector3.up,
@@ -46,7 +48,17 @@ public class MarchingModuleRenderer : MonoBehaviour
         new Vector3(0.5f, 0.5f, 0) * 2 + Vector3.up,
         new Vector3(0, 0.5f, 0.5f) * 2 + Vector3.up,
         new Vector3(-0.5f, 0.5f, 0) * 2 + Vector3.up,
-        new Vector3(0, 0.5f, -0.5f) * 2 + Vector3.up
+        new Vector3(0, 0.5f, -0.5f) * 2 + Vector3.up,
+
+        new Vector3(-0.5f, -0.5f, -0.5f) * 2 + Vector3.up,
+        new Vector3( 0.5f, -0.5f, -0.5f) * 2 + Vector3.up,
+        new Vector3( 0.5f, -0.5f,  0.5f) * 2 + Vector3.up,
+        new Vector3(-0.5f, -0.5f,  0.5f) * 2 + Vector3.up,
+
+        new Vector3(-0.5f, 0.5f, -0.5f) * 2 + Vector3.up,
+        new Vector3( 0.5f, 0.5f, -0.5f) * 2 + Vector3.up,
+        new Vector3( 0.5f, 0.5f,  0.5f) * 2 + Vector3.up,
+        new Vector3(-0.5f, 0.5f,  0.5f) * 2 + Vector3.up
     };
 
     static readonly int[][] cageFaces = new int[][] {
@@ -57,15 +69,37 @@ public class MarchingModuleRenderer : MonoBehaviour
         new int[]{ 3, 4, 11, 7 },
         new int[]{ 8, 9, 10, 11 },
 
-        new int[]{ 0, 1, 5 },
-        new int[]{ 1, 2, 6 },
-        new int[]{ 2, 3, 7 },
-        new int[]{ 3, 0, 4 },
+        new int[]{ 0, 12+2, 5 },
+        new int[]{ 5, 12+2, 1 },
+        new int[]{ 1, 12+2, 0 },
 
-        new int[]{ 5, 9, 8 },
-        new int[]{ 6, 10, 9 },
-        new int[]{ 7, 11, 10 },
-        new int[]{ 4, 8, 11 }
+        new int[]{ 1, 12+3, 6 },
+        new int[]{ 6, 12+3, 2 },
+        new int[]{ 2, 12+3, 1 },
+
+        new int[]{ 2, 12+0, 7 },
+        new int[]{ 7, 12+0, 3 },
+        new int[]{ 3, 12+0, 2 },
+
+        new int[]{ 3, 12+1, 4 },
+        new int[]{ 4, 12+1, 0 },
+        new int[]{ 0, 12+1, 3 },
+
+        new int[]{ 5, 12+6, 8 },
+        new int[]{ 8, 12+6, 9 },
+        new int[]{ 9, 12+6, 5 },
+
+        new int[]{ 6, 12+7, 9 },
+        new int[]{ 9, 12+7,10 },
+        new int[]{10, 12+7, 6 },
+
+        new int[]{ 7, 12+4,10 },
+        new int[]{10, 12+4,11 },
+        new int[]{11, 12+4, 7 },
+
+        new int[]{ 4, 12+5,11 },
+        new int[]{11, 12+5, 8 },
+        new int[]{ 8, 12+5, 4 },
     };
 
     void CloneMesh()
@@ -84,7 +118,7 @@ public class MarchingModuleRenderer : MonoBehaviour
 
     IEnumerator PrecomputeWeightsCoroutine()
     {
-        Debug.Assert(cageVertices.Length == 12);
+        Debug.Assert(cageVertices.Length == 20);
 
         weights = new float[mesh.vertices.Length * cageVertices.Length];
 
@@ -185,8 +219,8 @@ public class MarchingModuleRenderer : MonoBehaviour
         
         if (controlPointBuffer == null || cageVertices.Length * instanceCount > controlPointBuffer.count)
         {
-            if (controlPointBuffer != null)
-                Debug.Log("Reallocating cp buffer because we need " + (cageVertices.Length * instanceCount) + " > " + (controlPointBuffer.count) + " points");
+            //if (controlPointBuffer != null)
+            //    Debug.Log("Reallocating cp buffer because we need " + (cageVertices.Length * instanceCount) + " > " + (controlPointBuffer.count) + " points");
             if (controlPointBuffer != null) controlPointBuffer.Dispose();
             controlPointBuffer = new ComputeBuffer(cageVertices.Length * instanceCount, 3 * sizeof(float), ComputeBufferType.Default);
             localMaterial.SetBuffer("_ControlPoints", controlPointBuffer);
@@ -196,7 +230,7 @@ public class MarchingModuleRenderer : MonoBehaviour
             localMaterial.SetBuffer("_Flags", flagBuffer);
         }
 
-        Debug.Log("UpdateControlPointBuffer: " + instanceCount + " instances");
+        //Debug.Log("UpdateControlPointBuffer: " + instanceCount + " instances");
         controlPointBuffer.SetData(ControlPointData, 0, 0, cageVertices.Length * 3 * instanceCount);
         flagBuffer.SetData(FlagData, 0, 0, instanceCount);
         controlPointBufferUpToDate = true;
@@ -244,7 +278,7 @@ public class MarchingModuleRenderer : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-#if UNDEF
+        if (!showGizmos) return;
         for (int i = 0; i < instanceCount; ++i)
         {
             Vector3 prev = Vector3.zero;
@@ -260,8 +294,10 @@ public class MarchingModuleRenderer : MonoBehaviour
                 Gizmos.DrawSphere(p, j == 0 ? 0.03f : 0.025f);
                 if (prev != Vector3.zero) Gizmos.DrawLine(prev, p);
                 prev = p;
+#if UNITY_EDITOR
+                Handles.Label(p, "" + j);
+#endif
             }
         }
-#endif
     }
 }

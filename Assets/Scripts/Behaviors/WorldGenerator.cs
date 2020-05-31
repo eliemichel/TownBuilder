@@ -758,7 +758,7 @@ public class WorldGenerator : MonoBehaviour
         //ClearUpdatedParts(skinMesh, baseGrid);
         //UnityEngine.Profiling.Profiler.EndSample();
 
-        var controlPoints = new Vector3[12];
+        var controlPoints = new Vector3[MarchingModuleRenderer.cageVertices.Length];
 
         foreach (var v in wfcGrid.vertices)
         {
@@ -769,7 +769,6 @@ public class WorldGenerator : MonoBehaviour
             var verts = dualvoxel.face.NeighborVertices().ToArray();
             var edges = dualvoxel.face.NeighborEdges().ToArray();
 
-            var mf = m.baseModule.meshFilter;
             Vector3 floorOffset = dualvoxel.floor * Vector3.up;
             // Match occupation points with control points
             controlPoints[0] = m.transform.EdgeCenter(1, 2, verts, edges) + floorOffset;
@@ -784,16 +783,19 @@ public class WorldGenerator : MonoBehaviour
             controlPoints[9] = m.transform.EdgeCenter(6, 7, verts, edges) + floorOffset;
             controlPoints[10] = m.transform.EdgeCenter(7, 4, verts, edges) + floorOffset;
             controlPoints[11] = m.transform.EdgeCenter(4, 5, verts, edges) + floorOffset;
+            for (int k = 0; k < 8; ++k)
+            {
+                controlPoints[12 + k] = m.transform.VertexPosition(k, verts) + floorOffset;
+            }
             vfaceAttr.defaultValue = v.attributes["dualvoxel"];
-            //BMeshUnityExtra.Merge(skinMesh, mf.sharedMesh, m.baseModule.deformer, !m.transform.flipped);
 
             var moduleRenderer = m.baseModule.Renderer;
             if (moduleRenderer != null)
             {
                 int offset = moduleRenderer.AddInstance(m.transform.flipped ? 1 : 0);
-                for (int i = 0; i < 12; ++i)
+                for (int i = 0; i < MarchingModuleRenderer.cageVertices.Length; ++i)
                 {
-                    Vector3 p = /*m.baseModule.meshFilter.transform.worldToLocalMatrix * */controlPoints[i];
+                    Vector3 p = controlPoints[i];
                     for (int k = 0; k < 3; ++k)
                     {
                         moduleRenderer.ControlPointData[offset + 3 * i + k] = p[k];

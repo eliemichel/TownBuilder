@@ -238,6 +238,12 @@ public class ModuleTransform
         return newHash;
     }
 
+    public Vector3 VertexPosition(int i, Vertex[] verts)
+    {
+        i = FromCanonical(i);
+        return verts[i % 4].point + (i >= 4 ? Vector3.up : Vector3.zero);
+    }
+
     public static Vector3 DefaultEdgeCenter(int i, int j, Vertex[] verts, Edge[] edges)
     {
         int floor_i = i / 4;
@@ -269,8 +275,9 @@ public class ModuleTransform
 
     public Vector3 EdgeCenter(int i, int j, Vertex[] verts, Edge[] edges)
     {
-        i = FromCanonical(i);
-        j = FromCanonical(j);
-        return DefaultEdgeCenter(i, j, verts, edges);
+        return (VertexPosition(i, verts) + VertexPosition(j, verts)) * 0.5f;
+        //i = FromCanonical(i);
+        //j = FromCanonical(j);
+        //return DefaultEdgeCenter(i, j, verts, edges);
     }
 }
