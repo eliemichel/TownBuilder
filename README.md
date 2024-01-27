@@ -1,7 +1,7 @@
 Town Builder
 ============
 
-![Screenshot](Wip/module based marching cubes.png)
+![Screenshot](https://github.com/eliemichel/TownBuilder/blob/main/Wip/module%20based%20marching%20cubes.png)
 
 This is an experiment at reproducing [Oskar Stålberg](https://oskarstalberg.com)'s amazing [Townscaper](https://store.steampowered.com/app/1291340/Townscaper). It was developped for educational purpose only, leading to the following Twitter threads:
 
