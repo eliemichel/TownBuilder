@@ -1081,12 +1081,6 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 3f3c80a021db72b4797d4b4b8712603f, type: 3}
---- !u!33 &500832397 stripped
-MeshFilter:
-  m_CorrespondingSourceObject: {fileID: -7513065618514148957, guid: 7613e7369998cb14aabec6039360e4d7,
-    type: 3}
-  m_PrefabInstance: {fileID: 1045302660}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &516871562
 GameObject:
   m_ObjectHideFlags: 0
@@ -2275,7 +2269,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 09c695d7c5b6bf04b84b6713818d4d5b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  deformedMesh: {fileID: 500832397}
+  deformedMesh: {fileID: 2138018330}
   orginalHandles:
   - {fileID: 1148997431}
   - {fileID: 1349302407}
@@ -2448,32 +2442,32 @@ PrefabInstance:
     - target: {fileID: -6832453521554741806, guid: 7613e7369998cb14aabec6039360e4d7,
         type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: -0.000000011921
       objectReference: {fileID: 0}
     - target: {fileID: -6832453521554741806, guid: 7613e7369998cb14aabec6039360e4d7,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: 0.099
       objectReference: {fileID: 0}
     - target: {fileID: -6832453521554741806, guid: 7613e7369998cb14aabec6039360e4d7,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: -0.000000023842
       objectReference: {fileID: 0}
     - target: {fileID: -6832453521554741806, guid: 7613e7369998cb14aabec6039360e4d7,
         type: 3}
       propertyPath: m_LocalScale.x
-      value: 84
+      value: 90
       objectReference: {fileID: 0}
     - target: {fileID: -6832453521554741806, guid: 7613e7369998cb14aabec6039360e4d7,
         type: 3}
       propertyPath: m_LocalScale.y
-      value: 84
+      value: 90
       objectReference: {fileID: 0}
     - target: {fileID: -6832453521554741806, guid: 7613e7369998cb14aabec6039360e4d7,
         type: 3}
       propertyPath: m_LocalScale.z
-      value: 84
+      value: 90
       objectReference: {fileID: 0}
     - target: {fileID: -6363370042895628571, guid: 7613e7369998cb14aabec6039360e4d7,
         type: 3}
@@ -2603,7 +2597,7 @@ PrefabInstance:
     - target: {fileID: -1666612372337008918, guid: 7613e7369998cb14aabec6039360e4d7,
         type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -1487614274590306928, guid: 7613e7369998cb14aabec6039360e4d7,
         type: 3}
@@ -2673,7 +2667,7 @@ PrefabInstance:
     - target: {fileID: 3090958971594768190, guid: 7613e7369998cb14aabec6039360e4d7,
         type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3174795464066778943, guid: 7613e7369998cb14aabec6039360e4d7,
         type: 3}
@@ -4863,3 +4857,9 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2039394415}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!33 &2138018330 stripped
+MeshFilter:
+  m_CorrespondingSourceObject: {fileID: 9180360471358689205, guid: 7613e7369998cb14aabec6039360e4d7,
+    type: 3}
+  m_PrefabInstance: {fileID: 1045302660}
+  m_PrefabAsset: {fileID: 0}

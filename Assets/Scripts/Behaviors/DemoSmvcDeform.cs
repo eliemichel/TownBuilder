@@ -67,24 +67,6 @@ public class DemoSmvcDeform : MonoBehaviour
         {
             cageVertices[i] = orginalHandles[i].position;
         }
-        int[][] cageFaces = new int[][] {
-            new int[]{ 0, 3, 2, 1 },
-            new int[]{ 0, 5, 8, 4 },
-            new int[]{ 1, 6, 9, 5 },
-            new int[]{ 2, 7, 10, 6 },
-            new int[]{ 3, 4, 11, 7 },
-            new int[]{ 8, 9, 10, 11 },
-
-            new int[]{ 0, 1, 5 },
-            new int[]{ 1, 2, 6 },
-            new int[]{ 2, 3, 7 },
-            new int[]{ 3, 0, 4 },
-
-            new int[]{ 5, 9, 8 },
-            new int[]{ 6, 10, 9 },
-            new int[]{ 7, 11, 10 },
-            new int[]{ 4, 8, 11 }
-        };
 
         weights = new float[vertices.Length][];
 

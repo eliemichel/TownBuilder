@@ -244,7 +244,6 @@ namespace LilyXwfc
         {
             // 1. build neighborhood
             var neighborhood = system.OutgoingConnections(idx);
-            BMesh.Vertex slot = system.topology.vertices[idx.Raw()];
 
             // 2. For each neighbor
             for (int i = 0; i < neighborhood.Count; ++i)
