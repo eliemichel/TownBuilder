@@ -8,8 +8,9 @@ This is an experiment at reproducing [Oskar Stålberg](https://oskarstalberg.com
  - [Twitter thread 01](https://twitter.com/exppad/status/1261950965189672961)
  - [Twitter thread 02](https://twitter.com/exppad/status/1267045322116734977)
  - [Twitter thread 03](https://twitter.com/exppad/status/1283520023798198273)
+ - [Twitter thread 04](https://twitter.com/exppad/status/1263605678746284033)
 
-This study of the [WFC](https://github.com/mxgmn/WaveFunctionCollapse) algorithm eventually led me to develop [MesoGen](https://eliemichel.github.io/MesoGen/).
+This led me to write the [BMeshUnity](https://github.com/eliemichel/BMeshUnity) library, and the study of the [WFC](https://github.com/mxgmn/WaveFunctionCollapse) algorithm eventually led me to develop [MesoGen](https://eliemichel.github.io/MesoGen/).
 
 License
 -------
