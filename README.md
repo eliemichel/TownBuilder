@@ -9,6 +9,8 @@ This is an experiment at reproducing [Oskar Stålberg](https://oskarstalberg.com
  - [Twitter thread 02](https://twitter.com/exppad/status/1267045322116734977)
  - [Twitter thread 03](https://twitter.com/exppad/status/1283520023798198273)
 
+This study of the [WFC](https://github.com/mxgmn/WaveFunctionCollapse) algorithm eventually led me to develop [MesoGen](https://eliemichel.github.io/MesoGen/).
+
 License
 -------
 
